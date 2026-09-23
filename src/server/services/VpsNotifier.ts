@@ -5,6 +5,7 @@ import { TOKENS } from '../container/tokens.ts';
 import type { Database } from '../db/prisma.ts';
 import type { RealtimeHub } from '../realtime/RealtimeEmitter.ts';
 import type { Clock } from '../utils/clock.ts';
+import { VpsInsightsService } from './VpsInsightsService.ts';
 
 /**
  * Histórico visível ao cliente (VpsEvent) + eventos em tempo real (plano §13.2 e §14.5). As etapas da criação ficam
@@ -16,9 +17,11 @@ export class VpsNotifier {
     @inject(TOKENS.Prisma) private readonly db: Database,
     @inject(TOKENS.Realtime) private readonly realtime: RealtimeHub,
     @inject(TOKENS.Clock) private readonly clock: Clock,
+    @inject(VpsInsightsService) private readonly insights: VpsInsightsService,
   ) {}
 
   status(vps: { id: string; userId: string }, status: VpsStatusDTO, lastError?: string | null) {
+    this.insights.invalidate(vps.id);
     this.realtime.toUser(vps.userId, 'vps:status', { vpsId: vps.id, status, ...(lastError === undefined ? {} : { lastError }) });
   }
 

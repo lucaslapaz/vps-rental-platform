@@ -45,6 +45,16 @@ export class VpsActionHandler implements JobHandler {
       await this.notify.event(vps.id, action, 'succeeded', { actorId: actorId ?? null });
       this.notify.status(vps, final, null);
     }
+    // Disco aumentado com a VM desligada: expande a raiz agora que ela ligou (a VPS já está RUNNING; não bloqueia).
+    if (final === 'RUNNING' && vps.diskGrowPending) {
+      try {
+        await this.vms.waitForAgent(vps.pveVmid, 180_000);
+        await this.vms.growRootFs(vps.pveVmid);
+        await this.db.vps.update({ where: { id: vps.id }, data: { diskGrowPending: false } });
+      } catch (err) {
+        ctx.logger.warn({ vpsId: vps.id, err: errorMessage(err) }, 'não foi possível expandir a raiz; tenta de novo no próximo start');
+      }
+    }
   }
 
   async onFinalFailure(ctx: JobContext, error: unknown) {

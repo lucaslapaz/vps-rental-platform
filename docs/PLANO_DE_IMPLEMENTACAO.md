@@ -16,6 +16,7 @@
 | 6 | 2026-09-23 | Commits: o Claude passa a **commitar ao fim de cada fase** (substitui a decisão do §0.2). Ajustados o §1, o §17 e o `CLAUDE.md` |
 | 12 | 2026-09-23 | **Fase 5 concluída** (§17): catálogo, capacidade, pedido, pagamento simulado com trava da fatura (`FOR UPDATE`), telas de criação/checkout/faturas e moeda de exibição. Mudança no schema: `vps.provisionSecrets` (senhas cifradas entre o pedido e o pagamento, §12) |
 | 13 | 2026-09-23 | **Fase 6 concluída** (§17): fila de jobs no MySQL + worker no processo, handlers de provisionamento/ações/troca de plano/exclusão/reconciliação/limpeza, IPAM atômico, máquina de estados com lock otimista e Socket.IO autenticado. Descobertas no laboratório (§10.6, §11.3): o guest agent responde **antes** de o cloud-init terminar (o pós-boot agora espera `cloud-init status --wait`) e, no Alpine (sshd **sem PAM**), uma conta criada só com chave nasce bloqueada e o SSH recusa até a chave (o `ImageProfile` troca `!` por `*`). `Vps.lastError` guarda só códigos traduzíveis |
+| 14 | 2026-09-23 | **Fase 7 concluída** (§17): página da VPS com abas, console noVNC por proxy `ws`, acesso pelo guest agent, métricas e histórico. Decisões e descobertas no laboratório: **o cloud-init é congelado no fim do provisionamento** (§10.6; renomear mudava o `instance-id` e regenerava as chaves de host), renomear e aumentar o disco passam a ser feitos pelo agente (§10.4, §11.4), `reboot` cai para `stop`+`start` quando o ACPI é ignorado, Ubuntu 24.04 precisa do `/run/sshd` antes do `sshd -t`, e a capacidade usa a memória **disponível** do nó (não a livre). Rotas de acesso síncronas (`200`) |
 | 11 | 2026-09-23 | **Fase 4 concluída** (§17): cliente do Proxmox, provider real, agente, CLI `npm run pve` e suíte `@lab` 30/30 nas quatro imagens. Mudanças: drop-in do sshd **`01-favo.conf`** (§10.6) e formato do ticket do `vncproxy` (§10.5) |
 | 10 | 2026-09-23 | **Fase 3 concluída** (§17): sessão, CSRF assinado, RBAC, conta, chaves SSH e administração de usuários. Detalhes da implementação em §9.8 (origem aceita, pré-sessão, validação real das chaves SSH, textos em namespaces) |
 | 9 | 2026-09-23 | **Fase 2 concluída** (§17): Prisma 7.10.0 + adapter MariaDB, migration `init`, seeds idempotentes. Ajustes: tabelas com `@@map` em snake_case (MySQL do Windows com `lower_case_table_names=1`), `IpAddress.macAddress` (MAC derivado do IP), pool `.200–.228`, plano **Medium** no seed, proteção do Prisma contra agentes de IA em comandos destrutivos (§19) |
@@ -1559,11 +1560,13 @@ O cliente nunca espera isso numa requisição HTTP: tudo roda no worker (§11).
 |---|---|
 | Diminuir disco não é suportado | Downgrade de plano só se `diskGb` for igual ou menor. Senão, erro de validação com explicação |
 | Mudar CPU/RAM com a VM ligada fica **pendente** até reiniciar (sem hotplug) | Após o `config`, o backend consulta `/pending`. Se houver pendências, a UI mostra "aplicado no próximo reinício" e oferece o botão "Reiniciar agora" |
-| Aumentar o disco com a VM ligada | O `resize` é aplicado na hora, e o cloud-init (`growpart`) expande a partição no próximo boot. A UI avisa |
+| Aumentar o disco com a VM ligada | **Rev. 14:** o `resize` aumenta o disco virtual e o job expande a raiz na hora pelo agente (`growpart` + `resize2fs`, ext4 cresce online; testado nas três famílias). Com a VM desligada, fica marcado (`diskGrowPending`) e é feito no próximo "Ligar" pelo painel. O cloud-init não faz mais isso porque fica congelado (§10.6) |
 | Primeiro boot leva ~1 min (cloud-init) | O status só vira `RUNNING` quando a VM responde (agente `qemu-guest-agent` ou, sem agente, após o `start` + tempo mínimo). A UI mostra "Inicializando…" |
 | Redefinir senha / chave SSH | Pelo guest agent, **sem reboot** (§10.6). Testado na revisão 4 (§2.6) |
 | Reinstalar | Excluir e clonar de novo, mantendo o mesmo IP (Fase 10) |
 | Template compartilhado por clones vinculados | O template 9000 **não pode ser apagado** enquanto houver clones. Atualizar a imagem = criar um template novo (ex.: 9001) e passar a clonar dele |
+
+**Renomear (rev. 14):** o hostname vem do `name` da VM, que entra no user-data; mudar o user-data muda o `instance-id` (`sha1(user-data + rede)` no `Cloudinit.pm`) e, no próximo boot, o cloud-init roda como **nova instância**: no teste, as **chaves de host SSH foram regeneradas** (o cliente veria "REMOTE HOST IDENTIFICATION HAS CHANGED"). Por isso o cloud-init é congelado depois do 1º boot (§10.6) e renomear = `config name` + hostname dentro da VM pelo agente (`/etc/hostname`, `hostname`, `/etc/hosts`), na hora, com a VM ligada.
 
 ### 10.5 Console gráfico (noVNC)
 
@@ -1608,8 +1611,7 @@ Navegador (noVNC)                       Servidor Favo (Node)                    
   indicador de conexão. "Colar texto" (digitar o conteúdo da área de transferência) é um extra.
 - **Conferido na Fase 4 (rev. 11):** com o API token, o `ticket` do `vncproxy` vem como `<senha VNC de 8 caracteres>:PVEVNC:…`
   (o prefixo é o próprio `password` da resposta) e tem caracteres especiais: vai com `encodeURIComponent` na URL do `vncwebsocket`.
-- **A verificar na implementação:** como a interface web do próprio Proxmox passa as credenciais ao noVNC
-  (código do `pve-manager`), para confirmar o uso do `password` retornado pelo `vncproxy`.
+- **Conferido (rev. 14):** o noVNC que vem no Proxmox (`/usr/share/novnc-pve/app.js`, 1.7.0) usa `password = data.password ?? data.ticket` e abre `vncwebsocket?port=…&vncticket=<ticket>` com o subprotocolo `binary`, exatamente o que o proxy faz. Testado no navegador: tela real das quatro imagens, login de texto (Alpine/Debian/Ubuntu) e gráfico (LightDM + XFCE na Desktop) com a senha da criação. Um upgrade inválido sob `/ws/` recebe 404 na hora (antes ficava pendurado). Em dev, o `StrictMode` do React monta o efeito duas vezes: a conexão é adiada um tick e numerada, para não gastar 2 sessões de console (o limite por usuário).
 
 ### 10.6 Ações dentro da VM pelo guest agent
 
@@ -1632,6 +1634,8 @@ reiniciar a VM**:
   no Linux, bloqueada = hash começando com `!`, `configure.ac`). O sshd do Alpine é compilado sem PAM, então recusava **até a
   chave** ("User ana not allowed because account is locked"). O `ImageProfile` do Alpine tem `unlockForKeyLogin`: troca `!` por
   `*` (nenhuma senha válida, mas não bloqueada) só se a conta estiver bloqueada. Debian e Ubuntu usam PAM e não precisam.
+- **Cloud-init congelado depois do 1º boot (rev. 14):** o job de provisionamento termina com `touch /etc/cloud/cloud-init.disabled` (respeitado pelo systemd e pelos scripts OpenRC do Alpine; doc "How to disable cloud-init"). Testado nas três famílias: com o cloud-init congelado, renomear e aumentar o disco (pelo agente) seguidos de reboot mantêm a senha trocada pelo painel, as chaves de host, a rede e o SSH. Consequência: nada que dependa do cloud-init pode ser feito depois da criação (por isso `sshkeys`/`cipassword` da config não são mais alterados).
+- **Ubuntu 24.04 e `/run/sshd` (rev. 14):** o SSH é ativado por socket; antes da 1ª conexão o `ssh.service` nunca rodou e o `/run/sshd` (seu `RuntimeDirectory`) não existe, e o `sshd -t` falha com "Missing privilege separation directory" (a 1ª Ubuntu provisionada pela plataforma caiu em `ERROR` por isso). O recarregamento de Debian/Ubuntu faz `install -d -m 0755 /run/sshd` antes.
 - **O `agent/exec` nunca fica exposto ao cliente.** Só o backend chama, com comandos fixos do `ImageProfile`.
 - **Senhas nunca ficam em texto puro no banco.** Entre o pedido e a execução do job, a senha fica no payload do job
   **cifrada com AES-256-GCM** (chave `JOB_SECRET_KEY` do `.env`), e o campo é apagado assim que é usado. Ela trafega até
@@ -1710,12 +1714,12 @@ Por que no MySQL: evita outra dependência no PC, é persistente (sobrevive a re
 
 | Ação | Implementação |
 |---|---|
-| start/shutdown/stop/reboot/reset | Job `vps_action` → endpoint de status → TaskWaiter → status final. `shutdown` (ACPI, 4 s no teste) tem timeout e cai para `stop` |
+| start/shutdown/stop/reboot/reset | Job `vps_action` → endpoint de status → TaskWaiter → status final. `shutdown` (ACPI, 4 s no teste) tem timeout e cai para `stop`. **Rev. 14:** `reboot` também é ACPI (desligar + ligar); um sistema ainda bootando ignora o sinal e a task falha com "VM quit/powerdown failed - got timeout" (medido logo depois de ligar): o provider cai para `stop` + `start`, que também aplica as pendências |
 | resize (troca de plano) | Valida (sem diminuir disco; respeita o mínimo da imagem) → `config` (cores/memory, `net0` com o novo `rate`) → `resize` se o disco aumentou → se houver pendências, avisa que precisa reiniciar → fatura proporcional (simulada) |
-| renomear | `config name=<novo hostname>`. Aplicado no próximo boot (o hostname vem do cloud-init) |
-| redefinir senha (usuário ou root) | `agent/set-user-password`, **sem reboot** (§10.6). Exige a VM ligada e com o agente respondendo |
+| renomear | **Rev. 14:** `config name=<novo hostname>` + hostname dentro da VM pelo agente, na hora e sem reiniciar (exige a VM ligada). O cloud-init não é usado (congelado, §10.6) |
+| redefinir senha (usuário ou root) | `agent/set-user-password`, **sem reboot** (§10.6). Exige a VM ligada e com o agente respondendo. **Síncrono** (~1 s, resposta `200`): a senha vai direto ao Proxmox por TLS, sem passar pela fila nem pelo banco |
 | ligar/desligar login SSH por senha | `agent/file-write` + recarregar o sshd (§10.6) |
-| adicionar chave SSH | `agent/file-write` no `authorized_keys` do usuário (e `config sshkeys` para manter o cloud-init coerente) |
+| adicionar chave SSH | `agent/exec` acrescentando a chave ao `authorized_keys` do usuário (chave pela entrada padrão, usuário como `$1`). A config `sshkeys` **não** é alterada (rev. 14: mudaria o `instance-id` e não teria efeito com o cloud-init congelado) |
 | console | Sessão noVNC de uso único (§10.5). Não é um job; é síncrono |
 | reinstalar | destroy + clone com o mesmo IP e um novo VMID (Fase 10) |
 | excluir | Job `delete_vps` → `stop` se estiver rodando → `DELETE ?purge=1&destroy-unreferenced-disks=1` → IP `FREE` → faturas pendentes `CANCELED` → `DELETED` |
@@ -1978,9 +1982,9 @@ Legenda de middlewares: **O** originCheck · **C** csrf · **A** authenticate ·
 | GET/POST/DELETE | `/api/account/ssh-keys[/:id]` | (O C) A | Chaves SSH |
 | POST | `/api/vps/:id/console` | O C A P | Cria a sessão de console de uso único → `{ consoleId, password }` (§10.5) |
 | WS | `/ws/console/:consoleId` | Origin + A | Proxy noVNC ↔ Proxmox (upgrade de WebSocket) |
-| POST | `/api/vps/:id/access/password` | O C A P R | Redefine a senha do usuário ou do root (guest agent) → `202` |
-| POST | `/api/vps/:id/access/ssh-password-auth` | O C A P | Liga/desliga o login SSH por senha → `202` |
-| POST | `/api/vps/:id/access/ssh-keys` | O C A P | Adiciona uma chave SSH na VPS → `202` |
+| POST | `/api/vps/:id/access/password` | O C A P R | Redefine a senha do usuário ou do root (guest agent) → `200` com a VPS (síncrono, rev. 14) |
+| POST | `/api/vps/:id/access/ssh-password-auth` | O C A P R | Liga/desliga o login SSH por senha → `200` |
+| POST | `/api/vps/:id/access/ssh-keys` | O C A P R | Adiciona uma chave SSH (salva ou colada) na VPS → `200` |
 | GET | `/api/admin/users?query=` | A P | Lista usuários com a role (admin) |
 | PATCH | `/api/admin/users/:id/role` | O C A P | Troca a role (revoga as sessões do usuário afetado) |
 | GET | `/api/admin/roles` | A P | Roles e permissões (para a tela de administração) |
@@ -1992,6 +1996,7 @@ Legenda de middlewares: **O** originCheck · **C** csrf · **A** authenticate ·
 | POST | `/api/vps/:id/actions/:action` | O C A P | `start\|shutdown\|stop\|reboot\|reset` → `202` |
 | POST | `/api/vps/:id/resize` | O C A P | Troca de plano → `202` |
 | DELETE | `/api/vps/:id` | O C A P | Exclusão → `202` |
+| GET | `/api/vps/:id/live` | A P | Uso ao vivo (CPU, RAM, disco pelo agente, uptime, pendências), cache de 5 s (rev. 14) |
 | GET | `/api/vps/:id/metrics?timeframe=hour` | A P | rrddata |
 | GET | `/api/vps/:id/events` | A P | Histórico |
 | GET | `/api/invoices` · `/api/invoices/:id` | A P | Faturas |
@@ -2221,18 +2226,20 @@ medido com `MutationObserver`: "Desligando" em 0,4 s e "Desligada" em 4,4 s; exc
 (fila, retomada, falha definitiva, espera do cloud-init, desbloqueio só sem senha, ações, 409 `VPS_BUSY`, troca de plano, exclusão,
 reconcile, faturas vencidas, Socket.IO com sessão, origem e revogação).
 
-### Fase 7: Página da VPS e console
-- [ ] Lista, página da VPS com as abas de §14.5, ações com confirmação (`alert-dialog`), badges de status, toasts.
-- [ ] **Console noVNC** (§10.5): endpoint da sessão de uso único, proxy `ws` no `upgrade`, cliente `@novnc/novnc`, barra de ferramentas.
-- [ ] Aba Acesso: redefinir senhas, SSH por senha liga/desliga, adicionar chave (§10.6).
-- [ ] Linha do tempo de criação ao vivo (`vps:progress`).
-- [ ] Aviso de "alterações pendentes até reiniciar" (§10.4).
-- [ ] Gráficos de CPU, RAM e rede (shadcn `chart` + rrddata).
-- [ ] Histórico de eventos. Estados vazios, de carregamento e de erro caprichados.
+### Fase 7: Página da VPS e console — ✅ concluída em 2026-09-23
+- [x] Lista, página da VPS com as abas de §14.5, ações com confirmação (`alert-dialog`), badges de status, toasts.
+- [x] **Console noVNC** (§10.5): endpoint da sessão de uso único, proxy `ws` no `upgrade`, cliente `@novnc/novnc`, barra de ferramentas.
+- [x] Aba Acesso: redefinir senhas, SSH por senha liga/desliga, adicionar chave (§10.6).
+- [x] Linha do tempo de criação ao vivo (`vps:progress`).
+- [x] Aviso de "alterações pendentes até reiniciar" (§10.4).
+- [x] Gráficos de CPU, RAM e rede (shadcn `chart` + rrddata).
+- [x] Histórico de eventos. Estados vazios, de carregamento e de erro caprichados.
 
 **Aceite:** roteiro E2E manual e automatizado: criar (cada imagem), ligar, desligar, reiniciar, aumentar plano, renomear e excluir.
 O console abre e mostra o `login:` (ou o LightDM, na Desktop), e dá para entrar com a senha definida na criação. Um `consoleId` reutilizado ou vindo de
 outro usuário é recusado.
+
+**Resultado (rev. 14):** no navegador (Playwright MCP) com a Ana: página da `favo-chave` com visão geral ao vivo (memória 100 MB de 256 MB, disco 156 MB de 1,8 GB), console com a tela real, login de texto depois de redefinir a senha pela aba Acesso, gráficos de CPU/RAM/rede do `rrddata`, troca Nano → Micro com a VM ligada (disco 2 → 4 GB e raiz de 3,7 GB **na hora**; memória pendente, aviso "Reiniciar agora" → 512 MB em 5 s), renomear (`hostname`, `/etc/hosts` e nome no Proxmox) e excluir digitando o hostname. As quatro imagens criadas pela plataforma e testadas no console com a senha da criação: Alpine e Debian (login de texto), Ubuntu (login de texto e SSH por senha do Windows, depois da correção do `/run/sshd`) e **Alpine Desktop (LightDM → XFCE)**. Roteiro automatizado `tests/lab/lifecycle.lab.test.ts` contra o Proxmox: pedido → pagamento → RUNNING (34 s) → SSH → desligar → ligar → reiniciar (com o fallback) → aumentar plano (disco online, memória no reinício, **mesma chave de host**) → renomear → console ("RFB 003.00x" pelo proxy) → excluir. Descobertas registradas: cloud-init reexecutando ao renomear, `/run/sshd` no Ubuntu, reboot ignorado durante o boot, capacidade usando `free` em vez de `available` (a Desktop de 1 GB nunca cabia). 96 testes (console de uso único, outro usuário, sem sessão, origem, técnico, limite, acesso, renomear, live, métricas, disco pendente, capacidade).
 
 ### Fase 8: Suporte (chat + fila)
 - [ ] `SupportService` (regras §13.1), rotas REST, handlers de socket, salas.
@@ -2280,6 +2287,7 @@ os dois trocam mensagens em tempo real. Um segundo técnico que tenta assumir re
 
 | Risco | Impacto | Mitigação |
 |---|---|---|
+| cloud-init rodando de novo depois da criação (qualquer mudança no user-data troca o `instance-id`) | Chaves de host regeneradas, senha/estado da conta sobrescritos | Rev. 14: cloud-init congelado no fim do provisionamento; renomear e expandir o disco pelo agente (§10.6) |
 | RAM do laboratório (Proxmox com 3 GB, ~1,6 GB livres para VPS; Windows com pouca folga) | Provisionamento falha ou o PC fica lento | Planos pequenos (256–768 MB), mínimos por imagem, `CapacityService` recusando pedidos sem espaço, limite de VPS por cliente. Na prática, cabem ~3 VPS Debian/Ubuntu de 512 MB **ou** ~6 Alpine de 256 MB **ou** uma Alpine Desktop de 1 GB com pouca folga. Subir para 4 GB se o Windows tiver folga |
 | Disco do pool `data` (6,8 GB) com quatro templates (~2,5–3 GB) | Clones sem espaço | +10 GB recomendado na Fase 0 (§3.2, autorizado por você). Clones vinculados + checagem de storage no `CapacityService` |
 | Aceleração deixar de funcionar (ex.: ativar WSL2, Docker Desktop, Hyper-V ou "Integridade de Memória" no Windows) | VMs ficam ~10x mais lentas ou nem iniciam com KVM | §2.4 explica como evitar. O `npm run pve -- status` verifica `/dev/kvm` |

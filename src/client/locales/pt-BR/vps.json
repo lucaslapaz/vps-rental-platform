@@ -109,5 +109,194 @@
   "toast": {
     "ready": "{{hostname}} está no ar em {{ip}}.",
     "failed": "Não foi possível concluir a operação em {{hostname}}."
+  },
+  "detail": {
+    "back": "Minhas VPS",
+    "notFound": "VPS não encontrada.",
+    "copy": "Copiar",
+    "copied": "Copiado!",
+    "copyIp": "Copiar o IP",
+    "busy": "Operação em andamento…",
+    "payPending": "Esta VPS aguarda o pagamento da primeira mensalidade.",
+    "payNow": "Pagar agora",
+    "deletedTitle": "Esta VPS foi excluída.",
+    "actions": {
+      "console": "Console",
+      "start": "Ligar",
+      "shutdown": "Desligar",
+      "reboot": "Reiniciar",
+      "more": "Mais ações",
+      "stop": "Forçar parada",
+      "reset": "Reset forçado",
+      "cancel": "Cancelar",
+      "confirm": {
+        "shutdown": {
+          "title": "Desligar {{hostname}}?",
+          "body": "O sistema recebe o sinal de desligamento (ACPI) e encerra com segurança. Se não responder em 60 s, a VM é parada à força."
+        },
+        "reboot": {
+          "title": "Reiniciar {{hostname}}?",
+          "body": "O sistema reinicia com segurança. Alterações de CPU e memória pendentes são aplicadas neste reinício."
+        },
+        "stop": {
+          "title": "Forçar a parada de {{hostname}}?",
+          "body": "Equivale a tirar da tomada: dados que ainda não foram gravados em disco podem ser perdidos."
+        },
+        "reset": {
+          "title": "Reset forçado em {{hostname}}?",
+          "body": "Reinicia imediatamente, como apertar o botão de reset: dados não gravados podem ser perdidos."
+        },
+        "start": {
+          "title": "Ligar {{hostname}}?",
+          "body": "A VPS inicia e fica acessível em cerca de meio minuto."
+        }
+      },
+      "requested": "Pedido enviado: {{hostname}} vai atualizar sozinho quando terminar."
+    },
+    "tabs": {
+      "overview": "Visão geral",
+      "console": "Console",
+      "metrics": "Métricas",
+      "access": "Acesso",
+      "settings": "Configurações",
+      "history": "Histórico"
+    },
+    "overview": {
+      "usage": "Uso agora",
+      "cpu": "CPU",
+      "memory": "Memória",
+      "disk": "Disco",
+      "usedOf": "{{used}} de {{total}}",
+      "uptime": "Ligada há",
+      "created": "Criada em",
+      "offline": "Ligue a VPS para ver o uso em tempo real.",
+      "unavailable": "Indisponível",
+      "sshTitle": "Conectar por SSH",
+      "sshHint": "Rode no terminal do seu computador. O login usa a sua chave SSH ou a senha, conforme a configuração de acesso.",
+      "accessTitle": "Acesso",
+      "sshPasswordOn": "Login SSH por senha: ligado",
+      "sshPasswordOff": "Login SSH por senha: desligado (só chave)",
+      "rootSet": "Senha root definida (console e su)",
+      "rootNotSet": "Sem senha root",
+      "rootSsh": "Login SSH como root: sempre desativado",
+      "sudo": "Seu usuário administra o sistema com {{sudo}}.",
+      "pendingReboot": "Os novos recursos de CPU e memória serão aplicados no próximo reinício pelo painel.",
+      "rebootNow": "Reiniciar agora",
+      "specs": "Recursos",
+      "vcpu_one": "{{count}} vCPU",
+      "vcpu_other": "{{count}} vCPUs",
+      "bandwidth": "{{value}} Mbps"
+    },
+    "timeline": {
+      "title": "Criando a sua VPS",
+      "subtitle": "Isto leva cerca de um minuto. Pode sair da página: a criação continua.",
+      "failed": "A criação falhou."
+    },
+    "console": {
+      "connect": "Abrir console",
+      "connecting": "Conectando…",
+      "connected": "Conectado",
+      "disconnected": "Desconectado",
+      "reconnect": "Reconectar",
+      "fullscreen": "Tela cheia",
+      "fit": "Ajustar à janela",
+      "ctrlAltDel": "Ctrl+Alt+Del",
+      "notRunning": "Ligue a VPS para usar o console.",
+      "hint": "Clique na tela para digitar. Nas imagens de servidor aparece o login de texto; na Desktop, o login gráfico.",
+      "failed": "Não foi possível conectar ao console."
+    },
+    "metrics": {
+      "cpu": "CPU (%)",
+      "memory": "Memória",
+      "network": "Rede",
+      "in": "Entrada",
+      "out": "Saída",
+      "used": "Em uso",
+      "timeframe": {
+        "hour": "Última hora",
+        "day": "Último dia",
+        "week": "Última semana"
+      },
+      "empty": "Ainda não há dados para este período.",
+      "perSecond": "{{value}}/s"
+    },
+    "access": {
+      "notRunning": "Ligue a VPS para alterar o acesso: as mudanças são feitas dentro dela, sem reiniciar.",
+      "passwordTitle": "Redefinir senha",
+      "passwordDescription": "Vale na hora, sem reiniciar. A senha não fica guardada na Favo.",
+      "target": "Conta",
+      "targetUser": "Seu usuário ({{username}})",
+      "targetRoot": "root (console e su)",
+      "newPassword": "Nova senha",
+      "confirmPassword": "Confirme a nova senha",
+      "savePassword": "Redefinir senha",
+      "passwordChanged": "Senha redefinida.",
+      "sshTitle": "Login SSH com senha",
+      "sshDescription": "Desligado, o SSH só aceita chaves (mais seguro). O login SSH como root fica sempre desativado.",
+      "sshHintNoPassword": "Para entrar com senha, defina antes uma senha para o seu usuário.",
+      "sshChanged": "Política de SSH atualizada.",
+      "keysTitle": "Adicionar chave SSH",
+      "keysDescription": "A chave é acrescentada ao authorized_keys do seu usuário, sem remover as que já existem.",
+      "savedKey": "Chave salva na conta",
+      "chooseKey": "Escolha uma chave",
+      "orPaste": "ou cole uma chave nova",
+      "saveKey": "Salvar também na minha conta",
+      "addKey": "Adicionar chave",
+      "keyAdded": "Chave adicionada à VPS."
+    },
+    "settings": {
+      "renameTitle": "Renomear",
+      "renameDescription": "Muda o hostname dentro da VPS na hora, sem reiniciar.",
+      "rename": "Salvar nome",
+      "renamed": "VPS renomeada.",
+      "resizeTitle": "Trocar de plano",
+      "resizeDescription": "CPU e memória valem no próximo reinício pelo painel; o disco cresce na hora. Não é possível diminuir o disco.",
+      "current": "Plano atual",
+      "diskSmaller": "Disco menor que o atual",
+      "belowImage": "Abaixo do mínimo da imagem",
+      "resize": "Trocar para {{plan}}",
+      "resizeConfirmTitle": "Trocar {{hostname}} para o plano {{plan}}?",
+      "resizeConfirmBody": "A diferença proporcional aos dias que faltam no mês (no máximo {{amount}}, simulada) vira uma fatura quando a troca terminar.",
+      "resizeNoCharge": "Sem cobrança adicional neste mês.",
+      "resizeRequested": "Troca de plano em andamento.",
+      "notAvailable": "Disponível com a VPS ligada ou desligada, sem outra operação em andamento."
+    },
+    "danger": {
+      "title": "Zona de perigo",
+      "description": "Excluir apaga a VPS e todos os dados dela. Não dá para desfazer.",
+      "delete": "Excluir VPS",
+      "confirmTitle": "Excluir {{hostname}}?",
+      "confirmBody": "Digite o hostname para confirmar. A VM e o disco serão apagados e o IP volta para o pool.",
+      "confirmLabel": "Hostname",
+      "deleted": "{{hostname}} está sendo excluída."
+    },
+    "history": {
+      "empty": "Nenhum evento ainda.",
+      "actions": {
+        "create": "Criação",
+        "payment": "Pagamento",
+        "provision": "Etapa da criação",
+        "start": "Ligar",
+        "shutdown": "Desligar",
+        "stop": "Forçar parada",
+        "reboot": "Reiniciar",
+        "reset": "Reset forçado",
+        "resize": "Troca de plano",
+        "delete": "Exclusão",
+        "rename": "Renomear",
+        "password": "Senha redefinida",
+        "ssh_password_auth": "Login SSH por senha",
+        "ssh_key": "Chave SSH adicionada",
+        "reconcile": "Ajuste automático de estado",
+        "expire": "Pedido expirado"
+      },
+      "status": {
+        "requested": "pedido",
+        "succeeded": "concluído",
+        "failed": "falhou",
+        "progress": "em andamento"
+      },
+      "pendingReboot": "vale no próximo reinício"
+    }
   }
 }

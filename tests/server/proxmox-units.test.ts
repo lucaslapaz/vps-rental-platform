@@ -1,6 +1,12 @@
 import { randomBytes } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
-import { imageProfile, sshdPolicy } from '../../src/server/integrations/proxmox/ImageProfile.ts';
+import {
+  FREEZE_CLOUD_INIT,
+  GROW_ROOT_FS,
+  imageProfile,
+  SET_HOSTNAME,
+  sshdPolicy,
+} from '../../src/server/integrations/proxmox/ImageProfile.ts';
 import { encodeSshKeys, mbpsToRate } from '../../src/server/integrations/proxmox/QemuCloudInitProvider.ts';
 import { SecretBox } from '../../src/server/utils/secretBox.ts';
 
@@ -56,6 +62,22 @@ describe('ImageProfile e política de SSH', () => {
   it('cada família tem comandos fixos que validam a config antes de recarregar o sshd', () => {
     expect(imageProfile('alpine').reloadSshd.join(' ')).toContain('sshd -t && rc-service sshd reload');
     expect(imageProfile('debian').reloadSshd.join(' ')).toContain('sshd -t && systemctl try-reload-or-restart ssh');
+    // Ubuntu 24.04 (ssh por socket): sem o /run/sshd o sshd -t falha antes da 1ª conexão (C24).
+    expect(imageProfile('ubuntu').reloadSshd.join(' ')).toContain('install -d -m 0755 /run/sshd && sshd -t');
     expect(() => imageProfile('windows')).toThrow();
+  });
+});
+
+describe('comandos fixos do guest agent', () => {
+  it('scripts de shell com o texto do usuário só como argumento posicional ($1)', () => {
+    const [shell, flag, script, name] = SET_HOSTNAME;
+    expect([shell, flag, name]).toEqual(['sh', '-c', 'favo-hostname']);
+    // \b literal para o sed (limite de palavra); mal escapado, '\b' numa string JS vira o caractere backspace.
+    expect(script).toContain('s/\\b$old\\b/$1/g');
+    expect(script).not.toContain(String.fromCharCode(8));
+    expect(GROW_ROOT_FS[2]).toContain('growpart "$disk" "$part" || [ $? -eq 1 ]');
+    expect(FREEZE_CLOUD_INIT).toEqual(['touch', '/etc/cloud/cloud-init.disabled']);
+    expect(imageProfile('alpine').unlockForKeyLogin?.[2]).toContain('usermod -p "*" "$1"');
+    expect(imageProfile('debian').unlockForKeyLogin).toBeUndefined();
   });
 });

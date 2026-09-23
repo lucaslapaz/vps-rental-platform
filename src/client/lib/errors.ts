@@ -17,6 +17,11 @@ export function validationMessage(key: string | undefined): string | undefined {
   return translate(`errors:validation.${key}`, { defaultValue: key });
 }
 
+/** Texto de uma chave montada em tempo de execução (ex.: ação do histórico), com um texto de reserva. */
+export function translateKey(key: string, fallback: string): string {
+  return translate(key, { defaultValue: fallback });
+}
+
 /** Nome da role no idioma atual; roles criadas depois (sem tradução) mostram o nome cadastrado. */
 export function roleLabel(key: string, fallback?: string): string {
   return translate(`common:roles.${key}`, { defaultValue: fallback ?? key });

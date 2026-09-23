@@ -4,10 +4,10 @@ import type { DependencyContainer } from 'tsyringe';
 import type { ClientToServerEvents, ServerToClientEvents } from '../../shared/constants/events.ts';
 import type { Env } from '../config/env.ts';
 import { TOKENS } from '../container/tokens.ts';
-import { cookieNames } from '../http/cookies.ts';
 import type { AuthenticatedUser } from '../models/AuthenticatedUser.ts';
 import { SessionService } from '../services/SessionService.ts';
 import type { Logger } from '../utils/logger.ts';
+import { authenticateHandshake, isAllowedOrigin } from './handshake.ts';
 import type { RealtimeHub } from './RealtimeEmitter.ts';
 
 interface SocketData {
@@ -15,15 +15,6 @@ interface SocketData {
 }
 
 export type FavoIo = Server<ClientToServerEvents, ServerToClientEvents, Record<string, never>, SocketData>;
-
-/** Lê um cookie do header bruto do handshake (o Socket.IO não passa pelo cookie-parser do Express). */
-function readCookie(header: string | undefined, name: string) {
-  for (const part of (header ?? '').split(';')) {
-    const [k, ...v] = part.trim().split('=');
-    if (k === name) return decodeURIComponent(v.join('='));
-  }
-  return undefined;
-}
 
 /**
  * Socket.IO no MESMO http.Server do app (plano §13.2):
@@ -36,24 +27,18 @@ export function attachSocketIo(httpServer: http.Server, di: DependencyContainer)
   const env = di.resolve<Env>(TOKENS.Env);
   const logger = di.resolve<Logger>(TOKENS.Logger);
   const sessions = di.resolve(SessionService);
-  const sessionCookie = cookieNames(env).session;
 
   const io: FavoIo = new Server(httpServer, {
     path: '/socket.io',
     serveClient: false,
     destroyUpgrade: false,
-    allowRequest: (req, callback) => {
-      const origin = req.headers.origin;
-      const selfOrigin = `http://${req.headers.host}`;
-      callback(null, !origin || origin === env.APP_ORIGIN || origin === selfOrigin || origin === `https://${req.headers.host}`);
-    },
+    allowRequest: (req, callback) => callback(null, isAllowedOrigin(env, req)),
   });
 
   io.use(async (socket, next) => {
-    const token = readCookie(socket.handshake.headers.cookie, sessionCookie);
-    const result = token ? await sessions.authenticate(token).catch(() => null) : null;
-    if (!result) return next(new Error('UNAUTHENTICATED'));
-    socket.data.user = result.user;
+    const user = await authenticateHandshake(env, sessions, socket.request);
+    if (!user) return next(new Error('UNAUTHENTICATED'));
+    socket.data.user = user;
     next();
   });
 

@@ -10,6 +10,7 @@ import { createPrismaClient } from './db/prisma.ts';
 import { errorHandler } from './http/middlewares/errorHandler.ts';
 import { spaHandler } from './http/spa.ts';
 import { JobWorker } from './jobs/JobWorker.ts';
+import { attachConsoleProxy } from './realtime/consoleProxy.ts';
 import { attachSocketIo } from './realtime/socket.ts';
 import { createLogger } from './utils/logger.ts';
 
@@ -23,6 +24,7 @@ const app = createApp(di);
 const httpServer = http.createServer(app);
 // Socket.IO no mesmo servidor, antes do Vite: os dois tratam "upgrade" e nenhum destrói o do outro (CLAUDE.md N7).
 const io = attachSocketIo(httpServer, di);
+const consoleProxy = attachConsoleProxy(httpServer, di);
 let vite: ViteDevServer | undefined;
 
 if (env.NODE_ENV === 'development') {
@@ -67,6 +69,7 @@ async function shutdown(signal: string) {
   forceExit.unref();
   await worker?.stop();
   io.disconnectSockets(true);
+  consoleProxy.close();
   const serverClosed = new Promise<void>((resolve) => httpServer.close(() => resolve()));
   httpServer.closeAllConnections();
   await serverClosed;

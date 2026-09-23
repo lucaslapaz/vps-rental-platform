@@ -7,6 +7,9 @@ import { generateSshPublicKey, TestClient, uniqueEmail } from '../helpers/client
 // Capacidade folgada nos testes (os tetos reais do laboratório são testados à parte, com valores baixos).
 const { app, di, virtualization } = createTestApp({ env: { CAPACITY_MAX_MEMORY_MB: 1_000_000, CAPACITY_MAX_DISK_GB: 100_000 } });
 const db = testPrisma();
+// Muitos pedidos ficam aguardando pagamento nesta suíte e todos reservam memória do nó: um nó falso grande evita
+// que a folga dependa da ordem dos testes (o teste de capacidade troca o nó de propósito).
+virtualization.memAvailableMb = 64 * 1024;
 const createdUsers: string[] = [];
 
 afterAll(async () => {
@@ -153,6 +156,23 @@ describe('pedido (POST /api/vps)', () => {
     expect(down.status).toBe(503);
     expect(down.body.error.code).toBe('PROXMOX_UNAVAILABLE');
     Reflect.deleteProperty(virtualization, 'capacity'); // volta ao método da classe
+  });
+
+  it('a capacidade do nó usa a memória DISPONÍVEL (inclui o cache), não só a livre (CLAUDE.md C25)', async () => {
+    const base = await virtualization.capacity();
+    const MB = 1024 * 1024;
+    // 300 MB "livres", mas 1,4 GB disponíveis (o resto é cache de disco): o Nano (256 MB) cabe.
+    virtualization.capacity = async () => ({ ...base, memFreeBytes: 300 * MB, memAvailableBytes: 1400 * MB });
+    const c = await customer();
+    const fits = await c.send('post', '/api/vps', order({ hostname: 'cabe-no-cache' }));
+    expect(fits.status).toBe(201);
+    // Cancela o pedido: VPS aguardando pagamento também reservam memória do nó (os outros testes precisam da folga).
+    expect((await c.send('delete', `/api/vps/${fits.body.vps.id}`)).status).toBe(202);
+    // Só 100 MB disponíveis: não cabe.
+    virtualization.capacity = async () => ({ ...base, memFreeBytes: 100 * MB, memAvailableBytes: 100 * MB });
+    const c2 = await customer();
+    expect((await c2.send('post', '/api/vps', order({ hostname: 'nao-cabe' }))).body.error.code).toBe('NO_CAPACITY');
+    Reflect.deleteProperty(virtualization, 'capacity');
   });
 
   it('técnico de suporte não cria nem lista VPS (403)', async () => {

@@ -37,6 +37,8 @@
   "DISK_SHRINK_NOT_SUPPORTED": "Não é possível diminuir o disco. Escolha um plano com disco igual ou maior.",
   "NO_IP_AVAILABLE": "Não há IPs livres no momento.",
   "SESSION_REVOKED": "Sua sessão foi encerrada. Entre de novo.",
+  "VPS_NOT_RUNNING": "Ligue a VPS para fazer isso.",
+  "CONSOLE_LIMIT": "Você já tem 2 consoles abertos. Feche um para abrir outro.",
   "validation": {
     "required": "Campo obrigatório.",
     "email": "Informe um e-mail válido.",
@@ -56,6 +58,7 @@
     "cardNumber": "Número de cartão inválido.",
     "cardExpiry": "Validade inválida.",
     "cardExpired": "Cartão vencido.",
-    "cardCvc": "CVC inválido."
+    "cardCvc": "CVC inválido.",
+    "sshKeyChoice": "Escolha uma chave salva ou cole uma chave nova (uma das duas)."
   }
 }

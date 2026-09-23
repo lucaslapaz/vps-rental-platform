@@ -29,7 +29,7 @@ async function capacity() {
   const c = await provider.capacity();
   console.log(`Proxmox ${c.pveVersion} · nó ${env.PVE_NODE} · ${c.cpuCount} vCPU`);
   console.log(
-    `RAM      ${gib(c.memUsedBytes)} / ${gib(c.memTotalBytes)} (${pct(c.memUsedBytes, c.memTotalBytes)})  livre ${gib(c.memFreeBytes)}`,
+    `RAM      ${gib(c.memUsedBytes)} / ${gib(c.memTotalBytes)} (${pct(c.memUsedBytes, c.memTotalBytes)})  livre ${gib(c.memFreeBytes)}  disponível ${gib(c.memAvailableBytes)}`,
   );
   console.log(
     `Storage  ${gib(c.storageUsedBytes)} / ${gib(c.storageTotalBytes)} (${pct(c.storageUsedBytes, c.storageTotalBytes)})  livre ${gib(c.storageAvailBytes)}  [${env.PVE_STORAGE}]`,

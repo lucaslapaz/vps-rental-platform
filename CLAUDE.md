@@ -1,7 +1,7 @@
 # CLAUDE.md — Favo (VPS Rental Platform)
 
 Contexto para o Claude implementar este projeto em conversas novas. **O plano completo e as decisões estão em
-[docs/PLANO_DE_IMPLEMENTACAO.md](docs/PLANO_DE_IMPLEMENTACAO.md)** (revisão 13, 2026-09-23). Este arquivo resume o
+[docs/PLANO_DE_IMPLEMENTACAO.md](docs/PLANO_DE_IMPLEMENTACAO.md)** (revisão 14, 2026-09-23). Este arquivo resume o
 que não dá para deduzir do código: regras combinadas com o usuário, estado do ambiente, armadilhas já encontradas
 (com a solução) e comandos que já foram testados.
 
@@ -17,16 +17,18 @@ que não dá para deduzir do código: regras combinadas com o usuário, estado d
   proxy do console e o React 19 (Vite 8, Tailwind 4, shadcn). TypeScript 7, tsyringe, Prisma 7 + MySQL 8.4, Biome.
 - Fases (§17 do plano): 0 laboratório → 1 fundação → 2 banco → 3 auth/CSRF/RBAC → 4 Proxmox → 5 catálogo/pagamento →
   6 provisionamento → 7 página da VPS + console → 8 suporte → 9 qualidade → 10 extras.
-- **Situação atual:** Fases 0 a 6 concluídas. Fase 0: laboratório (plano §2.7), scripts em `scripts/pve/`. Fase 1:
+- **Situação atual:** Fases 0 a 7 concluídas. Fase 0: laboratório (plano §2.7), scripts em `scripts/pve/`. Fase 1:
   fundação (servidor único Express+Vite, React com marca Favo, i18n, tema, Vitest, Biome). Fase 2: Prisma 7 + MySQL
   (schema, migration `init`, seeds idempotentes). Fase 3: sessão, CSRF, RBAC, conta, chaves SSH e administração de
   usuários. Fase 4: integração com o Proxmox (`src/server/integrations/proxmox/`, provider atrás da interface
   `VirtualizationProvider`, CLI `npm run pve`, suíte `npm run test:lab`). Fase 5: catálogo, capacidade, pedido (`POST /api/vps`), pagamento simulado e telas de criação,
   checkout e faturas. Fase 6: fila de jobs no MySQL + worker no próprio processo (`src/server/jobs/`), provisionamento real,
   ações de energia, troca de plano, exclusão, reconciliação a cada 60 s e Socket.IO autenticado (`src/server/realtime/`,
-  cliente em `src/client/features/realtime/useRealtime.ts`). A próxima é a Fase 7 (página da VPS e console noVNC).
-  **VPS no banco de dev (da Ana):** `favo-demo` (VMID 2000, `.200`, com senha, desligada) e `favo-chave` (VMID 2001, `.201`,
-  só chave, ligada); as duas com a chave real do Windows (`ssh ana@192.168.56.20x`).
+  cliente em `src/client/features/realtime/useRealtime.ts`). Fase 7: página da VPS (`src/client/features/vps/detail/`: abas
+  Visão geral, Console, Métricas, Acesso, Configurações e Histórico), console noVNC por proxy `ws`
+  (`src/server/realtime/consoleProxy.ts`, sessão de uso único em `ConsoleService`), acesso pelo guest agent
+  (`VpsAccessService`), métricas/estado ao vivo (`VpsInsightsService`) e o roteiro `@lab` `tests/lab/lifecycle.lab.test.ts`.
+  A próxima é a Fase 8 (suporte: chat + fila). **O banco de dev tem a VPS de demonstração da Ana** (ver §4, linha VMs).
 - **Proxmox no código:** `ProxmoxClient` (undici + CA + servername, token, zod), `TaskWaiter` (UPID), `QemuCloudInitProvider`
   (clone, cloud-init, resize, energia, status, pendências, métricas, console, guest agent) e `ImageProfile` (comandos fixos por
   família). Os testes comuns usam `tests/helpers/FakeVirtualizationProvider.ts`; só o `npm run test:lab` (LAB=1) toca o Proxmox.
@@ -55,6 +57,7 @@ que não dá para deduzir do código: regras combinadas com o usuário, estado d
    descritiva em português. Antes, conferir com `git status`/`git diff` que nenhum segredo entra (`.env*` e `certs/` estão
    no `.gitignore`). Depois do commit, entregar um resumo (arquivos, decisões, como testar). Nunca usar
    `--no-verify` nem reescrever o histórico (`push --force`, `reset --hard`, `rebase`) sem o usuário pedir.
+   **Depois do resumo, começar a próxima fase automaticamente** (pedido do usuário em 2026-09-23). Parar e perguntar só quando algo exigir uma decisão dele.
 3. **Dependências — só a maior versão ESTÁVEL** (sem `-rc`, `-beta`, `-dev`…). A tag `latest` do npm **não** é critério.
    - Conferir antes: `npm run deps:stable -- <pkg>` (`scripts/deps/stable-versions.mjs`; depois de CLIs que instalam pacotes, `npm run deps:check`).
    - **A versão instalada vem SEMPRE da saída do `deps:stable` rodado na hora**, nunca da memória do Claude nem da tabela
@@ -97,7 +100,7 @@ que não dá para deduzir do código: regras combinadas com o usuário, estado d
 | DNS do nó | 45.5.96.96 (search `promox.teste`) |
 | Storage | `local` (dir, `/var/lib/vz`, ~2,8 GB livres) · `local-lvm` (lvmthin `data`, **16,8 GB**; VDI aumentado para 30 GB na Fase 0) |
 | RAM | O Proxmox usa ~1,3–1,4 GB; sobram **~1,5 GB para as VPS**. O Windows costuma ficar com só ~0,5 GB livres com o Proxmox ligado |
-| VMs | VPS da plataforma a partir do VMID **2000** (pool `vps-platform`; hoje 2000 e 2001, ver §1). Templates **9000** `favo-tpl-alpine`, **9001** `favo-tpl-debian`, **9002** `favo-tpl-ubuntu`, **9003** `favo-tpl-alpine-desktop` (pool `vps-templates`). VMID **9199** = clone temporário do teste de aceite (IP `.229`) |
+| VMs | VPS da plataforma a partir do VMID **2000** (pool `vps-platform`; hoje só a VPS de demonstração da Ana, `favo-demo`, Alpine Nano só com a chave do Windows, criada no fim da Fase 7). Templates **9000** `favo-tpl-alpine`, **9001** `favo-tpl-debian`, **9002** `favo-tpl-ubuntu`, **9003** `favo-tpl-alpine-desktop` (pool `vps-templates`). VMID **9199** = clone temporário do teste de aceite (IP `.229`) |
 | Identidade da plataforma | Pools `vps-platform` e `vps-templates`, role `VPSPlatformVM`, usuário `vpsplatform@pve`, token `vpsplatform@pve!backend` (`privsep=1`). Secret e demais `PVE_*` no `.env.development`; CA em `certs/pve-root-ca.pem` |
 | Imagens cloud (checksums conferidos) | `/var/lib/vz/import/`: `generic_alpine-3.24.1-x86_64-bios-cloudinit-r0.qcow2`, `debian-13-genericcloud-amd64.qcow2`, `ubuntu-24.04-minimal-cloudimg-amd64.img` |
 | Backup da rede | `/root/interfaces.bak-20260923020356` |
@@ -164,6 +167,13 @@ que não dá para deduzir do código: regras combinadas com o usuário, estado d
   pronta pelo **`agent/ping`** (lado do Proxmox) e só então usar o Windows → start até o SSH em ~33 s; (2) **MAC derivado do IP**
   (`02:00:` + IPv4 em hex, ex. `.229` → `02:00:C0:A8:38:E5`) no `net0=virtio=<MAC>,…`, para que um IP reutilizado não deixe o
   MAC antigo no cache. Diagnóstico: `Get-NetNeighbor -IPAddress 192.168.56.229` no PowerShell.
+- **A12. `reboot` é ACPI (desligar + ligar):** com o sistema ainda bootando (logo depois de ligar) o ACPI é ignorado e a task
+  falha com `VM quit/powerdown failed - got timeout` (~63 s). O provider cai para `stop` + `start` (que também aplica as
+  pendências). O `qmstart` como `root@pam` que aparece no log depois de um reboot é o próprio Proxmox religando a VM.
+- **A13. noVNC do próprio Proxmox** (`/usr/share/novnc-pve/app.js`): `password = data.password ?? data.ticket`,
+  `vncwebsocket?port=…&vncticket=…`, subprotocolo `binary`. O proxy da Favo faz o mesmo. `get-fsinfo` do agente devolve
+  `result[].mountpoint/used-bytes/total-bytes` (aceita token, `VM.GuestAgent.Audit`). Pendência de memória aparece em
+  `/pending` com `key: memory`.
 
 ### Imagens cloud e cloud-init
 - **C1. O Proxmox gera `package_upgrade: true`** no user-data (veja com `qm cloudinit dump <vmid> user`). Isso faz a VM
@@ -230,6 +240,20 @@ que não dá para deduzir do código: regras combinadas com o usuário, estado d
   `RUNNING` com o SSH ainda recusando a chave. O job roda `cloud-init status --wait` pelo agente depois do `agent/ping` (saída 0 = ok,
   **2 = concluído com avisos**, ex. o `user:` deprecated da C8; 1 = erro). Com isso, pagamento → `RUNNING` em ~34 s no Alpine e o SSH
   funciona no mesmo instante.
+- **C23. Cloud-init congelado depois do 1º boot.** O `instance-id` é `sha1(user-data + rede)` (`/usr/share/perl5/PVE/QemuServer/Cloudinit.pm`)
+  e o hostname do user-data vem do `name` da VM: renomear (ou mudar `cipassword`/`sshkeys`) faz o cloud-init rodar como **nova
+  instância** no próximo boot, e ele **regenera as chaves de host SSH** (testado). Por isso o provisionamento termina com
+  `touch /etc/cloud/cloud-init.disabled` (o systemd e os scripts OpenRC do Alpine respeitam), e renomear/aumentar o disco são
+  feitos pelo agente (`SET_HOSTNAME`, `GROW_ROOT_FS` no `ImageProfile`). Testado nas três famílias: reboot depois disso mantém
+  senha, chaves de host, rede e SSH. **Nunca** mude a config de cloud-init de uma VPS já criada esperando efeito.
+- **C24. Ubuntu 24.04: `sshd -t` falha antes da 1ª conexão** ("Missing privilege separation directory: /run/sshd"): o SSH é
+  ativado por socket e o `/run/sshd` é o `RuntimeDirectory` do `ssh.service`, que ainda não rodou. O recarregamento faz
+  `install -d -m 0755 /run/sshd` antes. A 1ª Ubuntu da plataforma caiu em `ERROR` por isso (e o rollback funcionou).
+- **C25. Capacidade usa `memory.available`, não `memory.free`** (`/nodes/{node}/status`): o `free` não conta o cache de disco
+  reaproveitável (786 MB livres × 1.451 MB disponíveis com o nó vazio), e a Desktop de 1 GB nunca cabia.
+- **C26. Crescer a raiz online:** no Ubuntu o `/proc/mounts` mostra `/dev/root`; use `findmnt -n -o SOURCE /` (com o
+  `/proc/mounts` como reserva para o Alpine, cuja raiz é o próprio `/dev/sda`, sem partição). `growpart` sai com 1 quando não
+  há o que crescer. ext4 cresce com a VM ligada (`resize2fs`).
 
 ### Stack Node / npm (situação em 2026-09-23)
 - **N1. `prisma` `latest` = `8.0.0-rc.15`** (pré-release). A maior estável é a **7.10.0** (igual para `@prisma/client` e
@@ -317,6 +341,17 @@ que não dá para deduzir do código: regras combinadas com o usuário, estado d
   (`TOKENS.Realtime`), que guarda os últimos 200 em `sent` (útil nos testes). `Vps.lastError` guarda só **códigos**
   (`VPS_ERROR_CODES` em `src/shared/constants/vps.ts`, traduzidos em `vps:lastError.*`); o detalhe técnico fica no `Job.lastError`.
   A tabela de transições (`VPS_TRANSITIONS`) é compartilhada entre servidor e cliente.
+- **N31. noVNC 1.7 no Vite:** o pacote exporta `.` → `core/rfb.js`, mas os tipos 1.6 só declaram `@novnc/novnc/lib/rfb`
+  (shim em `src/client/types/novnc.d.ts`). Usa *top-level await* (`core/util/browser.js`): o target padrão do Vite 8 aceita.
+  Console e Métricas são `React.lazy` (noVNC + recharts tiravam o pacote inicial de 654 kB para 1,5 MB). No `StrictMode`
+  (dev) o efeito do console monta duas vezes: a conexão é adiada um tick e numerada, senão abre 2 RFB e gasta as 2 sessões.
+- **N32. `shadcn add chart` instala `recharts@3.8.0`** (versão fixa do registry), abaixo da maior estável: depois do `add`,
+  `npm install recharts@<maior estável>` e `npm run deps:check`. O `chart` exige a peer `react-is` (instalada pelo npm).
+- **N33. Testes `@lab` e o banco de teste:** o roteiro `lifecycle.lab.test.ts` usa o IP `.229` (entra no pool do banco de teste
+  só durante o roteiro; os outros ficam `RESERVED`), porque o pool `.200–.228` do banco de teste é a MESMA rede das VPS de dev.
+  Um `afterAll` que expira deixa sobras (IPs `RESERVED`, VPS `PROVISIONING`) que quebram o `npm test` depois: se isso
+  acontecer, confira `select status,count(*) from vps where deletedAt is null group by status` no `vps_platform_test`.
+  Um upgrade para `/ws/<caminho inválido>` ficava pendurado (sem resposta) e travava o `server.close()`: hoje recebe 404.
 - **N17.** `execFileSync('npm', …, { shell: true })` gera o aviso `DEP0190` no Node 24; os scripts de `scripts/deps/` usam
   `execSync` com o nome do pacote validado por regex.
 
@@ -356,6 +391,13 @@ que não dá para deduzir do código: regras combinadas com o usuário, estado d
 - **T14. Playwright MCP:** grava capturas e snapshots em `.playwright-mcp/` (no `.gitignore`). Salve capturas em `test-results/`.
   `browser_console_messages` com `all: true` mostra o histórico da sessão inteira, não só da página atual.
 
+- **T17. Digitar no noVNC pelo Playwright:** `pressSequentially`/`type` mandam `C` e `!` sem segurar o Shift, e o QEMU gera
+  `c`/`1` (senha "errada"). Para maiúsculas e símbolos use `page.keyboard.press('Shift+KeyC')`/`'Shift+Digit1'` (via
+  `browser_run_code_unsafe`). Uma pessoa digitando não tem o problema.
+- **T18. O `tsx watch` recarrega o servidor ao mudar arquivos do servidor**, inclusive no meio de um teste manual: jobs em
+  andamento voltam para a fila e retomam (isso é o esperado), mas espere o `worker de jobs iniciado` no log antes de testar.
+- **T19. Scratchpad com scripts `.ts`:** ver T16. Para medir tempo de atualização da tela, use `MutationObserver` (T15).
+
 ## 6. Decisões de arquitetura mais importantes (detalhes no plano)
 
 - **VPS = VMs KVM** clonadas (linked clone) de templates "golden image" com cloud-init (§3.1, §3.6). Container/LXC foi descartado pelo usuário.
@@ -364,6 +406,8 @@ que não dá para deduzir do código: regras combinadas com o usuário, estado d
 - TLS até o Proxmox: CA `certs/pve-root-ca.pem` + `servername` = nome do nó (A9).
 - Jobs assíncronos numa fila no MySQL (`SELECT … FOR UPDATE SKIP LOCKED`), com retry e idempotência; `TaskWaiter` para UPIDs; reconciliação a cada 60 s.
 - Pós-boot pelo guest agent: senha root, política de SSH (`sshd_config.d/01-favo.conf`, ver C18), redefinir senha. `ImageProfile` por imagem.
+- **Cloud-init só no 1º boot** (congelado no fim do provisionamento, C23): renomear, expandir o disco, senhas e chaves depois
+  da criação são feitos pelo guest agent, nunca mudando a config de cloud-init.
 - Console: `POST /api/vps/:id/console` → `consoleId` de uso único (30 s) + senha VNC → WebSocket `/ws/console/:id` com proxy para o `vncwebsocket` do Proxmox.
 - CSRF: *Signed Double-Submit Cookie* (HMAC ligado à sessão/pré-sessão, enviado no header `X-CSRF-Token`), **não** salvo no banco.
   A sessão fica no banco (só o hash SHA-256), com cookie `HttpOnly; SameSite=Strict`.

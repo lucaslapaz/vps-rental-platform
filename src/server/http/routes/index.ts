@@ -2,7 +2,17 @@ import { Router } from 'express';
 import type { DependencyContainer } from 'tsyringe';
 import { changeRoleSchema, intIdParamSchema, sshKeySchema, userSearchSchema, uuidParamSchema } from '../../../shared/schemas/account.ts';
 import { changePasswordSchema, loginSchema, registerSchema } from '../../../shared/schemas/auth.ts';
-import { createVpsSchema, payInvoiceSchema, resizeVpsSchema, vpsActionParamsSchema } from '../../../shared/schemas/vps.ts';
+import {
+  createVpsSchema,
+  metricsQuerySchema,
+  payInvoiceSchema,
+  renameVpsSchema,
+  resizeVpsSchema,
+  sshPasswordAuthSchema,
+  vpsActionParamsSchema,
+  vpsAddSshKeySchema,
+  vpsPasswordSchema,
+} from '../../../shared/schemas/vps.ts';
 import type { Env } from '../../config/env.ts';
 import { TOKENS } from '../../container/tokens.ts';
 import { AccountController } from '../../controllers/AccountController.ts';
@@ -112,6 +122,51 @@ export function createApiRouter(di: DependencyContainer) {
   router.post('/vps/:id/actions/:action', O, vpsOps, C, A, manage, validate({ params: vpsActionParamsSchema }), vps.action);
   router.post('/vps/:id/resize', O, vpsOps, C, A, manage, validate({ params: uuidParamSchema, body: resizeVpsSchema }), vps.resize);
   router.delete('/vps/:id', O, vpsOps, C, A, P('vps:delete:own'), validate({ params: uuidParamSchema }), vps.remove);
+  router.patch('/vps/:id', O, vpsOps, C, A, manage, validate({ params: uuidParamSchema, body: renameVpsSchema }), vps.rename);
+  router.get('/vps/:id/live', A, P('vps:read:own'), validate({ params: uuidParamSchema }), vps.live);
+  router.get('/vps/:id/metrics', A, P('vps:read:own'), validate({ params: uuidParamSchema, query: metricsQuerySchema }), vps.metrics);
+  // Acesso pelo guest agent (§10.6): limite mais baixo, porque cada chamada executa algo dentro da VM.
+  const access = limiter(env, { windowMinutes: 15, limit: 20 });
+  router.post(
+    '/vps/:id/access/password',
+    O,
+    access,
+    C,
+    A,
+    manage,
+    validate({ params: uuidParamSchema, body: vpsPasswordSchema }),
+    vps.setPassword,
+  );
+  router.post(
+    '/vps/:id/access/ssh-password-auth',
+    O,
+    access,
+    C,
+    A,
+    manage,
+    validate({ params: uuidParamSchema, body: sshPasswordAuthSchema }),
+    vps.setSshPasswordAuth,
+  );
+  router.post(
+    '/vps/:id/access/ssh-keys',
+    O,
+    access,
+    C,
+    A,
+    manage,
+    validate({ params: uuidParamSchema, body: vpsAddSshKeySchema }),
+    vps.addSshKey,
+  );
+  router.post(
+    '/vps/:id/console',
+    O,
+    limiter(env, { windowMinutes: 5, limit: 20 }),
+    C,
+    A,
+    P('vps:console:own'),
+    validate({ params: uuidParamSchema }),
+    vps.console,
+  );
 
   // ── Faturas e pagamento simulado ──
   router.get('/invoices', A, P('billing:read:own'), invoices.list);

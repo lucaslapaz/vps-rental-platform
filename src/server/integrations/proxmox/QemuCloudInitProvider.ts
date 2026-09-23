@@ -14,9 +14,9 @@ import type {
   VmSpec,
   VmStatus,
 } from '../virtualization/VirtualizationProvider.ts';
-import { imageProfile, sshdPolicy } from './ImageProfile.ts';
+import { FREEZE_CLOUD_INIT, GROW_ROOT_FS, imageProfile, SET_HOSTNAME, sshdPolicy } from './ImageProfile.ts';
 import { ProxmoxApiError, ProxmoxClient } from './ProxmoxClient.ts';
-import { TaskWaiter } from './TaskWaiter.ts';
+import { ProxmoxTaskError, TaskWaiter } from './TaskWaiter.ts';
 
 const upid = z.string();
 const nothing = z.unknown();
@@ -156,7 +156,16 @@ export class QemuCloudInitProvider implements VirtualizationProvider {
 
   async power(vmid: number, action: PowerAction) {
     const params = action === 'shutdown' ? { timeout: 60, forceStop: true } : action === 'reboot' ? { timeout: 60 } : undefined;
-    await this.tasks.wait(await this.pve.post(this.vm(vmid, `/status/${action}`), upid, params), { timeoutMs: 120_000 });
+    try {
+      await this.tasks.wait(await this.pve.post(this.vm(vmid, `/status/${action}`), upid, params), { timeoutMs: 120_000 });
+    } catch (err) {
+      // O reboot do Proxmox é "desligar por ACPI + ligar". Um sistema que ainda está bootando (ou travado) ignora o ACPI e
+      // a task falha com "VM quit/powerdown failed - got timeout" (medido no lab logo depois de ligar). Como no shutdown
+      // (forceStop), cai para parar à força e ligar de novo, o que também aplica as pendências de CPU/RAM.
+      if (action !== 'reboot' || !(err instanceof ProxmoxTaskError)) throw err;
+      await this.power(vmid, 'stop');
+      await this.power(vmid, 'start');
+    }
   }
 
   async status(vmid: number): Promise<VmStatus | null> {
@@ -236,7 +245,7 @@ export class QemuCloudInitProvider implements VirtualizationProvider {
     const node = await this.pve.get(
       `/nodes/${this.node}/status`,
       z.object({
-        memory: z.object({ total: num, used: num, free: num }),
+        memory: z.object({ total: num, used: num, free: num, available: num.optional() }),
         cpuinfo: z.object({ cpus: num }),
         pveversion: z.string(),
       }),
@@ -249,6 +258,8 @@ export class QemuCloudInitProvider implements VirtualizationProvider {
       memTotalBytes: node.memory.total,
       memUsedBytes: node.memory.used,
       memFreeBytes: node.memory.free,
+      // 'free' não conta o cache de disco, que o kernel devolve quando uma VM precisa; 'available' conta (C25).
+      memAvailableBytes: node.memory.available ?? node.memory.free,
       storageTotalBytes: storage.total,
       storageUsedBytes: storage.used,
       storageAvailBytes: storage.avail,
@@ -329,10 +340,42 @@ export class QemuCloudInitProvider implements VirtualizationProvider {
     await this.exec(vmid, ['sh', '-c', script, 'favo-add-key', username], `${publicKey.replace(/\r/g, '').trim()}\n`);
   }
 
+  async finalizeFirstBoot(vmid: number) {
+    await this.exec(vmid, FREEZE_CLOUD_INIT);
+  }
+
+  async setGuestHostname(vmid: number, hostname: string) {
+    await this.exec(vmid, [...SET_HOSTNAME, hostname]);
+  }
+
+  async growRootFs(vmid: number) {
+    await this.exec(vmid, GROW_ROOT_FS, undefined, 60_000);
+  }
+
+  async guestDiskUsage(vmid: number) {
+    try {
+      const r = await this.pve.get(
+        this.vm(vmid, '/agent/get-fsinfo'),
+        z.object({ result: z.array(z.object({ mountpoint: z.string(), 'used-bytes': num.optional(), 'total-bytes': num.optional() })) }),
+      );
+      const root = r.result.find((f) => f.mountpoint === '/');
+      if (root?.['total-bytes'] === undefined) return null;
+      return { usedBytes: root['used-bytes'] ?? 0, totalBytes: root['total-bytes'] };
+    } catch (err) {
+      if (err instanceof ProxmoxApiError) return null; // agente ainda subindo ou VM desligada
+      throw err;
+    }
+  }
+
   async openConsole(vmid: number): Promise<ConsoleTicket> {
     const r = await this.pve.post(this.vm(vmid, '/vncproxy'), z.object({ port: num, ticket: z.string(), password: z.string() }), {
       websocket: true,
     });
     return { port: r.port, ticket: r.ticket, password: r.password };
+  }
+
+  connectConsole(vmid: number, ticket: ConsoleTicket) {
+    // Mesmos parâmetros que o noVNC do próprio Proxmox usa (app.js do novnc-pve): port + vncticket.
+    return this.pve.openWebSocket(this.vm(vmid, '/vncwebsocket'), { port: ticket.port, vncticket: ticket.ticket });
   }
 }

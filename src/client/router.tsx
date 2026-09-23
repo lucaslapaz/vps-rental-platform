@@ -11,6 +11,7 @@ import { NotFoundPage } from '@/features/errors/NotFoundPage';
 import { RouteErrorPage } from '@/features/errors/RouteErrorPage';
 import { HomeRoute } from '@/features/home/HomeRoute';
 import { CreateVpsPage } from '@/features/vps/CreateVpsPage';
+import { VpsDetailPage } from '@/features/vps/detail/VpsDetailPage';
 import { VpsListPage } from '@/features/vps/VpsListPage';
 
 // Rotas do plano §14.1; as demais entram nas fases seguintes.
@@ -52,6 +53,16 @@ export const router = createBrowserRouter([
           <RequireAuth>
             <RequirePermission permission="vps:create">
               <CreateVpsPage />
+            </RequirePermission>
+          </RequireAuth>
+        ),
+      },
+      {
+        path: 'vps/:id',
+        element: (
+          <RequireAuth>
+            <RequirePermission permission="vps:read:own">
+              <VpsDetailPage />
             </RequirePermission>
           </RequireAuth>
         ),

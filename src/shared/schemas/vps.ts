@@ -95,3 +95,25 @@ export const vpsActionParamsSchema = z.object({ id: z.uuid({ error: 'id' }), act
 
 /** POST /api/vps/:id/resize: troca para outro plano (sem diminuir o disco). */
 export const resizeVpsSchema = z.object({ plan: z.string().min(1, { error: 'required' }) });
+
+/** POST /api/vps/:id/access/password: redefine a senha do usuário da VPS ou do root, pelo guest agent. */
+export const vpsPasswordSchema = z.object({ target: z.enum(['user', 'root'], { error: 'required' }), password: newPasswordSchema });
+
+/** POST /api/vps/:id/access/ssh-password-auth */
+export const sshPasswordAuthSchema = z.object({ enabled: z.boolean({ error: 'required' }) });
+
+/** POST /api/vps/:id/access/ssh-keys: uma chave salva na conta OU uma chave colada (opcionalmente salva na conta). */
+export const vpsAddSshKeySchema = z
+  .object({
+    sshKeyId: z.coerce.number().int().positive().optional(),
+    publicKey: z.string().max(16_384, { error: 'tooLong' }).optional(),
+    name: z.string().trim().max(80, { error: 'tooLong' }).optional(),
+    save: z.boolean().default(false),
+  })
+  .refine((v) => Boolean(v.sshKeyId) !== Boolean(v.publicKey?.trim()), { error: 'sshKeyChoice', path: ['publicKey'] });
+
+/** PATCH /api/vps/:id: renomear (hostname da VM e dentro dela). */
+export const renameVpsSchema = z.object({ hostname: hostnameSchema });
+
+export const METRICS_TIMEFRAMES = ['hour', 'day', 'week'] as const;
+export const metricsQuerySchema = z.object({ timeframe: z.enum(METRICS_TIMEFRAMES).default('hour') });

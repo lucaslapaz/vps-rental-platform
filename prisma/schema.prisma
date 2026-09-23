@@ -183,6 +183,8 @@ model Vps {
   username        String     @db.VarChar(32) // usuário criado pelo cloud-init (ciuser)
   sshPasswordAuth Boolean    @default(false) // escolha do cliente, aplicada pelo guest agent
   rootPasswordSet Boolean    @default(false) // só o indicador; senhas nunca são guardadas
+  /// Disco aumentado com a VM desligada: a raiz é expandida pelo agente no próximo "Ligar" pelo painel (plano §11.4).
+  diskGrowPending Boolean    @default(false)
   status          VpsStatus  @default(PENDING_PAYMENT)
   // cópia dos recursos no momento da contratação (o plano pode mudar depois)
   cores           Int

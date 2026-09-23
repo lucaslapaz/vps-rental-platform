@@ -1,10 +1,22 @@
 import type { Request, Response } from 'express';
 import { inject, injectable } from 'tsyringe';
 import { uuidParamSchema } from '../../shared/schemas/account.ts';
-import { createVpsSchema, resizeVpsSchema, vpsActionParamsSchema } from '../../shared/schemas/vps.ts';
+import {
+  createVpsSchema,
+  metricsQuerySchema,
+  renameVpsSchema,
+  resizeVpsSchema,
+  sshPasswordAuthSchema,
+  vpsActionParamsSchema,
+  vpsAddSshKeySchema,
+  vpsPasswordSchema,
+} from '../../shared/schemas/vps.ts';
 import { valid } from '../http/middlewares/validate.ts';
 import { toVpsDTO, VpsRepository } from '../repositories/VpsRepository.ts';
+import { ConsoleService } from '../services/ConsoleService.ts';
 import { OrderService } from '../services/OrderService.ts';
+import { VpsAccessService } from '../services/VpsAccessService.ts';
+import { VpsInsightsService } from '../services/VpsInsightsService.ts';
 import { VpsService } from '../services/VpsService.ts';
 import { AppError } from '../utils/errors.ts';
 
@@ -16,6 +28,9 @@ export class VpsController {
     @inject(VpsRepository) private readonly vps: VpsRepository,
     @inject(OrderService) private readonly orders: OrderService,
     @inject(VpsService) private readonly service: VpsService,
+    @inject(VpsAccessService) private readonly access: VpsAccessService,
+    @inject(VpsInsightsService) private readonly insights: VpsInsightsService,
+    @inject(ConsoleService) private readonly consoles: ConsoleService,
   ) {}
 
   /** GET /api/vps */
@@ -53,6 +68,52 @@ export class VpsController {
   remove = async (req: Request, res: Response) => {
     const { id } = valid(res, 'params', uuidParamSchema);
     res.status(202).json({ vps: await this.service.remove(currentUser(req).id, id, req.ip ?? null) });
+  };
+
+  /** PATCH /api/vps/:id — renomear. */
+  rename = async (req: Request, res: Response) => {
+    const { id } = valid(res, 'params', uuidParamSchema);
+    const { hostname } = valid(res, 'body', renameVpsSchema);
+    res.json({ vps: await this.access.rename(currentUser(req).id, id, hostname, req.ip ?? null) });
+  };
+
+  /** POST /api/vps/:id/access/password */
+  setPassword = async (req: Request, res: Response) => {
+    const { id } = valid(res, 'params', uuidParamSchema);
+    res.json({ vps: await this.access.setPassword(currentUser(req).id, id, valid(res, 'body', vpsPasswordSchema), req.ip ?? null) });
+  };
+
+  /** POST /api/vps/:id/access/ssh-password-auth */
+  setSshPasswordAuth = async (req: Request, res: Response) => {
+    const { id } = valid(res, 'params', uuidParamSchema);
+    const { enabled } = valid(res, 'body', sshPasswordAuthSchema);
+    res.json({ vps: await this.access.setSshPasswordAuth(currentUser(req).id, id, enabled, req.ip ?? null) });
+  };
+
+  /** POST /api/vps/:id/access/ssh-keys */
+  addSshKey = async (req: Request, res: Response) => {
+    const { id } = valid(res, 'params', uuidParamSchema);
+    res.json({ vps: await this.access.addSshKey(currentUser(req).id, id, valid(res, 'body', vpsAddSshKeySchema), req.ip ?? null) });
+  };
+
+  /** POST /api/vps/:id/console — sessão de console de uso único (30 s). */
+  console = async (req: Request, res: Response) => {
+    const { id } = valid(res, 'params', uuidParamSchema);
+    const user = currentUser(req);
+    res.status(201).json(await this.consoles.open({ id: user.id, sessionId: user.sessionId }, id, req.ip ?? null));
+  };
+
+  /** GET /api/vps/:id/live */
+  live = async (req: Request, res: Response) => {
+    const { id } = valid(res, 'params', uuidParamSchema);
+    res.json({ live: await this.insights.live(currentUser(req).id, id) });
+  };
+
+  /** GET /api/vps/:id/metrics?timeframe=hour|day|week */
+  metrics = async (req: Request, res: Response) => {
+    const { id } = valid(res, 'params', uuidParamSchema);
+    const { timeframe } = valid(res, 'query', metricsQuerySchema);
+    res.json({ timeframe, points: await this.insights.metrics(currentUser(req).id, id, timeframe) });
   };
 
   /** GET /api/vps/:id/events */

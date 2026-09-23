@@ -37,6 +37,8 @@
   "DISK_SHRINK_NOT_SUPPORTED": "No es posible reducir el disco. Elige un plan con un disco igual o mayor.",
   "NO_IP_AVAILABLE": "No hay IP libres en este momento.",
   "SESSION_REVOKED": "Tu sesión se cerró. Inicia sesión de nuevo.",
+  "VPS_NOT_RUNNING": "Enciende el VPS para hacer esto.",
+  "CONSOLE_LIMIT": "Ya tienes 2 consolas abiertas. Cierra una para abrir otra.",
   "validation": {
     "required": "Campo obligatorio.",
     "email": "Introduce un correo válido.",
@@ -56,6 +58,7 @@
     "cardNumber": "Número de tarjeta no válido.",
     "cardExpiry": "Fecha de caducidad no válida.",
     "cardExpired": "Tarjeta caducada.",
-    "cardCvc": "CVC no válido."
+    "cardCvc": "CVC no válido.",
+    "sshKeyChoice": "Elige una clave guardada o pega una nueva (una de las dos)."
   }
 }

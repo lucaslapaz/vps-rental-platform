@@ -52,7 +52,7 @@ export class CapacityService {
       throw new AppError(503, 'PROXMOX_UNAVAILABLE', 'A infraestrutura está indisponível no momento');
     }
     // VPS pagas ou aguardando pagamento que ainda não existem no nó também vão ocupar memória.
-    const freeMb = node.memFreeBytes / MB - allocated.memoryMbNotYetOnNode;
+    const freeMb = node.memAvailableBytes / MB - allocated.memoryMbNotYetOnNode;
     if (plan.memoryMb > freeMb || plan.diskGb > node.storageAvailBytes / GB) {
       throw new AppError(409, 'NO_CAPACITY', 'Sem estoque no momento');
     }

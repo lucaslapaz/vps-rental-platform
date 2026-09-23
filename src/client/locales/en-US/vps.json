@@ -109,5 +109,194 @@
   "toast": {
     "ready": "{{hostname}} is up at {{ip}}.",
     "failed": "The operation on {{hostname}} could not be completed."
+  },
+  "detail": {
+    "back": "My VPS",
+    "notFound": "VPS not found.",
+    "copy": "Copy",
+    "copied": "Copied!",
+    "copyIp": "Copy the IP",
+    "busy": "Operation in progress…",
+    "payPending": "This VPS is waiting for the first month's payment.",
+    "payNow": "Pay now",
+    "deletedTitle": "This VPS was deleted.",
+    "actions": {
+      "console": "Console",
+      "start": "Power on",
+      "shutdown": "Shut down",
+      "reboot": "Reboot",
+      "more": "More actions",
+      "stop": "Force stop",
+      "reset": "Hard reset",
+      "cancel": "Cancel",
+      "confirm": {
+        "shutdown": {
+          "title": "Shut down {{hostname}}?",
+          "body": "The system receives the shutdown signal (ACPI) and stops safely. If it does not respond within 60 s, the VM is stopped by force."
+        },
+        "reboot": {
+          "title": "Reboot {{hostname}}?",
+          "body": "The system restarts safely. Pending CPU and memory changes are applied on this reboot."
+        },
+        "stop": {
+          "title": "Force stop {{hostname}}?",
+          "body": "Like pulling the plug: data not yet written to disk may be lost."
+        },
+        "reset": {
+          "title": "Hard reset {{hostname}}?",
+          "body": "Restarts immediately, like pressing the reset button: unsaved data may be lost."
+        },
+        "start": {
+          "title": "Power on {{hostname}}?",
+          "body": "The VPS starts and becomes reachable in about half a minute."
+        }
+      },
+      "requested": "Request sent: {{hostname}} will update on its own when it finishes."
+    },
+    "tabs": {
+      "overview": "Overview",
+      "console": "Console",
+      "metrics": "Metrics",
+      "access": "Access",
+      "settings": "Settings",
+      "history": "History"
+    },
+    "overview": {
+      "usage": "Current usage",
+      "cpu": "CPU",
+      "memory": "Memory",
+      "disk": "Disk",
+      "usedOf": "{{used}} of {{total}}",
+      "uptime": "Up for",
+      "created": "Created on",
+      "offline": "Power on the VPS to see live usage.",
+      "unavailable": "Unavailable",
+      "sshTitle": "Connect over SSH",
+      "sshHint": "Run it in your computer's terminal. Login uses your SSH key or password, depending on the access settings.",
+      "accessTitle": "Access",
+      "sshPasswordOn": "SSH password login: on",
+      "sshPasswordOff": "SSH password login: off (keys only)",
+      "rootSet": "Root password set (console and su)",
+      "rootNotSet": "No root password",
+      "rootSsh": "SSH login as root: always disabled",
+      "sudo": "Your user administers the system with {{sudo}}.",
+      "pendingReboot": "The new CPU and memory resources will apply on the next reboot from the panel.",
+      "rebootNow": "Reboot now",
+      "specs": "Resources",
+      "vcpu_one": "{{count}} vCPU",
+      "vcpu_other": "{{count}} vCPUs",
+      "bandwidth": "{{value}} Mbps"
+    },
+    "timeline": {
+      "title": "Creating your VPS",
+      "subtitle": "This takes about a minute. You can leave the page: creation continues.",
+      "failed": "Creation failed."
+    },
+    "console": {
+      "connect": "Open console",
+      "connecting": "Connecting…",
+      "connected": "Connected",
+      "disconnected": "Disconnected",
+      "reconnect": "Reconnect",
+      "fullscreen": "Full screen",
+      "fit": "Fit to window",
+      "ctrlAltDel": "Ctrl+Alt+Del",
+      "notRunning": "Power on the VPS to use the console.",
+      "hint": "Click the screen to type. Server images show the text login; the Desktop image shows the graphical login.",
+      "failed": "Could not connect to the console."
+    },
+    "metrics": {
+      "cpu": "CPU (%)",
+      "memory": "Memory",
+      "network": "Network",
+      "in": "In",
+      "out": "Out",
+      "used": "In use",
+      "timeframe": {
+        "hour": "Last hour",
+        "day": "Last day",
+        "week": "Last week"
+      },
+      "empty": "No data for this period yet.",
+      "perSecond": "{{value}}/s"
+    },
+    "access": {
+      "notRunning": "Power on the VPS to change access: changes are made inside it, without a reboot.",
+      "passwordTitle": "Reset password",
+      "passwordDescription": "Takes effect immediately, without a reboot. Favo does not store the password.",
+      "target": "Account",
+      "targetUser": "Your user ({{username}})",
+      "targetRoot": "root (console and su)",
+      "newPassword": "New password",
+      "confirmPassword": "Confirm the new password",
+      "savePassword": "Reset password",
+      "passwordChanged": "Password reset.",
+      "sshTitle": "SSH login with password",
+      "sshDescription": "When off, SSH only accepts keys (safer). SSH login as root is always disabled.",
+      "sshHintNoPassword": "To log in with a password, first set a password for your user.",
+      "sshChanged": "SSH policy updated.",
+      "keysTitle": "Add SSH key",
+      "keysDescription": "The key is appended to your user's authorized_keys, keeping the existing ones.",
+      "savedKey": "Key saved in your account",
+      "chooseKey": "Choose a key",
+      "orPaste": "or paste a new key",
+      "saveKey": "Also save it in my account",
+      "addKey": "Add key",
+      "keyAdded": "Key added to the VPS."
+    },
+    "settings": {
+      "renameTitle": "Rename",
+      "renameDescription": "Changes the hostname inside the VPS immediately, without a reboot.",
+      "rename": "Save name",
+      "renamed": "VPS renamed.",
+      "resizeTitle": "Change plan",
+      "resizeDescription": "CPU and memory apply on the next reboot from the panel; the disk grows immediately. The disk cannot be shrunk.",
+      "current": "Current plan",
+      "diskSmaller": "Disk smaller than the current one",
+      "belowImage": "Below the image minimum",
+      "resize": "Change to {{plan}}",
+      "resizeConfirmTitle": "Change {{hostname}} to the {{plan}} plan?",
+      "resizeConfirmBody": "The difference prorated to the days left in the month (at most {{amount}}, simulated) becomes an invoice when the change finishes.",
+      "resizeNoCharge": "No extra charge this month.",
+      "resizeRequested": "Plan change in progress.",
+      "notAvailable": "Available with the VPS on or off, with no other operation in progress."
+    },
+    "danger": {
+      "title": "Danger zone",
+      "description": "Deleting erases the VPS and all its data. This cannot be undone.",
+      "delete": "Delete VPS",
+      "confirmTitle": "Delete {{hostname}}?",
+      "confirmBody": "Type the hostname to confirm. The VM and its disk will be erased and the IP returns to the pool.",
+      "confirmLabel": "Hostname",
+      "deleted": "{{hostname}} is being deleted."
+    },
+    "history": {
+      "empty": "No events yet.",
+      "actions": {
+        "create": "Creation",
+        "payment": "Payment",
+        "provision": "Creation step",
+        "start": "Power on",
+        "shutdown": "Shut down",
+        "stop": "Force stop",
+        "reboot": "Reboot",
+        "reset": "Hard reset",
+        "resize": "Plan change",
+        "delete": "Deletion",
+        "rename": "Rename",
+        "password": "Password reset",
+        "ssh_password_auth": "SSH password login",
+        "ssh_key": "SSH key added",
+        "reconcile": "Automatic state fix",
+        "expire": "Order expired"
+      },
+      "status": {
+        "requested": "requested",
+        "succeeded": "done",
+        "failed": "failed",
+        "progress": "in progress"
+      },
+      "pendingReboot": "applies on next reboot"
+    }
   }
 }

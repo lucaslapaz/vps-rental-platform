@@ -39,6 +39,32 @@ export type VpsStatusDTO =
   | 'SUSPENDED'
   | 'ERROR';
 
+/** GET /api/vps/:id/live: estado ao vivo da VM (cache de 5 s no servidor). */
+export interface VpsLiveDTO {
+  power: 'running' | 'stopped' | 'paused' | 'unknown';
+  uptimeSeconds: number;
+  /** Fração 0..1 do total de vCPUs. */
+  cpu: number;
+  cpus: number;
+  memUsedBytes: number;
+  memMaxBytes: number;
+  /** Uso da raiz visto de dentro da VM (guest agent); null se o agente não respondeu. */
+  disk: { usedBytes: number; totalBytes: number } | null;
+  diskMaxBytes: number;
+  /** Alterações de CPU/RAM que só valem depois de reiniciar pelo painel (plano §10.4). */
+  pendingReboot: boolean;
+}
+
+/** GET /api/vps/:id/metrics: pontos do rrddata do Proxmox (cache de 30 s). */
+export interface VpsMetricPointDTO {
+  time: number;
+  cpu: number | null;
+  memUsed: number | null;
+  memMax: number | null;
+  netIn: number | null;
+  netOut: number | null;
+}
+
 /** Item do histórico da VPS. Nas etapas da criação: action "provision", status "progress" e a etapa em message. */
 export interface VpsEventDTO {
   id: number;

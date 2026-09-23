@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { inject, injectable } from 'tsyringe';
 import { Agent, fetch } from 'undici';
+import { WebSocket } from 'ws';
 import type { z } from 'zod';
 import type { Env } from '../../config/env.ts';
 import { TOKENS } from '../../container/tokens.ts';
@@ -32,6 +33,7 @@ export class ProxmoxClient {
   private readonly base: string;
   private readonly authorization: string;
   private readonly dispatcher: Agent;
+  private readonly ca: Buffer;
 
   constructor(
     @inject(TOKENS.Env) private readonly env: Env,
@@ -39,9 +41,25 @@ export class ProxmoxClient {
   ) {
     this.base = `${env.PVE_URL.replace(/\/$/, '')}/api2/json`;
     this.authorization = `PVEAPIToken=${env.PVE_TOKEN_ID}=${env.PVE_TOKEN_SECRET}`;
+    this.ca = readFileSync(env.PVE_CA_FILE);
     this.dispatcher = new Agent({
-      connect: { ca: readFileSync(env.PVE_CA_FILE), ...(env.PVE_TLS_SERVERNAME ? { servername: env.PVE_TLS_SERVERNAME } : {}) },
+      connect: { ca: this.ca, ...(env.PVE_TLS_SERVERNAME ? { servername: env.PVE_TLS_SERVERNAME } : {}) },
       keepAliveTimeout: 10_000,
+    });
+  }
+
+  /**
+   * WebSocket autenticado com o token e validado pela mesma CA/servername (console, plano §10.5). O subprotocolo é
+   * `binary`, o mesmo que o noVNC do Proxmox usa.
+   */
+  openWebSocket(path: string, params: Params): WebSocket {
+    const url = `${this.base.replace(/^https:/, 'wss:')}${path}?${ProxmoxClient.encode(params)}`;
+    return new WebSocket(url, ['binary'], {
+      headers: { Authorization: this.authorization },
+      ca: this.ca,
+      ...(this.env.PVE_TLS_SERVERNAME ? { servername: this.env.PVE_TLS_SERVERNAME } : {}),
+      perMessageDeflate: false,
+      handshakeTimeout: this.env.PVE_TIMEOUT_MS,
     });
   }
 

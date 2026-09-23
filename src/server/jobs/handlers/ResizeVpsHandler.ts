@@ -52,7 +52,21 @@ export class ResizeVpsHandler implements JobHandler {
     );
     const current = await this.vms.status(vps.pveVmid);
     if (!current) throw new PermanentJobError(`a VM ${vps.pveVmid} não existe`);
-    if (current.diskMaxBytes < p.diskGb * GB) await this.vms.resizeDisk(vps.pveVmid, p.diskGb);
+    let diskGrowPending = vps.diskGrowPending;
+    if (current.diskMaxBytes < p.diskGb * GB) {
+      await this.vms.resizeDisk(vps.pveVmid, p.diskGb);
+      diskGrowPending = true;
+    }
+    // O cloud-init está congelado (C23): a raiz é expandida pelo agente. Desligada, fica para o próximo "Ligar".
+    if (diskGrowPending && current.status === 'running') {
+      try {
+        await this.vms.waitForAgent(vps.pveVmid, 60_000);
+        await this.vms.growRootFs(vps.pveVmid);
+        diskGrowPending = false;
+      } catch (err) {
+        ctx.logger.warn({ vpsId: vps.id, err: errorMessage(err) }, 'não foi possível expandir a raiz agora; fica para o próximo start');
+      }
+    }
     const pendingReboot = current.status === 'running' && (await this.vms.pendingChanges(vps.pveVmid)).length > 0;
     const status = stableStatus(current) ?? p.previousStatus;
 
@@ -68,6 +82,7 @@ export class ResizeVpsHandler implements JobHandler {
           bandwidthMbps: p.bandwidthMbps,
           status,
           lastError: null,
+          diskGrowPending,
         },
       });
       if (p.amountCents > 0) {

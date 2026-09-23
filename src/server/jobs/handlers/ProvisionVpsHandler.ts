@@ -147,6 +147,8 @@ export class ProvisionVpsHandler implements JobHandler {
       if (secrets.rootPassword) await this.vms.setUserPassword(vmid, 'root', secrets.rootPassword);
       if (!secrets.password) await this.vms.allowKeyLogin(vmid, vps.osTemplate.family, vps.username);
       await this.vms.setSshPasswordAuth(vmid, vps.osTemplate.family, vps.sshPasswordAuth);
+      // Daqui em diante o cloud-init não roda mais: renomear ou mudar a config não regenera as chaves de host (C23).
+      await this.vms.finalizeFirstBoot(vmid);
       await ctx.save({ accessApplied: true, secrets: null });
     }
     if (this.env.VPS_WAIT_SSH && !(await waitForTcp(ip.address, 22, 120_000))) {

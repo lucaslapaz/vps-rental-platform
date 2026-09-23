@@ -1,3 +1,5 @@
+import type { WebSocket } from 'ws';
+
 /**
  * Contrato entre o domínio (services, jobs) e a infraestrutura de virtualização (plano §3.1). A implementação real é o
  * QemuCloudInitProvider (Proxmox); os testes usam um fake. Nada aqui menciona detalhes do Proxmox.
@@ -61,6 +63,8 @@ export interface NodeCapacity {
   memTotalBytes: number;
   memUsedBytes: number;
   memFreeBytes: number;
+  /** Memória que pode ser usada sem tirar de ninguém (inclui o cache reaproveitável). É a que decide a capacidade. */
+  memAvailableBytes: number;
   storageTotalBytes: number;
   storageUsedBytes: number;
   storageAvailBytes: number;
@@ -105,6 +109,16 @@ export interface VirtualizationProvider {
   setUserPassword(vmid: number, username: string, password: string): Promise<void>;
   setSshPasswordAuth(vmid: number, family: string, enabled: boolean): Promise<void>;
   addAuthorizedKey(vmid: number, username: string, publicKey: string): Promise<void>;
+  /** Fim do 1º boot: desliga o cloud-init para que mudanças futuras na config não o façam rodar de novo (C23). */
+  finalizeFirstBoot(vmid: number): Promise<void>;
+  /** Hostname dentro da VM (renomear), sem depender do cloud-init. */
+  setGuestHostname(vmid: number, hostname: string): Promise<void>;
+  /** Expande a raiz até o fim do disco, com a VM ligada (depois de resizeDisk). */
+  growRootFs(vmid: number): Promise<void>;
+  /** Uso da raiz visto de dentro da VM (null se o agente não responder). */
+  guestDiskUsage(vmid: number): Promise<{ usedBytes: number; totalBytes: number } | null>;
 
   openConsole(vmid: number): Promise<ConsoleTicket>;
+  /** Abre o WebSocket VNC da VM com o ticket do openConsole (o backend faz a ponte com o navegador). */
+  connectConsole(vmid: number, ticket: ConsoleTicket): WebSocket;
 }

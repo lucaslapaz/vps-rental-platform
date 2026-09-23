@@ -29,6 +29,8 @@ const UNLOCK_FOR_KEY_LOGIN = [
 
 const SSHD_DROP_IN = '/etc/ssh/sshd_config.d/01-favo.conf';
 
+const SYSTEMD_SSHD_RELOAD = ['sh', '-c', 'install -d -m 0755 /run/sshd && sshd -t && systemctl try-reload-or-restart ssh'] as const;
+
 const PROFILES: Record<ImageProfile['family'], ImageProfile> = {
   alpine: {
     family: 'alpine',
@@ -36,10 +38,44 @@ const PROFILES: Record<ImageProfile['family'], ImageProfile> = {
     reloadSshd: ['sh', '-c', 'sshd -t && rc-service sshd reload'],
     unlockForKeyLogin: UNLOCK_FOR_KEY_LOGIN,
   },
-  // Debian: ssh.service habilitado. Ubuntu 24.04: ativado por socket (o serviço pode nem estar rodando): try-reload-or-restart.
-  debian: { family: 'debian', sshdDropIn: SSHD_DROP_IN, reloadSshd: ['sh', '-c', 'sshd -t && systemctl try-reload-or-restart ssh'] },
-  ubuntu: { family: 'ubuntu', sshdDropIn: SSHD_DROP_IN, reloadSshd: ['sh', '-c', 'sshd -t && systemctl try-reload-or-restart ssh'] },
+  // Debian: ssh.service habilitado. Ubuntu 24.04: ativado por socket; antes da 1ª conexão o serviço nunca rodou e o
+  // /run/sshd (RuntimeDirectory do serviço) não existe, e o `sshd -t` falha com "Missing privilege separation
+  // directory" (CLAUDE.md C24). Por isso o diretório é criado antes, com o mesmo modo do serviço.
+  debian: { family: 'debian', sshdDropIn: SSHD_DROP_IN, reloadSshd: SYSTEMD_SSHD_RELOAD },
+  ubuntu: { family: 'ubuntu', sshdDropIn: SSHD_DROP_IN, reloadSshd: SYSTEMD_SSHD_RELOAD },
 };
+
+/**
+ * Comandos comuns às três famílias (testados no laboratório na revisão 14, CLAUDE.md C23). O cloud-init roda como
+ * "nova instância" sempre que a config de cloud-init da VM muda (instance-id = sha1 do user-data + rede, no
+ * `Cloudinit.pm`); renomear a VM mudaria o hostname do user-data e, no próximo boot, as chaves de host SSH seriam
+ * regeneradas. Por isso o cloud-init é CONGELADO no fim do provisionamento, e renomear/aumentar o disco passam a ser
+ * feitos pelo agente.
+ */
+export const FREEZE_CLOUD_INIT = ['touch', '/etc/cloud/cloud-init.disabled'] as const;
+
+/** Novo hostname em $1 (validado como rótulo DNS antes): /etc/hostname, hostname e a linha do /etc/hosts. */
+export const SET_HOSTNAME = [
+  'sh',
+  '-c',
+  'set -e; old=$(hostname); printf "%s\\n" "$1" > /etc/hostname; hostname "$1"; if grep -qw "$old" /etc/hosts; then sed -i "s/\\b$old\\b/$1/g" /etc/hosts; fi',
+  'favo-hostname',
+] as const;
+
+/**
+ * Expande a raiz até o fim do disco com a VM ligada: `growpart` se a raiz for uma partição (Debian/Ubuntu; no Ubuntu o
+ * /proc/mounts mostra "/dev/root", daí o findmnt) e `resize2fs` (ext4 cresce online). No Alpine a raiz é o próprio
+ * /dev/sda. growpart sai com 1 quando não há o que crescer.
+ */
+export const GROW_ROOT_FS = [
+  'sh',
+  '-c',
+  'set -e; src=$(findmnt -n -o SOURCE / 2>/dev/null || awk \x27$2 == "/" { print $1 }\x27 /proc/mounts | tail -n 1); ' +
+    // biome-ignore lint/suspicious/noTemplateCurlyInString: é a expansão ${var#prefixo} do shell, não um template JS
+    'case "$src" in /dev/sd[a-z][0-9]*|/dev/vd[a-z][0-9]*) disk=$(echo "$src" | sed "s/[0-9]*$//"); part=${src#"$disk"}; ' +
+    'growpart "$disk" "$part" || [ $? -eq 1 ] ;; esac; resize2fs "$src"',
+  'favo-grow',
+] as const;
 
 export function imageProfile(family: string): ImageProfile {
   const profile = PROFILES[family as ImageProfile['family']];

@@ -61,7 +61,11 @@ export function VpsListPage() {
               <TableBody>
                 {vps.data.map((v) => (
                   <TableRow key={v.id} data-hostname={v.hostname}>
-                    <TableCell className="font-mono font-medium">{v.hostname}</TableCell>
+                    <TableCell className="font-mono font-medium">
+                      <Link to={`/vps/${v.id}`} className="text-link underline-offset-4 hover:underline">
+                        {v.hostname}
+                      </Link>
+                    </TableCell>
                     <TableCell>{v.osTemplate.name}</TableCell>
                     <TableCell className="hidden text-muted-foreground md:table-cell">
                       {v.plan.name} · {formatMemory(v.memoryMb, i18n.resolvedLanguage ?? 'pt-BR')}

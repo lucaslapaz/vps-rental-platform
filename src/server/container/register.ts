@@ -7,6 +7,8 @@ import { QemuCloudInitProvider } from '../integrations/proxmox/QemuCloudInitProv
 import { TaskWaiter } from '../integrations/proxmox/TaskWaiter.ts';
 import type { VirtualizationProvider } from '../integrations/virtualization/VirtualizationProvider.ts';
 import { RealtimeHub } from '../realtime/RealtimeEmitter.ts';
+import { ConsoleService } from '../services/ConsoleService.ts';
+import { VpsInsightsService } from '../services/VpsInsightsService.ts';
 import { type Clock, systemClock } from '../utils/clock.ts';
 import type { Logger } from '../utils/logger.ts';
 import { SecretBox } from '../utils/secretBox.ts';
@@ -36,6 +38,9 @@ export function registerDependencies(
   target.registerInstance(TOKENS.SecretBox, new SecretBox(env.JOB_SECRET_KEY));
   target.registerInstance(TOKENS.Realtime, new RealtimeHub());
   // Pagamento SIMULADO (plano §12): um gateway real seria outra implementação da mesma interface.
+  // Estado em memória compartilhado (sessões de console de uso único; cache de métricas): um por container.
+  target.register(ConsoleService, { useClass: ConsoleService }, { lifecycle: Lifecycle.ContainerScoped });
+  target.register(VpsInsightsService, { useClass: VpsInsightsService }, { lifecycle: Lifecycle.ContainerScoped });
   target.register(TOKENS.PaymentGateway, { useClass: FakePaymentGateway }, { lifecycle: Lifecycle.ContainerScoped });
   if (virtualization) {
     target.registerInstance(TOKENS.VirtualizationProvider, virtualization);

@@ -1,3 +1,4 @@
+import { WebSocket } from 'ws';
 import type {
   CloudInitSpec,
   ConsoleTicket,
@@ -20,6 +21,9 @@ interface FakeVm {
   sshPasswordAuth?: boolean;
   passwords: Record<string, string>;
   authorizedKeys: string[];
+  hostname?: string;
+  cloudInitFrozen?: boolean;
+  rootFsGb?: number;
 }
 
 /**
@@ -30,6 +34,10 @@ export class FakeVirtualizationProvider implements VirtualizationProvider {
   readonly vms = new Map<number, FakeVm>();
   readonly calls: string[] = [];
   online = true;
+  /** Memória disponível do nó falso (a capacidade desconta dela as VPS que ainda vão ser criadas). */
+  memAvailableMb = 1638;
+  /** URL do servidor WebSocket que faz o papel do VNC da VM nos testes do console. */
+  consoleUrl = 'ws://127.0.0.1:9';
   private failures = new Map<string, Error>();
 
   failNext(method: string, error = new Error(`falha simulada em ${method}`)) {
@@ -125,6 +133,7 @@ export class FakeVirtualizationProvider implements VirtualizationProvider {
       memTotalBytes: 3 * 1024 ** 3,
       memUsedBytes: 1.4 * 1024 ** 3,
       memFreeBytes: 1.6 * 1024 ** 3,
+      memAvailableBytes: this.memAvailableMb * 1024 * 1024,
       storageTotalBytes: 16 * 1024 ** 3,
       storageUsedBytes: 4 * 1024 ** 3,
       storageAvailBytes: 12 * 1024 ** 3,
@@ -155,6 +164,28 @@ export class FakeVirtualizationProvider implements VirtualizationProvider {
   async addAuthorizedKey(vmid: number, _username: string, publicKey: string) {
     this.track('addAuthorizedKey', String(vmid));
     this.get(vmid).authorizedKeys.push(publicKey);
+  }
+  async finalizeFirstBoot(vmid: number) {
+    this.track('finalizeFirstBoot', String(vmid));
+    this.get(vmid).cloudInitFrozen = true;
+  }
+  async setGuestHostname(vmid: number, hostname: string) {
+    this.track('setGuestHostname', `${vmid}:${hostname}`);
+    this.get(vmid).hostname = hostname;
+  }
+  async growRootFs(vmid: number) {
+    this.track('growRootFs', String(vmid));
+    const vm = this.get(vmid);
+    if (vm.status !== 'running') throw new Error('agente indisponível: VM desligada');
+    vm.rootFsGb = vm.diskGb;
+  }
+  async guestDiskUsage(vmid: number) {
+    const vm = this.vms.get(vmid);
+    return vm?.status === 'running' ? { usedBytes: 150 * 1024 ** 2, totalBytes: (vm.rootFsGb ?? vm.diskGb) * 1024 ** 3 } : null;
+  }
+  connectConsole(vmid: number, ticket: ConsoleTicket) {
+    this.track('connectConsole', `${vmid}:${ticket.port}`);
+    return new WebSocket(this.consoleUrl, ['binary']);
   }
   async openConsole(vmid: number): Promise<ConsoleTicket> {
     this.track('openConsole', String(vmid));

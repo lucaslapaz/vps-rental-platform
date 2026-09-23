@@ -37,6 +37,8 @@
   "DISK_SHRINK_NOT_SUPPORTED": "The disk cannot be shrunk. Choose a plan with the same or a larger disk.",
   "NO_IP_AVAILABLE": "No free IPs right now.",
   "SESSION_REVOKED": "Your session was ended. Please sign in again.",
+  "VPS_NOT_RUNNING": "Power on the VPS to do this.",
+  "CONSOLE_LIMIT": "You already have 2 consoles open. Close one to open another.",
   "validation": {
     "required": "This field is required.",
     "email": "Enter a valid email.",
@@ -56,6 +58,7 @@
     "cardNumber": "Invalid card number.",
     "cardExpiry": "Invalid expiry date.",
     "cardExpired": "Card expired.",
-    "cardCvc": "Invalid CVC."
+    "cardCvc": "Invalid CVC.",
+    "sshKeyChoice": "Choose a saved key or paste a new one (one of the two)."
   }
 }

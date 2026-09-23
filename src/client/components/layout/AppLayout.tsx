@@ -2,7 +2,7 @@ import { useTranslation } from 'react-i18next';
 import { Link, NavLink, Outlet } from 'react-router';
 import { Logo } from '@/components/brand/Logo';
 import { useCan } from '@/features/auth/useAuth';
-import { useRealtime } from '@/features/realtime/useRealtime';
+import { RealtimeProvider } from '@/features/realtime/RealtimeProvider';
 import { cn } from '@/lib/utils';
 import { CurrencyMenu } from './CurrencyMenu';
 import { LanguageMenu } from './LanguageMenu';
@@ -31,7 +31,8 @@ export function AppLayout() {
   const canVps = useCan('vps:read:own');
   const canAdmin = useCan('admin:users:read');
   const canBilling = useCan('billing:read:own');
-  useRealtime();
+  const canSupport = useCan('support:conversation:create');
+  const canAgent = useCan('support:queue:read');
 
   return (
     <div className="flex min-h-svh flex-col">
@@ -50,6 +51,8 @@ export function AppLayout() {
             <nav className="hidden items-center gap-1 sm:flex" aria-label={t('nav.home')}>
               {canVps ? <NavItem to="/vps">{t('nav.vps')}</NavItem> : null}
               {canBilling ? <NavItem to="/billing">{t('nav.billing')}</NavItem> : null}
+              {canSupport ? <NavItem to="/support">{t('nav.support')}</NavItem> : null}
+              {canAgent ? <NavItem to="/agent">{t('nav.agent')}</NavItem> : null}
               {canAdmin ? <NavItem to="/admin/users">{t('nav.admin')}</NavItem> : null}
             </nav>
           </div>
@@ -63,7 +66,9 @@ export function AppLayout() {
       </header>
 
       <main id="conteudo" className="mx-auto w-full max-w-6xl flex-1 px-4 py-10">
-        <Outlet />
+        <RealtimeProvider>
+          <Outlet />
+        </RealtimeProvider>
       </main>
 
       <footer className="border-t">

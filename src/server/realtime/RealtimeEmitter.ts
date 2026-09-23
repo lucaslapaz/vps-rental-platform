@@ -17,6 +17,11 @@ export class RealtimeHub {
     this.disconnect = disconnect;
   }
 
+  /** Sala dos técnicos online (quem tem support:queue:read): fila ao vivo. */
+  toAgents<E extends keyof ServerToClientEvents>(event: E, ...args: Parameters<ServerToClientEvents[E]>) {
+    this.send('agents', event, ...args);
+  }
+
   /** Sessão revogada: avisa as abas dela e fecha os sockets (o handshake só autentica uma vez). */
   endSession(sessionId: string) {
     this.toSession(sessionId, 'session:revoked');

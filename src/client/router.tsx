@@ -10,6 +10,8 @@ import { CheckoutPage } from '@/features/billing/CheckoutPage';
 import { NotFoundPage } from '@/features/errors/NotFoundPage';
 import { RouteErrorPage } from '@/features/errors/RouteErrorPage';
 import { HomeRoute } from '@/features/home/HomeRoute';
+import { AgentPage } from '@/features/support/AgentPage';
+import { SupportPage } from '@/features/support/SupportPage';
 import { CreateVpsPage } from '@/features/vps/CreateVpsPage';
 import { VpsDetailPage } from '@/features/vps/detail/VpsDetailPage';
 import { VpsListPage } from '@/features/vps/VpsListPage';
@@ -63,6 +65,26 @@ export const router = createBrowserRouter([
           <RequireAuth>
             <RequirePermission permission="vps:read:own">
               <VpsDetailPage />
+            </RequirePermission>
+          </RequireAuth>
+        ),
+      },
+      {
+        path: 'support',
+        element: (
+          <RequireAuth>
+            <RequirePermission permission="support:conversation:create">
+              <SupportPage />
+            </RequirePermission>
+          </RequireAuth>
+        ),
+      },
+      {
+        path: 'agent',
+        element: (
+          <RequireAuth>
+            <RequirePermission permission="support:queue:read">
+              <AgentPage />
             </RequirePermission>
           </RequireAuth>
         ),

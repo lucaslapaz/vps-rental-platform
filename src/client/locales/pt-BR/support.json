@@ -1,0 +1,62 @@
+{
+  "status": {
+    "WAITING": "Na fila",
+    "ACTIVE": "Em atendimento",
+    "CLOSED": "Encerrada"
+  },
+  "customer": {
+    "title": "Suporte",
+    "subtitle": "Fale com um técnico da Favo pelo chat.",
+    "newTitle": "Abrir uma conversa",
+    "newDescription": "Conte o que está acontecendo. Você entra na fila e um técnico assume em seguida.",
+    "subject": "Assunto",
+    "subjectPlaceholder": "Ex.: minha VPS não responde ao ping",
+    "message": "Mensagem",
+    "messagePlaceholder": "Descreva o problema com o máximo de detalhes.",
+    "submit": "Abrir conversa",
+    "position": "Posição na fila: {{position}}",
+    "waitingHint": "Um técnico vai assumir em breve. Enquanto isso, pode mandar mais detalhes.",
+    "activeWith": "Em atendimento com {{name}}",
+    "closedTitle": "Conversa encerrada",
+    "closedHint": "Precisa de mais alguma coisa? Abra uma nova conversa.",
+    "newConversation": "Abrir nova conversa",
+    "close": "Encerrar conversa",
+    "closeConfirmTitle": "Encerrar esta conversa?",
+    "closeConfirmBody": "O chat é fechado para os dois lados. Se precisar, abra outra depois.",
+    "cancel": "Cancelar"
+  },
+  "chat": {
+    "placeholder": "Escreva uma mensagem…",
+    "send": "Enviar",
+    "typing": "{{name}} está digitando…",
+    "you": "Você",
+    "sending": "Enviando…",
+    "failed": "Não enviada",
+    "hint": "Enter envia · Shift+Enter quebra a linha",
+    "counter": "{{count}}/{{max}}",
+    "closed": "Esta conversa foi encerrada."
+  },
+  "system": {
+    "queued": "Conversa na fila. Um técnico vai atender em breve.",
+    "claimed": "{{name}} iniciou o atendimento.",
+    "released": "{{name}} devolveu a conversa para a fila.",
+    "closed": "Conversa encerrada por {{name}}."
+  },
+  "agent": {
+    "title": "Atendimento",
+    "subtitle": "A fila atualiza sozinha. Assuma uma conversa para responder.",
+    "queueTitle": "Fila",
+    "queueEmpty": "Ninguém esperando agora.",
+    "claim": "Iniciar atendimento",
+    "claimed": "Atendimento iniciado.",
+    "waitingSince": "Na fila desde {{time}}",
+    "mineTitle": "Meus atendimentos",
+    "mineEmpty": "Você não está atendendo ninguém.",
+    "select": "Escolha um atendimento para ver o chat.",
+    "release": "Devolver para a fila",
+    "released": "Conversa devolvida para a fila.",
+    "close": "Encerrar",
+    "closed": "Conversa encerrada.",
+    "customer": "Cliente"
+  }
+}

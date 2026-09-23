@@ -1,0 +1,62 @@
+{
+  "status": {
+    "WAITING": "En cola",
+    "ACTIVE": "En atención",
+    "CLOSED": "Cerrada"
+  },
+  "customer": {
+    "title": "Soporte",
+    "subtitle": "Habla con un técnico de Favo por chat.",
+    "newTitle": "Abrir una conversación",
+    "newDescription": "Cuéntanos qué pasa. Entras en la cola y un técnico te atiende enseguida.",
+    "subject": "Asunto",
+    "subjectPlaceholder": "Ej.: mi VPS no responde al ping",
+    "message": "Mensaje",
+    "messagePlaceholder": "Describe el problema con el mayor detalle posible.",
+    "submit": "Abrir conversación",
+    "position": "Posición en la cola: {{position}}",
+    "waitingHint": "Un técnico te atenderá pronto. Mientras tanto, puedes enviar más detalles.",
+    "activeWith": "En atención con {{name}}",
+    "closedTitle": "Conversación cerrada",
+    "closedHint": "¿Necesitas algo más? Abre una nueva conversación.",
+    "newConversation": "Abrir nueva conversación",
+    "close": "Cerrar conversación",
+    "closeConfirmTitle": "¿Cerrar esta conversación?",
+    "closeConfirmBody": "El chat se cierra para ambas partes. Si lo necesitas, abre otra después.",
+    "cancel": "Cancelar"
+  },
+  "chat": {
+    "placeholder": "Escribe un mensaje…",
+    "send": "Enviar",
+    "typing": "{{name}} está escribiendo…",
+    "you": "Tú",
+    "sending": "Enviando…",
+    "failed": "No enviado",
+    "hint": "Enter envía · Shift+Enter agrega una línea",
+    "counter": "{{count}}/{{max}}",
+    "closed": "Esta conversación fue cerrada."
+  },
+  "system": {
+    "queued": "Conversación en cola. Un técnico te atenderá pronto.",
+    "claimed": "{{name}} inició la atención.",
+    "released": "{{name}} devolvió la conversación a la cola.",
+    "closed": "Conversación cerrada por {{name}}."
+  },
+  "agent": {
+    "title": "Atención",
+    "subtitle": "La cola se actualiza sola. Toma una conversación para responder.",
+    "queueTitle": "Cola",
+    "queueEmpty": "Nadie está esperando ahora.",
+    "claim": "Iniciar atención",
+    "claimed": "Atención iniciada.",
+    "waitingSince": "En cola desde {{time}}",
+    "mineTitle": "Mis atenciones",
+    "mineEmpty": "No estás atendiendo a nadie.",
+    "select": "Elige una atención para ver el chat.",
+    "release": "Devolver a la cola",
+    "released": "Conversación devuelta a la cola.",
+    "close": "Cerrar",
+    "closed": "Conversación cerrada.",
+    "customer": "Cliente"
+  }
+}

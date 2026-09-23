@@ -14,7 +14,9 @@
     "register": "Sign up",
     "logout": "Sign out",
     "userMenu": "User menu",
-    "billing": "Invoices"
+    "billing": "Invoices",
+    "support": "Support",
+    "agent": "Support desk"
   },
   "language": {
     "label": "Language",

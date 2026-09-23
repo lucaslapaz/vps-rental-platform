@@ -39,6 +39,11 @@
   "SESSION_REVOKED": "Sua sessão foi encerrada. Entre de novo.",
   "VPS_NOT_RUNNING": "Ligue a VPS para fazer isso.",
   "CONSOLE_LIMIT": "Você já tem 2 consoles abertos. Feche um para abrir outro.",
+  "CONVERSATION_ALREADY_OPEN": "Você já tem uma conversa aberta com o suporte.",
+  "ALREADY_CLAIMED": "Esta conversa já foi assumida por outro técnico.",
+  "AGENT_LIMIT": "Você já está no limite de atendimentos simultâneos.",
+  "CONVERSATION_CLOSED": "Esta conversa foi encerrada.",
+  "NOT_CLAIMED_BY_YOU": "Esta conversa não está com você.",
   "validation": {
     "required": "Campo obrigatório.",
     "email": "Informe um e-mail válido.",
@@ -59,6 +64,7 @@
     "cardExpiry": "Validade inválida.",
     "cardExpired": "Cartão vencido.",
     "cardCvc": "CVC inválido.",
-    "sshKeyChoice": "Escolha uma chave salva ou cole uma chave nova (uma das duas)."
+    "sshKeyChoice": "Escolha uma chave salva ou cole uma chave nova (uma das duas).",
+    "subjectTooShort": "Escreva um assunto com pelo menos 3 caracteres."
   }
 }

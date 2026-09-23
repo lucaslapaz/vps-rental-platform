@@ -1,7 +1,7 @@
 # CLAUDE.md — Favo (VPS Rental Platform)
 
 Contexto para o Claude implementar este projeto em conversas novas. **O plano completo e as decisões estão em
-[docs/PLANO_DE_IMPLEMENTACAO.md](docs/PLANO_DE_IMPLEMENTACAO.md)** (revisão 14, 2026-09-23). Este arquivo resume o
+[docs/PLANO_DE_IMPLEMENTACAO.md](docs/PLANO_DE_IMPLEMENTACAO.md)** (revisão 15, 2026-09-23). Este arquivo resume o
 que não dá para deduzir do código: regras combinadas com o usuário, estado do ambiente, armadilhas já encontradas
 (com a solução) e comandos que já foram testados.
 
@@ -17,7 +17,7 @@ que não dá para deduzir do código: regras combinadas com o usuário, estado d
   proxy do console e o React 19 (Vite 8, Tailwind 4, shadcn). TypeScript 7, tsyringe, Prisma 7 + MySQL 8.4, Biome.
 - Fases (§17 do plano): 0 laboratório → 1 fundação → 2 banco → 3 auth/CSRF/RBAC → 4 Proxmox → 5 catálogo/pagamento →
   6 provisionamento → 7 página da VPS + console → 8 suporte → 9 qualidade → 10 extras.
-- **Situação atual:** Fases 0 a 7 concluídas. Fase 0: laboratório (plano §2.7), scripts em `scripts/pve/`. Fase 1:
+- **Situação atual:** Fases 0 a 8 concluídas. Fase 0: laboratório (plano §2.7), scripts em `scripts/pve/`. Fase 1:
   fundação (servidor único Express+Vite, React com marca Favo, i18n, tema, Vitest, Biome). Fase 2: Prisma 7 + MySQL
   (schema, migration `init`, seeds idempotentes). Fase 3: sessão, CSRF, RBAC, conta, chaves SSH e administração de
   usuários. Fase 4: integração com o Proxmox (`src/server/integrations/proxmox/`, provider atrás da interface
@@ -28,7 +28,8 @@ que não dá para deduzir do código: regras combinadas com o usuário, estado d
   Visão geral, Console, Métricas, Acesso, Configurações e Histórico), console noVNC por proxy `ws`
   (`src/server/realtime/consoleProxy.ts`, sessão de uso único em `ConsoleService`), acesso pelo guest agent
   (`VpsAccessService`), métricas/estado ao vivo (`VpsInsightsService`) e o roteiro `@lab` `tests/lab/lifecycle.lab.test.ts`.
-  A próxima é a Fase 8 (suporte: chat + fila). **O banco de dev tem a VPS de demonstração da Ana** (ver §4, linha VMs).
+  Fase 8: suporte (`/support` do cliente, `/agent` do técnico; `SupportService`, chat pelo Socket.IO com ack, fila na
+  sala `agents`). A próxima é a Fase 9 (qualidade e apresentação). **O banco de dev tem a VPS de demonstração da Ana** (ver §4, linha VMs).
 - **Proxmox no código:** `ProxmoxClient` (undici + CA + servername, token, zod), `TaskWaiter` (UPID), `QemuCloudInitProvider`
   (clone, cloud-init, resize, energia, status, pendências, métricas, console, guest agent) e `ImageProfile` (comandos fixos por
   família). Os testes comuns usam `tests/helpers/FakeVirtualizationProvider.ts`; só o `npm run test:lab` (LAB=1) toca o Proxmox.
@@ -352,6 +353,9 @@ que não dá para deduzir do código: regras combinadas com o usuário, estado d
   Um `afterAll` que expira deixa sobras (IPs `RESERVED`, VPS `PROVISIONING`) que quebram o `npm test` depois: se isso
   acontecer, confira `select status,count(*) from vps where deletedAt is null group by status` no `vps_platform_test`.
   Um upgrade para `/ws/<caminho inválido>` ficava pendurado (sem resposta) e travava o `server.close()`: hoje recebe 404.
+- **N34. Um socket só por aba:** o `RealtimeProvider` (em `AppLayout`) abre o Socket.IO e o expõe por `useSocket()`; as telas
+  (chat, fila) registram os próprios eventos nele. O efeito dependia do `t` do i18next, que muda ao trocar de idioma: **trocar o
+  idioma derrubava e reabria o socket**. Hoje o `t` fica numa ref. Eventos de chat vão para `user:<id>` (participantes lidos do banco).
 - **N17.** `execFileSync('npm', …, { shell: true })` gera o aviso `DEP0190` no Node 24; os scripts de `scripts/deps/` usam
   `execSync` com o nome do pacote validado por regex.
 
@@ -397,6 +401,9 @@ que não dá para deduzir do código: regras combinadas com o usuário, estado d
 - **T18. O `tsx watch` recarrega o servidor ao mudar arquivos do servidor**, inclusive no meio de um teste manual: jobs em
   andamento voltam para a fila e retomam (isso é o esperado), mas espere o `worker de jobs iniciado` no log antes de testar.
 - **T19. Scratchpad com scripts `.ts`:** ver T16. Para medir tempo de atualização da tela, use `MutationObserver` (T15).
+- **T20. Playwright MCP só lê arquivos do projeto** (`browser_run_code_unsafe` com `filename`): o scratchpad é recusado. Para
+  roteiros que precisam da senha de demonstração, gere uma cópia em `.playwright-mcp/` (ignorado pelo git) com a senha lida do
+  `.env.development` e apague logo depois. Vários usuários ao mesmo tempo: `page.context().browser().newContext()` por usuário.
 
 ## 6. Decisões de arquitetura mais importantes (detalhes no plano)
 

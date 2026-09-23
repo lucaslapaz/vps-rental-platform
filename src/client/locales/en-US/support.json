@@ -1,0 +1,62 @@
+{
+  "status": {
+    "WAITING": "In queue",
+    "ACTIVE": "In progress",
+    "CLOSED": "Closed"
+  },
+  "customer": {
+    "title": "Support",
+    "subtitle": "Chat with a Favo technician.",
+    "newTitle": "Start a conversation",
+    "newDescription": "Tell us what is happening. You join the queue and a technician takes over shortly.",
+    "subject": "Subject",
+    "subjectPlaceholder": "e.g. my VPS does not answer ping",
+    "message": "Message",
+    "messagePlaceholder": "Describe the problem in as much detail as you can.",
+    "submit": "Start conversation",
+    "position": "Queue position: {{position}}",
+    "waitingHint": "A technician will take over soon. Meanwhile, you can send more details.",
+    "activeWith": "Talking to {{name}}",
+    "closedTitle": "Conversation closed",
+    "closedHint": "Need anything else? Start a new conversation.",
+    "newConversation": "Start a new conversation",
+    "close": "Close conversation",
+    "closeConfirmTitle": "Close this conversation?",
+    "closeConfirmBody": "The chat is closed for both sides. You can start another one later.",
+    "cancel": "Cancel"
+  },
+  "chat": {
+    "placeholder": "Write a message…",
+    "send": "Send",
+    "typing": "{{name}} is typing…",
+    "you": "You",
+    "sending": "Sending…",
+    "failed": "Not sent",
+    "hint": "Enter sends · Shift+Enter adds a line",
+    "counter": "{{count}}/{{max}}",
+    "closed": "This conversation was closed."
+  },
+  "system": {
+    "queued": "Conversation queued. A technician will help you soon.",
+    "claimed": "{{name}} took over the conversation.",
+    "released": "{{name}} returned the conversation to the queue.",
+    "closed": "Conversation closed by {{name}}."
+  },
+  "agent": {
+    "title": "Support desk",
+    "subtitle": "The queue updates by itself. Take a conversation to reply.",
+    "queueTitle": "Queue",
+    "queueEmpty": "Nobody is waiting right now.",
+    "claim": "Take conversation",
+    "claimed": "Conversation taken.",
+    "waitingSince": "Waiting since {{time}}",
+    "mineTitle": "My conversations",
+    "mineEmpty": "You are not helping anyone.",
+    "select": "Pick a conversation to see the chat.",
+    "release": "Return to queue",
+    "released": "Conversation returned to the queue.",
+    "close": "Close",
+    "closed": "Conversation closed.",
+    "customer": "Customer"
+  }
+}

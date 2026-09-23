@@ -14,7 +14,9 @@
     "register": "Criar conta",
     "logout": "Sair",
     "userMenu": "Menu do usuário",
-    "billing": "Faturas"
+    "billing": "Faturas",
+    "support": "Suporte",
+    "agent": "Atendimento"
   },
   "language": {
     "label": "Idioma",

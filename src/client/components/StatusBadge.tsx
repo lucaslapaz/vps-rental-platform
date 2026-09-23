@@ -1,4 +1,5 @@
 import type { InvoiceStatusDTO, VpsStatusDTO } from '@shared/types/catalog';
+import type { ConversationStatusDTO } from '@shared/types/support';
 import { useTranslation } from 'react-i18next';
 import { cn } from '@/lib/utils';
 
@@ -20,6 +21,8 @@ const VPS_TONE: Record<VpsStatusDTO, Tone> = {
 };
 
 const INVOICE_TONE: Record<InvoiceStatusDTO, Tone> = { PENDING: 'pending', PAID: 'running', FAILED: 'error', CANCELED: 'stopped' };
+
+const CONVERSATION_TONE: Record<ConversationStatusDTO, Tone> = { WAITING: 'pending', ACTIVE: 'running', CLOSED: 'stopped' };
 
 const DOT: Record<Tone, string> = {
   running: 'bg-status-running',
@@ -51,4 +54,9 @@ export function VpsStatusBadge({ status }: { status: VpsStatusDTO }) {
 export function InvoiceStatusBadge({ status }: { status: InvoiceStatusDTO }) {
   const { t } = useTranslation();
   return <Badge tone={INVOICE_TONE[status]} label={t(`invoiceStatus.${status}`)} pulse={false} />;
+}
+
+export function ConversationStatusBadge({ status }: { status: ConversationStatusDTO }) {
+  const { t } = useTranslation('support');
+  return <Badge tone={CONVERSATION_TONE[status]} label={t(`status.${status}`)} pulse={status === 'WAITING'} />;
 }

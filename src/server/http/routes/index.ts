@@ -2,6 +2,7 @@ import { Router } from 'express';
 import type { DependencyContainer } from 'tsyringe';
 import { changeRoleSchema, intIdParamSchema, sshKeySchema, userSearchSchema, uuidParamSchema } from '../../../shared/schemas/account.ts';
 import { changePasswordSchema, loginSchema, registerSchema } from '../../../shared/schemas/auth.ts';
+import { messagesQuerySchema, openConversationSchema, sendBodySchema } from '../../../shared/schemas/support.ts';
 import {
   createVpsSchema,
   metricsQuerySchema,
@@ -21,6 +22,7 @@ import { AuthController } from '../../controllers/AuthController.ts';
 import { CatalogController } from '../../controllers/CatalogController.ts';
 import { HealthController } from '../../controllers/HealthController.ts';
 import { InvoiceController } from '../../controllers/InvoiceController.ts';
+import { SupportController } from '../../controllers/SupportController.ts';
 import { VpsController } from '../../controllers/VpsController.ts';
 import { CsrfService } from '../../services/CsrfService.ts';
 import { SessionService } from '../../services/SessionService.ts';
@@ -48,6 +50,7 @@ export function createApiRouter(di: DependencyContainer) {
   const catalog = di.resolve(CatalogController);
   const vps = di.resolve(VpsController);
   const invoices = di.resolve(InvoiceController);
+  const support = di.resolve(SupportController);
 
   const router = Router();
   router.get('/health', health.show);
@@ -181,6 +184,36 @@ export function createApiRouter(di: DependencyContainer) {
     validate({ params: uuidParamSchema, body: payInvoiceSchema }),
     invoices.pay,
   );
+
+  // ── Suporte (plano §13 e §15). Participação e estado da conversa são conferidos no SupportService. ──
+  const id = validate({ params: uuidParamSchema });
+  router.post(
+    '/support/conversations',
+    O,
+    limiter(env, { windowMinutes: 60, limit: 10 }),
+    C,
+    A,
+    P('support:conversation:create'),
+    validate({ body: openConversationSchema }),
+    support.open,
+  );
+  router.get('/support/conversations/current', A, P('support:conversation:read:own'), support.current);
+  router.get('/support/queue', A, P('support:queue:read'), support.queue);
+  router.get('/support/my-conversations', A, P('support:queue:read'), support.mine);
+  router.get('/support/conversations/:id', A, id, support.get);
+  router.get('/support/conversations/:id/messages', A, validate({ params: uuidParamSchema, query: messagesQuerySchema }), support.messages);
+  router.post(
+    '/support/conversations/:id/messages',
+    O,
+    limiter(env, { windowMinutes: 1, limit: 30 }),
+    C,
+    A,
+    validate({ params: uuidParamSchema, body: sendBodySchema }),
+    support.send,
+  );
+  router.post('/support/conversations/:id/close', O, C, A, id, support.close);
+  router.post('/support/conversations/:id/claim', O, C, A, P('support:conversation:claim'), id, support.claim);
+  router.post('/support/conversations/:id/release', O, C, A, P('support:conversation:claim'), id, support.release);
 
   return router;
 }

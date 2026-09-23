@@ -58,6 +58,9 @@ const schema = z.object({
   /** Latência artificial do gateway simulado (0 nos testes). */
   PAYMENT_LATENCY_MS: z.coerce.number().int().min(0).max(10_000).optional(),
 
+  // ── Suporte (plano §13.1) ──
+  SUPPORT_MAX_ACTIVE_PER_AGENT: z.coerce.number().int().min(1).max(50).default(3),
+
   // ── Worker de jobs (plano §11.2) ──
   /** false: o processo só atende HTTP (útil para depurar sem mexer no Proxmox). */
   WORKER_ENABLED: z.stringbool().default(true),

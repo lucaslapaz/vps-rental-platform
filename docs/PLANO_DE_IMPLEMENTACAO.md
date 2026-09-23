@@ -17,6 +17,7 @@
 | 12 | 2026-09-23 | **Fase 5 concluída** (§17): catálogo, capacidade, pedido, pagamento simulado com trava da fatura (`FOR UPDATE`), telas de criação/checkout/faturas e moeda de exibição. Mudança no schema: `vps.provisionSecrets` (senhas cifradas entre o pedido e o pagamento, §12) |
 | 13 | 2026-09-23 | **Fase 6 concluída** (§17): fila de jobs no MySQL + worker no processo, handlers de provisionamento/ações/troca de plano/exclusão/reconciliação/limpeza, IPAM atômico, máquina de estados com lock otimista e Socket.IO autenticado. Descobertas no laboratório (§10.6, §11.3): o guest agent responde **antes** de o cloud-init terminar (o pós-boot agora espera `cloud-init status --wait`) e, no Alpine (sshd **sem PAM**), uma conta criada só com chave nasce bloqueada e o SSH recusa até a chave (o `ImageProfile` troca `!` por `*`). `Vps.lastError` guarda só códigos traduzíveis |
 | 14 | 2026-09-23 | **Fase 7 concluída** (§17): página da VPS com abas, console noVNC por proxy `ws`, acesso pelo guest agent, métricas e histórico. Decisões e descobertas no laboratório: **o cloud-init é congelado no fim do provisionamento** (§10.6; renomear mudava o `instance-id` e regenerava as chaves de host), renomear e aumentar o disco passam a ser feitos pelo agente (§10.4, §11.4), `reboot` cai para `stop`+`start` quando o ACPI é ignorado, Ubuntu 24.04 precisa do `/run/sshd` antes do `sshd -t`, e a capacidade usa a memória **disponível** do nó (não a livre). Rotas de acesso síncronas (`200`) |
+| 15 | 2026-09-23 | **Fase 8 concluída** (§17): suporte com fila ao vivo, claim atômico, limite por técnico, devolver/encerrar e chat por Socket.IO com ack. Ajustes de implementação (§13.2): eventos vão para as salas `user:<id>` dos participantes (em vez de `conversation:<id>`, que exigiria entrar e sair de salas a cada claim), mensagens do sistema gravadas como **código** e traduzidas na tela, abrir conversa trava a linha do cliente (`FOR UPDATE`) e há envio por REST quando o socket está fora |
 | 11 | 2026-09-23 | **Fase 4 concluída** (§17): cliente do Proxmox, provider real, agente, CLI `npm run pve` e suíte `@lab` 30/30 nas quatro imagens. Mudanças: drop-in do sshd **`01-favo.conf`** (§10.6) e formato do ticket do `vncproxy` (§10.5) |
 | 10 | 2026-09-23 | **Fase 3 concluída** (§17): sessão, CSRF assinado, RBAC, conta, chaves SSH e administração de usuários. Detalhes da implementação em §9.8 (origem aceita, pré-sessão, validação real das chaves SSH, textos em namespaces) |
 | 9 | 2026-09-23 | **Fase 2 concluída** (§17): Prisma 7.10.0 + adapter MariaDB, migration `init`, seeds idempotentes. Ajustes: tabelas com `@@map` em snake_case (MySQL do Windows com `lower_case_table_names=1`), `IpAddress.macAddress` (MAC derivado do IP), pool `.200–.228`, plano **Medium** no seed, proteção do Prisma contra agentes de IA em comandos destrutivos (§19) |
@@ -1789,6 +1790,14 @@ Por que no MySQL: evita outra dependência no PC, é persistente (sobrevive a re
   persiste e emite `support:message:new` para a sala. O ack devolve o `id` persistido, e a UI troca a mensagem otimista pela real.
 - **Reconexão:** ao conectar, o servidor coloca o socket nas salas conforme o estado do banco. O cliente busca por REST
   as mensagens com `id >` último recebido (não perde nada que chegou durante a queda).
+- **Implementação (rev. 15):** `SupportService` + `SupportController` + handlers em `src/server/realtime/socket.ts`. Os eventos
+  vão para as salas `user:<id>` do cliente e do técnico que assumiu (a participação vem do banco a cada envio, então não há
+  salas de conversa para manter em sincronia) e a fila para a sala `agents` (quem tem `support:queue:read`, ao conectar). As
+  mensagens do sistema são gravadas como código (`{"system":"claimed","name":"Carla"}`) e a tela traduz ("Carla iniciou o
+  atendimento"): o banco não guarda texto num idioma. "Abrir conversa" trava a linha do cliente (`SELECT … FOR UPDATE`),
+  então dois cliques simultâneos não criam duas conversas. O "digitando…" é limitado a 1 aviso a cada 2 s por socket. Se o
+  socket estiver fora, o chat envia pelo REST (`POST …/messages`). Rotas extras: `GET /api/support/conversations/:id` e
+  `POST …/messages`.
 - **Por que o CSRF não se aplica ao socket:** a proteção equivalente é a checagem de `Origin` + cookie `SameSite=Strict`.
   As ações "de estado" do chat (criar, assumir e encerrar conversa) ficam em **REST com CSRF**, e o socket carrega só mensagens.
 
@@ -2241,14 +2250,23 @@ outro usuário é recusado.
 
 **Resultado (rev. 14):** no navegador (Playwright MCP) com a Ana: página da `favo-chave` com visão geral ao vivo (memória 100 MB de 256 MB, disco 156 MB de 1,8 GB), console com a tela real, login de texto depois de redefinir a senha pela aba Acesso, gráficos de CPU/RAM/rede do `rrddata`, troca Nano → Micro com a VM ligada (disco 2 → 4 GB e raiz de 3,7 GB **na hora**; memória pendente, aviso "Reiniciar agora" → 512 MB em 5 s), renomear (`hostname`, `/etc/hosts` e nome no Proxmox) e excluir digitando o hostname. As quatro imagens criadas pela plataforma e testadas no console com a senha da criação: Alpine e Debian (login de texto), Ubuntu (login de texto e SSH por senha do Windows, depois da correção do `/run/sshd`) e **Alpine Desktop (LightDM → XFCE)**. Roteiro automatizado `tests/lab/lifecycle.lab.test.ts` contra o Proxmox: pedido → pagamento → RUNNING (34 s) → SSH → desligar → ligar → reiniciar (com o fallback) → aumentar plano (disco online, memória no reinício, **mesma chave de host**) → renomear → console ("RFB 003.00x" pelo proxy) → excluir. Descobertas registradas: cloud-init reexecutando ao renomear, `/run/sshd` no Ubuntu, reboot ignorado durante o boot, capacidade usando `free` em vez de `available` (a Desktop de 1 GB nunca cabia). 96 testes (console de uso único, outro usuário, sem sessão, origem, técnico, limite, acesso, renomear, live, métricas, disco pendente, capacidade).
 
-### Fase 8: Suporte (chat + fila)
-- [ ] `SupportService` (regras §13.1), rotas REST, handlers de socket, salas.
-- [ ] UI do cliente (`/support`): abrir conversa, posição na fila, chat.
-- [ ] UI do técnico (`/agent`): fila ao vivo, "Iniciar atendimento", abas de atendimentos, encerrar e devolver.
-- [ ] Testes: claim concorrente (2 técnicos → exatamente 1 sucesso), técnico sem acesso a `/api/vps` (403), mensagens de não participante (rejeitadas).
+### Fase 8: Suporte (chat + fila) — ✅ concluída em 2026-09-23
+- [x] `SupportService` (regras §13.1), rotas REST, handlers de socket, salas.
+- [x] UI do cliente (`/support`): abrir conversa, posição na fila, chat.
+- [x] UI do técnico (`/agent`): fila ao vivo, "Iniciar atendimento", abas de atendimentos, encerrar e devolver.
+- [x] Testes: claim concorrente (2 técnicos → exatamente 1 sucesso), técnico sem acesso a `/api/vps` (403), mensagens de não participante (rejeitadas).
 
 **Aceite:** E2E com **2 contextos** (cliente + técnico): o cliente abre, o técnico vê na fila **sem refresh**, assume, e
 os dois trocam mensagens em tempo real. Um segundo técnico que tenta assumir recebe o aviso "já assumida".
+
+**Resultado (rev. 15):** E2E no navegador (Playwright MCP) com **3 contextos**: Carla e Diego com a fila aberta; a Ana abre a conversa
+("Posição na fila: 1") e ela aparece para os dois técnicos **sem refresh**; Carla assume e a Ana vê "Em atendimento com Carla Mendes"
+ao vivo; mensagens nos dois sentidos (cliente → técnico em 61 ms); Carla encerra e a Ana vê "Conversa encerrada por Carla Mendes."
+Com os dois técnicos clicando **ao mesmo tempo**, um assume e o outro recebe "Esta conversa já foi assumida por outro técnico."
+O técnico só vê "Atendimento" no menu (sem VPS nem faturas). 8 testes novos (104 no total): uma conversa aberta por cliente,
+posição na fila, claim concorrente (exatamente 1 sucesso), limite por técnico, técnico sem `/api/vps` e `/api/invoices` (403),
+não participante (404 no REST e `NOT_FOUND` no ack do socket), devolver/encerrar, chat com ack e "digitando…" entre 2 sockets,
+e recuperação por `?after=`.
 
 ### Fase 9: Qualidade e apresentação
 - [ ] Traduções completas de en-US e es-ES (ou a lista final de §20) + verificação de chaves faltando.

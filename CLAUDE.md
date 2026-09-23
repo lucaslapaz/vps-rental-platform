@@ -24,8 +24,10 @@ que não dá para deduzir do código: regras combinadas com o usuário, estado d
 
 1. **Responder em português (pt-BR).** Interface em pt-BR por padrão, com en-US e es-ES (i18next). Moedas BRL/USD/EUR
    **só na exibição do frontend**: cobrança, banco e VMs continuam em BRL/pt-BR.
-2. **Nunca fazer commit nem criar branch.** Ao fim de cada fase, entregar um resumo (arquivos, decisões, como testar)
-   para o usuário revisar e commitar.
+2. **Fazer um commit ao fim de cada fase** (na `main`, sem criar branch, a menos que o usuário peça), com mensagem
+   descritiva em português. Antes, conferir com `git status`/`git diff` que nenhum segredo entra (`.env*` e `certs/` estão
+   no `.gitignore`). Depois do commit, entregar um resumo (arquivos, decisões, como testar). Nunca usar
+   `--no-verify` nem reescrever o histórico (`push --force`, `reset --hard`, `rebase`) sem o usuário pedir.
 3. **Dependências — só a maior versão ESTÁVEL** (sem `-rc`, `-beta`, `-dev`…). A tag `latest` do npm **não** é critério.
    - Conferir antes: `npm run deps:stable -- <pkg>` (enquanto `scripts/deps/` não existir, use o script da §7.1 abaixo).
    - Instalar **sempre com versão exata**: `npm install <pkg>@<versão>` (o projeto terá `save-exact=true` no `.npmrc`).

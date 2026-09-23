@@ -13,6 +13,7 @@
 | 3 | 2026-09-23 | Respostas às decisões pendentes (§0.2) e esclarecimento (§0.3). **Fase 0 executada** (§2.5): aceleração ligada, VM 100 removida, `vmbr1` + NAT, chave SSH, MySQL. **VPS passam a ser VMs KVM** (Alpine cloud-init, template "golden image", §3.1 e §3.6), com teste real de viabilidade e correção do DNS. **Idiomas e moedas no frontend** (§14.4). Sem commits por parte do Claude (§17) |
 | 4 | 2026-09-23 | Respostas da revisão 4 (§0.4). **Marca fictícia Favo** e identidade visual (§14.6). **Três imagens** (Alpine, Debian 13, Ubuntu 24.04), **testadas** no laboratório (§2.6, §3.7). **Console noVNC** no núcleo (§10.5). **Senha root e SSH pelo guest agent** (§10.6). Tela de criação como nas plataformas reais (§14.5). **RBAC: uma role por usuário, verificação por permissão** (§9.7) |
 | 5 | 2026-09-23 | Respostas da revisão 5 (§0.5): **marca Favo aprovada**; **imagem Alpine Desktop (XFCE)** entra no catálogo (template 9003, plano Medium de 1 GB); **`CLAUDE.md` criado** na raiz com o contexto e as lições aprendidas. Nenhuma decisão pendente (§20) |
+| 6 | 2026-09-23 | Commits: o Claude passa a **commitar ao fim de cada fase** (substitui a decisão do §0.2). Ajustados o §1, o §17 e o `CLAUDE.md` |
 
 ## Sumário
 
@@ -70,7 +71,7 @@ Como cada resposta foi aplicada:
 | MySQL | ✅ Bancos e usuário `vps_app` criados (§8.1) |
 | LXC × VM | **VMs KVM de verdade** (decisão sua). Explicação do que é LXC e o teste de viabilidade em §3.1 |
 | Idiomas e moedas | ✅ Vale a pena, **se entrar desde a Fase 1**. **Só no frontend** (esclarecimento no §0.3). Desenho em §14.4 |
-| Commits | ✅ Não faço commits. Ao fim de cada fase entrego um resumo para você revisar (§17) |
+| Commits | ~~Não faço commits~~ **Substituído na rev. 6:** o Claude commita ao fim de cada fase (§17) |
 
 ### 0.3 Esclarecimento (mensagem enviada durante a revisão 3)
 
@@ -130,7 +131,7 @@ O que foi mantido do seu desenho, o que foi ajustado e por quê:
 | Rede das VPS | — | Bridge **Linux** `vmbr1` criada **dentro do Proxmox** sobre a placa host-only. Os adaptadores do VirtualBox continuam NAT + Host-only. IPs fixos `192.168.56.200–229` controlados pelo banco, NAT para a internet | As VPS ficam acessíveis direto do Windows (ssh/ping), como um IP "público" de verdade. Ver §3.3.1 |
 | MCP do Proxmox | Existe? Vale criar um? | **Não é necessário agora.** Vou usar a API REST (já testada) + SSH com `pvesh`/`qm` + um CLI do próprio projeto. Um MCP próprio e somente leitura fica como extra opcional | Detalhes em §16 |
 | Idiomas e moedas | Seletor na interface | **Só no frontend**: i18next (pt-BR padrão + en-US + es-ES) e conversão de moeda apenas para exibição. Cobrança sempre em BRL | Esclarecimento seu (§0.3). Desenho em §14.4 |
-| Commits | Você revisa e commita | **Não faço commits.** Ao fim de cada fase entrego um resumo para revisão | §17 |
+| Commits | Claude commita ao fim de cada fase (mudado na rev. 6) | **Um commit por fase** na `main`, com resumo para revisão | §17 |
 | Nome e marca | Criar | **Favo** ("favo de mel": cada VPS é uma célula), com logo, paleta e tipografia. ✅ Aprovada | §14.6 |
 | Imagens | + 2 opções, e uma com interface gráfica | **Alpine 3.24, Debian 13, Ubuntu 24.04 LTS minimal** e **Alpine 3.24 Desktop (XFCE)**, cada uma com requisitos mínimos | As três de servidor foram testadas no laboratório. A Desktop será validada no build do template (§2.6, §3.6, §3.7) |
 | Criação da VPS | Igual às plataformas reais, com campos condicionais | Página única com resumo lateral; os campos variam conforme as capacidades da imagem | §14.5 |
@@ -1941,8 +1942,8 @@ Sim, vários da comunidade. Os dois mais relevantes que avaliei:
 ## 17. Fases de implementação
 
 Cada fase termina com **critérios de aceite verificáveis** e com `typecheck` + `lint` + testes verdes.
-**Eu não faço commits** (decisão sua, §0.2): ao fim de cada fase, entrego um resumo das mudanças
-(arquivos, decisões e como testar) para você revisar e commitar.
+**Ao fim de cada fase, o Claude faz um commit** na `main` (decisão da rev. 6, que substitui a do §0.2), depois de conferir
+que nenhum segredo entra, e entrega um resumo das mudanças (arquivos, decisões e como testar).
 
 ### Fase 0: Preparação do laboratório — ✅ maior parte concluída em 2026-09-23
 - [x] Responder às decisões pendentes (§0.2).

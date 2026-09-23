@@ -76,7 +76,9 @@ function api(method, path, params) {
         res.on('data', (c) => (raw += c));
         res.on('end', () => {
           let json = null;
-          try { json = JSON.parse(raw); } catch {}
+          try {
+            json = JSON.parse(raw);
+          } catch {}
           resolve({ status: res.statusCode, message: res.statusMessage, data: json?.data, errors: json?.errors, raw });
         });
       },
@@ -130,7 +132,9 @@ async function waitFor(what, limitMs, fn) {
 }
 
 const results = [];
-function step(msg) { console.log(`[teste ${new Date().toTimeString().slice(0, 8)}] ${msg}`); }
+function step(msg) {
+  console.log(`[teste ${new Date().toTimeString().slice(0, 8)}] ${msg}`);
+}
 function check(name, pass, detail = '') {
   results.push({ name, pass, detail });
   console.log(`  ${pass ? '✅' : '❌'} ${name}${detail ? ` — ${detail}` : ''}`);
@@ -140,7 +144,18 @@ function run(cmd, args, input) {
   const r = spawnSync(cmd, args, { encoding: 'utf8', input, timeout: 120_000 });
   return { code: r.status, out: (r.stdout ?? '') + (r.stderr ?? '') };
 }
-const SSH_OPTS = ['-o', 'BatchMode=yes', '-o', 'ConnectTimeout=5', '-o', 'StrictHostKeyChecking=no', '-o', 'UserKnownHostsFile=/dev/null', '-o', 'LogLevel=ERROR'];
+const SSH_OPTS = [
+  '-o',
+  'BatchMode=yes',
+  '-o',
+  'ConnectTimeout=5',
+  '-o',
+  'StrictHostKeyChecking=no',
+  '-o',
+  'UserKnownHostsFile=/dev/null',
+  '-o',
+  'LogLevel=ERROR',
+];
 const sshVps = (command) => run('ssh', [...SSH_OPTS, '-i', join(homedir(), '.ssh', 'id_ed25519'), `${TEST_USER}@${TEST_IP}`, command]);
 const sshRoot = (command, input) => run('ssh', ['-o', 'BatchMode=yes', `root@${pveHost}`, command], input);
 
@@ -157,11 +172,18 @@ async function main() {
 
   const password = `Fv-${randomBytes(9).toString('base64url')}`;
   const rootPassword = `Rt-${randomBytes(9).toString('base64url')}`;
-  const pubkey = readFileSync(join(homedir(), '.ssh', 'id_ed25519.pub'), 'utf8').replace(/\r\n/g, '\n').trim(); // armadilha C4
+  const pubkey = readFileSync(join(homedir(), '.ssh', 'id_ed25519.pub'), 'utf8')
+    .replace(/\r\n/g, '\n')
+    .trim(); // armadilha C4
 
   const t0 = Date.now();
   await waitTask(
-    await ok('POST', `/nodes/${node}/qemu/${templateId}/clone`, { newid: TEST_VMID, name: `favo-test-${profile.image}`, pool: 'vps-platform', full: 0 }),
+    await ok('POST', `/nodes/${node}/qemu/${templateId}/clone`, {
+      newid: TEST_VMID,
+      name: `favo-test-${profile.image}`,
+      pool: 'vps-platform',
+      full: 0,
+    }),
     'clone',
   );
   check('clone vinculado com o token', true, `${Math.round((Date.now() - t0) / 1000)}s`);
@@ -187,7 +209,11 @@ async function main() {
 
   // Como a plataforma fará: a VM está pronta quando o agente responde (lado do Proxmox). Só depois o Windows é usado.
   // Pingar do Windows durante o boot deixa a entrada ARP "Unreachable" e atrasava o primeiro contato em ~45 s.
-  await waitFor('agent/ping (VM pronta)', 240_000, async () => (await api('POST', `/nodes/${node}/qemu/${TEST_VMID}/agent/ping`)).status === 200);
+  await waitFor(
+    'agent/ping (VM pronta)',
+    240_000,
+    async () => (await api('POST', `/nodes/${node}/qemu/${TEST_VMID}/agent/ping`)).status === 200,
+  );
   await waitFor('ping a partir do Windows', 240_000, async () => /TTL=/i.test(run('ping', ['-n', '1', '-w', '1000', TEST_IP]).out));
   await waitFor('SSH com a chave', 240_000, async () => sshVps('true').code === 0);
   const uptime = Number.parseFloat(sshVps('cat /proc/uptime').out);
@@ -198,11 +224,11 @@ async function main() {
       'cloud-init status --wait >/dev/null 2>&1; cloud-init status',
       `getent hosts ${profile.dnsName} >/dev/null && echo DNS_OK`,
       `${profile.su} -n true 2>/dev/null && echo SU_OK || ${profile.su} true && echo SU_OK`,
-      "df -m / | awk 'NR==2{print \"ROOT_MB=\" $2}'",
+      'df -m / | awk \'NR==2{print "ROOT_MB=" $2}\'',
       // /proc/partitions (KiB): tamanho do disco, da maior partição (a raiz) e espaço não alocado. No Alpine não há
       // tabela de partições (a raiz é o próprio /dev/sda); no Ubuntu, /boot e ESP ocupam ~1 GiB.
-      "awk '$4==\"sda\"{d=$3} $4~/^sda[0-9]+$/{s+=$3; if($3>m)m=$3} END{if(!m)m=d; print \"PART_MB=\" int(m/1024) \" UNALLOC_MB=\" int((d-s*(s>0))/1024*(s>0))}' /proc/partitions",
-      "free -m | awk '/^Mem:/{print \"MEM_USED=\" $3 \" MEM_TOTAL=\" $2}'",
+      'awk \'$4=="sda"{d=$3} $4~/^sda[0-9]+$/{s+=$3; if($3>m)m=$3} END{if(!m)m=d; print "PART_MB=" int(m/1024) " UNALLOC_MB=" int((d-s*(s>0))/1024*(s>0))}\' /proc/partitions',
+      'free -m | awk \'/^Mem:/{print "MEM_USED=" $3 " MEM_TOTAL=" $2}\'',
       'hostname',
     ].join('; '),
   ).out;
@@ -257,7 +283,11 @@ async function main() {
     step(`--keep: VM ${TEST_VMID} mantida (${TEST_USER}@${TEST_IP}, senha ${password})`);
   } else {
     const tStop = Date.now();
-    await waitTask(await ok('POST', `/nodes/${node}/qemu/${TEST_VMID}/status/shutdown`, { timeout: 60, forceStop: 1 }), 'shutdown', 120_000);
+    await waitTask(
+      await ok('POST', `/nodes/${node}/qemu/${TEST_VMID}/status/shutdown`, { timeout: 60, forceStop: 1 }),
+      'shutdown',
+      120_000,
+    );
     check('desligamento (ACPI) com o token', true, `${Math.round((Date.now() - tStop) / 1000)}s`);
     await waitTask(await ok('DELETE', `/nodes/${node}/qemu/${TEST_VMID}`, { purge: 1, 'destroy-unreferenced-disks': 1 }), 'destroy');
     check('exclusão com o token', (await api('GET', `/nodes/${node}/qemu/${TEST_VMID}/status/current`)).status !== 200);

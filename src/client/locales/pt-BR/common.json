@@ -1,0 +1,65 @@
+{
+  "brand": {
+    "name": "Favo",
+    "tagline": "Servidores leves, prontos em um minuto.",
+    "fictional": "Favo é uma marca fictícia. Projeto de demonstração, sem cobranças reais."
+  },
+  "nav": {
+    "home": "Início",
+    "skipToContent": "Pular para o conteúdo"
+  },
+  "language": {
+    "label": "Idioma",
+    "pt-BR": "Português (Brasil)",
+    "en-US": "English (US)",
+    "es-ES": "Español (España)"
+  },
+  "theme": {
+    "label": "Tema",
+    "light": "Claro",
+    "dark": "Escuro",
+    "system": "Automático"
+  },
+  "home": {
+    "eyebrow": "Laboratório Proxmox · KVM",
+    "title": "Sua próxima VPS é uma célula da colmeia.",
+    "subtitle": "Crie servidores Alpine, Debian ou Ubuntu em segundos, acesse pelo navegador e pague só pelo que usar. Tudo de mentirinha, mas com máquinas virtuais de verdade.",
+    "ctaPrimary": "Criar minha VPS",
+    "ctaSecondary": "Ver planos",
+    "comingSoon": "Em breve",
+    "features": {
+      "fast": {
+        "title": "Pronta em um minuto",
+        "description": "Clone vinculado de uma imagem otimizada: a VPS liga e aceita SSH em cerca de 30 segundos."
+      },
+      "console": {
+        "title": "Console no navegador",
+        "description": "Veja a tela da máquina (ou a área de trabalho XFCE) sem instalar nada."
+      },
+      "support": {
+        "title": "Suporte humano",
+        "description": "Converse com a equipe pelo chat, com fila de atendimento em tempo real."
+      }
+    }
+  },
+  "status": {
+    "title": "Estado do sistema",
+    "api": "API",
+    "online": "Online",
+    "offline": "Indisponível",
+    "checking": "Verificando…",
+    "environment": "Ambiente",
+    "uptime": "No ar há {{seconds}} s"
+  },
+  "notFound": {
+    "title": "Página não encontrada",
+    "description": "Essa célula da colmeia está vazia. Confira o endereço ou volte para o início.",
+    "back": "Voltar para o início"
+  },
+  "error": {
+    "title": "Algo deu errado",
+    "description": "Um erro inesperado aconteceu. Tente recarregar a página.",
+    "reload": "Recarregar"
+  },
+  "loading": "Carregando…"
+}

@@ -13,3 +13,6 @@ coverage/
 playwright-report/
 test-results/
 *.log
+
+# Playwright MCP (capturas e snapshots de verificação)
+.playwright-mcp/

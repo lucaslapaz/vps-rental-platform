@@ -1,7 +1,7 @@
 # CLAUDE.md — Favo (VPS Rental Platform)
 
 Contexto para o Claude implementar este projeto em conversas novas. **O plano completo e as decisões estão em
-[docs/PLANO_DE_IMPLEMENTACAO.md](docs/PLANO_DE_IMPLEMENTACAO.md)** (revisão 5, 2026-09-23). Este arquivo resume o
+[docs/PLANO_DE_IMPLEMENTACAO.md](docs/PLANO_DE_IMPLEMENTACAO.md)** (revisão 8, 2026-09-23). Este arquivo resume o
 que não dá para deduzir do código: regras combinadas com o usuário, estado do ambiente, armadilhas já encontradas
 (com a solução) e comandos que já foram testados.
 
@@ -17,8 +17,14 @@ que não dá para deduzir do código: regras combinadas com o usuário, estado d
   proxy do console e o React 19 (Vite 8, Tailwind 4, shadcn). TypeScript 7, tsyringe, Prisma 7 + MySQL 8.4, Biome.
 - Fases (§17 do plano): 0 laboratório → 1 fundação → 2 banco → 3 auth/CSRF/RBAC → 4 Proxmox → 5 catálogo/pagamento →
   6 provisionamento → 7 página da VPS + console → 8 suporte → 9 qualidade → 10 extras.
-- **Situação atual:** Fase 0 concluída (plano §2.7). Scripts do laboratório em `scripts/pve/` (`bootstrap.sh`,
-  `build-template.sh`, `test-template.mjs`). A próxima é a Fase 1.
+- **Situação atual:** Fases 0 e 1 concluídas. Fase 0: laboratório (plano §2.7), scripts em `scripts/pve/`. Fase 1:
+  fundação (servidor único Express+Vite, React com marca Favo, i18n, tema, Vitest, Biome). A próxima é a Fase 2 (banco).
+- **Comandos:** `npm run dev` (porta 3000, HMR na mesma porta) · `npm run build && npm start` · `npm run typecheck` ·
+  `npm run lint` · `npm test` · `npm run deps:stable -- <pkg>` · `npm run deps:check`.
+- **Convenções do código:** servidor com imports relativos **com extensão `.ts`** (reescritos para `.js` no build; nada de
+  alias no servidor). Cliente com aliases `@/` (src/client) e `@shared/` (src/shared). Textos de tela só em
+  `src/client/locales/<idioma>/common.json` (o pt-BR é a fonte dos tipos; um teste confere que os 3 idiomas têm as mesmas chaves).
+  Cores só por tokens (`src/client/styles/theme.css`; `text-link` para texto de destaque, **nunca** `text-primary` sobre fundo claro).
 
 ## 2. Regras combinadas com o usuário (obrigatórias)
 
@@ -29,7 +35,7 @@ que não dá para deduzir do código: regras combinadas com o usuário, estado d
    no `.gitignore`). Depois do commit, entregar um resumo (arquivos, decisões, como testar). Nunca usar
    `--no-verify` nem reescrever o histórico (`push --force`, `reset --hard`, `rebase`) sem o usuário pedir.
 3. **Dependências — só a maior versão ESTÁVEL** (sem `-rc`, `-beta`, `-dev`…). A tag `latest` do npm **não** é critério.
-   - Conferir antes: `npm run deps:stable -- <pkg>` (enquanto `scripts/deps/` não existir, use o script da §7.1 abaixo).
+   - Conferir antes: `npm run deps:stable -- <pkg>` (`scripts/deps/stable-versions.mjs`; depois de CLIs que instalam pacotes, `npm run deps:check`).
    - Instalar **sempre com versão exata**: `npm install <pkg>@<versão>` (o projeto terá `save-exact=true` no `.npmrc`).
    - **Nunca editar dependências do `package.json` à mão.** Só `npm install`/`npm uninstall`; outros campos com `npm pkg set`.
    - **Proibido `--force`/`--legacy-peer-deps`.** Em conflito de peer dependency, trocar de ferramenta ou perguntar ao usuário.
@@ -199,7 +205,26 @@ que não dá para deduzir do código: regras combinadas com o usuário, estado d
   Com o proxy do console (`ws`, `noServer`) no mesmo `http.Server`, configure **`destroyUpgrade: false`**.
 - **N8.** `@novnc/novnc` 1.7.0, mas os tipos (`@types/novnc__novnc`) estão na 1.6.0.
 - **N9.** `react-router` 8.4 exige Node >= 22.22. `react-i18next` 17.0.15 e `i18next` 26.4.2 aceitam TS `^7`.
-- **N10.** `shadcn` CLI 4.21.0 (use `npx shadcn@4.21.0 …` com a versão explícita).
+- **N10.** `shadcn` CLI 4.21.0 (use `npx shadcn@4.21.0 …` com a versão explícita). Não interativo:
+  `npx shadcn@4.21.0 init -t vite -b radix -p nova -y --no-monorepo` (presets: `nova, vega, maia, lyra, mira, luma, sera, rhea`;
+  `radix-nova` é inválido) e `npx shadcn@4.21.0 add <comp…> -y < /dev/null`. O init instalou `cn` (pacote **legítimo** do shadcn,
+  substitui `clsx` + `tailwind-merge`, que foram removidos), a fonte Geist (removida) e o próprio `shadcn` em `dependencies`
+  (movido para `devDependencies`: só o CSS o usa no build). O botão gerado usava `text-primary` na variante `link` (trocado por `text-link`).
+- **N11. `tsx` lê o `tsconfig.json` da raiz**, que não tem decorators: o `dev` usa `tsx watch --tsconfig tsconfig.server.json`
+  (sem isso: *"Parameter decorators only work when experimental decorators are enabled"*).
+- **N12. Vitest/Vite 8 transformam TS com o oxc**, não com o esbuild: decorators via `oxc: { decorator: { legacy: true } }` no
+  `vitest.config.ts`. O `emitDecoratorMetadata` fica **desligado de propósito** (igual ao tsx), para um `@inject` esquecido quebrar os testes.
+- **N13. CSP de produção × Vite:** o Vite embute como `data:` os arquivos < 4 KiB, inclusive subconjuntos de fontes → bloqueados por
+  `font-src 'self'`. Solução: `build.assetsInlineLimit` com callback que devolve `false` para fontes. Em dev, o `@vite/client` cria
+  um worker via `blob:` → `worker-src 'self' blob:` só em dev. Tema sem "flash": `public/theme-init.js` (arquivo externo, pois
+  `script-src 'self'` proíbe script inline).
+- **N14. TS 7 com `module: nodenext`:** importar JSON exige `with { type: 'json' }`. Os imports `.ts` do servidor usam
+  `allowImportingTsExtensions` + `rewriteRelativeImportExtensions`. `rootDir: src` → o build sai em `dist/server` e `dist/shared`.
+- **N15.** `dotenv` 18 é só CJS e loga por padrão: `config({ path, quiet: true })`.
+- **N16. Cache do npx corrompido** (`ECOMPROMISED` / `Cannot find module …\_npx\<hash>\…`): apague só
+  `%LOCALAPPDATA%\npm-cache\_npx\<hash>` e rode de novo.
+- **N17.** `execFileSync('npm', …, { shell: true })` gera o aviso `DEP0190` no Node 24; os scripts de `scripts/deps/` usam
+  `execSync` com o nome do pacote validado por regex.
 
 ### Ferramentas do Claude neste ambiente
 - **T1.** Heredocs longos no Bash (Git Bash) falharam com `unexpected EOF while looking for matching '`. Para arquivos grandes,
@@ -220,6 +245,11 @@ que não dá para deduzir do código: regras combinadas com o usuário, estado d
 - **T11.** Script enviado por `ssh host 'bash -s' < script`: qualquer comando interno que leia o stdin (outro `ssh`, por exemplo)
   **consome o resto do script**. Para scripts assim, copie com `scp` e execute (é o que o `build-template.sh` faz) ou use `ssh -n`.
 - **T12.** `core.autocrlf=true` neste Windows: o `.gitattributes` força `*.sh` com LF (CRLF quebra o bash no Proxmox).
+- **T13. Parar o `npm run dev`/`npm start` em segundo plano** (TaskStop) mata o `npm`, mas o `node` filho **continua ouvindo na
+  porta 3000** (o próximo start falha, e o curl responde o servidor antigo). Mate pela porta:
+  `powershell -NoProfile -Command "Get-NetTCPConnection -LocalPort 3000 -State Listen | % { Stop-Process -Id $_.OwningProcess -Force }"`.
+- **T14. Playwright MCP:** grava capturas e snapshots em `.playwright-mcp/` (no `.gitignore`). Salve capturas em `test-results/`.
+  `browser_console_messages` com `all: true` mostra o histórico da sessão inteira, não só da página atual.
 
 ## 6. Decisões de arquitetura mais importantes (detalhes no plano)
 
@@ -236,7 +266,7 @@ que não dá para deduzir do código: regras combinadas com o usuário, estado d
 
 ## 7. Receitas testadas
 
-### 7.1 Maior versão estável de pacotes (até existir `scripts/deps/`)
+### 7.1 Maior versão estável de pacotes (versão avulsa; no projeto use `npm run deps:stable`)
 ```js
 // node stable.mjs <pkg> [<pkg>...]
 import { execSync } from 'node:child_process';

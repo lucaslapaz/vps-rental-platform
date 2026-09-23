@@ -1,0 +1,20 @@
+{
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "module": "nodenext",
+    "moduleResolution": "nodenext",
+    "types": ["node"],
+    "rootDir": "src",
+    "outDir": "dist",
+    "sourceMap": true,
+    // tsyringe: decorators legados. O código NÃO depende do emitDecoratorMetadata (tsx/esbuild não emite),
+    // por isso todo parâmetro de construtor usa @inject(TOKEN) explícito (CLAUDE.md, regra 5).
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
+    // Imports relativos com extensão .ts (funcionam no tsx e no vitest) e reescritos para .js no build.
+    "allowImportingTsExtensions": true,
+    "rewriteRelativeImportExtensions": true
+  },
+  "include": ["src/server", "src/shared"],
+  "exclude": ["**/*.test.ts"]
+}

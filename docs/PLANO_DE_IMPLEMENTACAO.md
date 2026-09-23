@@ -14,6 +14,7 @@
 | 4 | 2026-09-23 | Respostas da revisão 4 (§0.4). **Marca fictícia Favo** e identidade visual (§14.6). **Três imagens** (Alpine, Debian 13, Ubuntu 24.04), **testadas** no laboratório (§2.6, §3.7). **Console noVNC** no núcleo (§10.5). **Senha root e SSH pelo guest agent** (§10.6). Tela de criação como nas plataformas reais (§14.5). **RBAC: uma role por usuário, verificação por permissão** (§9.7) |
 | 5 | 2026-09-23 | Respostas da revisão 5 (§0.5): **marca Favo aprovada**; **imagem Alpine Desktop (XFCE)** entra no catálogo (template 9003, plano Medium de 1 GB); **`CLAUDE.md` criado** na raiz com o contexto e as lições aprendidas. Nenhuma decisão pendente (§20) |
 | 6 | 2026-09-23 | Commits: o Claude passa a **commitar ao fim de cada fase** (substitui a decisão do §0.2). Ajustados o §1, o §17 e o `CLAUDE.md` |
+| 8 | 2026-09-23 | **Fase 1 concluída** (§17): fundação com servidor único, marca Favo, i18n e tema. Ajustes: `tsx --tsconfig tsconfig.server.json` (decorators), `oxc.decorator.legacy` no Vitest, pacote `cn` do shadcn no lugar de `clsx` + `tailwind-merge`, fontes nunca embutidas como `data:` (CSP), `worker-src blob:` só em dev, `tsconfig.base/server/client/test` |
 | 7 | 2026-09-23 | **Fase 0 concluída** (§2.7): disco +10 GB, `bootstrap.sh`, templates 9000–9003 e aceite com o token. Decisões novas: **MAC derivado do IP** (§3.3), **TLS validado pelo nome do nó** porque o certificado não tem o IP no SAN (§3.5, §10.1), build com upgrade explícito e remoção do usuário do build (§3.6) |
 
 ## Sumário
@@ -639,7 +640,7 @@ roda de novo e **vale a versão que ele indicar naquele momento**, não esta tab
 | @tanstack/react-query | 5.103.2 | 5.103.2 | Cache do estado do servidor (`/auth/me`, VPS, faturas) |
 | tailwindcss / @tailwindcss/vite | 4.3.3 | 4.3.3 | |
 | shadcn (CLI) | 4.21.0 | 4.21.0 | `npx shadcn@4.21.0 init` / `add …` (versão explícita também no `npx`) |
-| lucide-react · clsx · tailwind-merge · class-variance-authority · tw-animate-css · radix-ui | 1.47.0 · 2.1.1 · 3.7.0 · 0.7.1 · 1.4.0 · 1.6.7 | iguais | Dependências que o shadcn instala. **Conferidas depois** com `deps:check` |
+| lucide-react · cn · class-variance-authority · tw-animate-css · radix-ui | 1.47.0 · 0.4.0 · 0.7.1 · 1.4.0 · 1.6.7 | iguais | Dependências que o shadcn instala. **Conferidas depois** com `deps:check`. Rev. 8: a CLI 4.21 usa o pacote `cn` (do próprio shadcn) no lugar de `clsx` + `tailwind-merge`, que foram removidos |
 | recharts · sonner | 3.10.1 · 2.0.8 | iguais | Gráficos (componente `chart` do shadcn) e toasts |
 | react-hook-form / @hookform/resolvers | 7.88.0 / 5.9.1 | iguais | Formulários com validação zod |
 | zod | 4.6.5 | 4.6.5 | Schemas compartilhados entre cliente e servidor |
@@ -837,7 +838,7 @@ Resultado esperado:
 ```jsonc
 {
   "scripts": {
-    "dev":               "cross-env NODE_ENV=development tsx watch --clear-screen=false src/server/main.ts",
+    "dev":               "cross-env NODE_ENV=development tsx watch --clear-screen=false --tsconfig tsconfig.server.json --exclude \"src/client/**\" src/server/main.ts",
     "build":             "npm run build:client && npm run build:server",
     "build:client":      "cross-env NODE_ENV=production vite build",
     "build:server":      "tsc -p tsconfig.server.json",
@@ -2022,25 +2023,32 @@ que nenhum segredo entra, e entrega um resumo das mudanças (arquivos, decisões
 nomes, responde ao `agent/ping`, aceita `agent/set-user-password` para root, mostra o `login:` no VGA e é excluída com sucesso.
 Com o mesmo token, `DELETE /nodes/primeiro/qemu/9000` retorna **403** (os templates estão protegidos).
 
-### Fase 1: Fundação do projeto
-- [ ] `npm init -y` + `npm config set save-exact=true --location=project` + campos via `npm pkg set` (`type`, `engines`, `private`).
-- [ ] `scripts/deps/stable-versions.mjs` e `check-installed.mjs` **antes de qualquer instalação** (§4.1).
-- [ ] Instalar cada grupo de pacotes com `npm install <pkg>@<maior estável>`, depois de conferir com `npm run deps:stable`.
-- [ ] TypeScript 7.0.2 (strict), Biome (`biome.json`), `.editorconfig`, `.env.example` (o `.gitignore` já existe).
-- [ ] Manter o `CLAUDE.md` (já criado na rev. 5) atualizado com as convenções que surgirem.
-- [ ] `config/env.ts` com zod (falha no boot se faltar alguma variável).
-- [ ] Express 5 + Vite middleware + fallback SPA + estáticos de produção (§6).
-- [ ] pino, errorHandler, `AppError`, helmet (CSP por ambiente), `GET /api/health`.
-- [ ] tsyringe (tokens, register), `reflect-metadata`.
-- [ ] Cliente: React 19 + Tailwind 4 + `shadcn init` + React Router + TanStack Query + layout base.
-- [ ] **i18n desde o início** (§14.4): i18next + react-i18next + detector, `locales/pt-BR`, chaves tipadas, seletor de idioma no layout.
-- [ ] **Marca Favo** (§14.6): tokens de cor (claro/escuro) no tema do shadcn, fontes auto-hospedadas, logo e favicon em SVG, alternância de tema, rodapé de "marca fictícia".
-- [ ] Vitest configurado com um teste de exemplo.
+### Fase 1: Fundação do projeto — ✅ concluída em 2026-09-23
+- [x] `npm init -y` + `npm config set save-exact=true --location=project` + campos via `npm pkg set` (`type`, `engines`, `private`).
+- [x] `scripts/deps/stable-versions.mjs` e `check-installed.mjs` **antes de qualquer instalação** (§4.1).
+- [x] Instalar cada grupo de pacotes com `npm install <pkg>@<maior estável>`, depois de conferir com `npm run deps:stable`.
+- [x] TypeScript 7.0.2 (strict), Biome (`biome.json`), `.editorconfig`, `.env.example` (o `.gitignore` já existe).
+- [x] Manter o `CLAUDE.md` (já criado na rev. 5) atualizado com as convenções que surgirem.
+- [x] `config/env.ts` com zod (falha no boot se faltar alguma variável).
+- [x] Express 5 + Vite middleware + fallback SPA + estáticos de produção (§6).
+- [x] pino, errorHandler, `AppError`, helmet (CSP por ambiente), `GET /api/health`.
+- [x] tsyringe (tokens, register), `reflect-metadata`.
+- [x] Cliente: React 19 + Tailwind 4 + `shadcn init` + React Router + TanStack Query + layout base.
+- [x] **i18n desde o início** (§14.4): i18next + react-i18next + detector, `locales/pt-BR`, chaves tipadas, seletor de idioma no layout.
+- [x] **Marca Favo** (§14.6): tokens de cor (claro/escuro) no tema do shadcn, fontes auto-hospedadas, logo e favicon em SVG, alternância de tema, rodapé de "marca fictícia".
+- [x] Vitest configurado com um teste de exemplo.
 
 **Aceite:** `npm run dev` → **uma porta**, página React com HMR funcionando + `/api/health` 200.
 `npm run build && npm start` → mesma página servida a partir de `dist/`. Verificado com o Playwright MCP.
 Trocar o idioma no seletor altera os textos sem recarregar a página. O layout aparece com a marca Favo nos modos claro e escuro. `npm run deps:check` passa, e o `git diff` do
 `package.json` só mostra mudanças feitas por comandos npm.
+
+**Resultado (rev. 8):** aceite verificado com o Playwright MCP: dev numa porta só com HMR (alteração aplicada sem recarregar),
+`/api/health` 200, 404 em JSON para `/api/*` e 404 da SPA nas outras rotas, produção a partir de `dist/` com CSP estrita e
+**console sem nenhum erro**, idioma trocado sem recarregar (pt-BR → en-US → es-ES, com `<html lang>`), tema claro/escuro/automático
+sem "flash" e layout conferido em 390 px. `typecheck`, `lint` (Biome), 7 testes (Vitest + supertest) e `deps:check` (42 dependências) verdes.
+Diferenças em relação ao plano: o logo é um componente React (`components/brand/Logo.tsx`, herda as cores do tema) em vez de
+`assets/brand/*.svg`; o favicon está em `src/client/public/favicon.svg`; o seletor de **moeda** fica para a Fase 5, junto com os preços.
 
 ### Fase 2: Banco de dados
 - [ ] Prisma 7 + adapter MariaDB + `prisma.config.ts` por ambiente (os bancos já existem).

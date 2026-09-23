@@ -1,0 +1,65 @@
+{
+  "brand": {
+    "name": "Favo",
+    "tagline": "Servidores ligeros, listos en un minuto.",
+    "fictional": "Favo es una marca ficticia. Proyecto de demostración, sin cobros reales."
+  },
+  "nav": {
+    "home": "Inicio",
+    "skipToContent": "Saltar al contenido"
+  },
+  "language": {
+    "label": "Idioma",
+    "pt-BR": "Português (Brasil)",
+    "en-US": "English (US)",
+    "es-ES": "Español (España)"
+  },
+  "theme": {
+    "label": "Tema",
+    "light": "Claro",
+    "dark": "Oscuro",
+    "system": "Automático"
+  },
+  "home": {
+    "eyebrow": "Laboratorio Proxmox · KVM",
+    "title": "Tu próximo VPS es una celda de la colmena.",
+    "subtitle": "Crea servidores Alpine, Debian o Ubuntu en segundos, accede desde el navegador y paga solo por lo que uses. Los cobros son de mentira; las máquinas virtuales, de verdad.",
+    "ctaPrimary": "Crear mi VPS",
+    "ctaSecondary": "Ver planes",
+    "comingSoon": "Próximamente",
+    "features": {
+      "fast": {
+        "title": "Listo en un minuto",
+        "description": "Clon enlazado de una imagen optimizada: el VPS arranca y acepta SSH en unos 30 segundos."
+      },
+      "console": {
+        "title": "Consola en el navegador",
+        "description": "Mira la pantalla de la máquina (o el escritorio XFCE) sin instalar nada."
+      },
+      "support": {
+        "title": "Soporte humano",
+        "description": "Habla con el equipo por chat, con cola de atención en tiempo real."
+      }
+    }
+  },
+  "status": {
+    "title": "Estado del sistema",
+    "api": "API",
+    "online": "En línea",
+    "offline": "No disponible",
+    "checking": "Comprobando…",
+    "environment": "Entorno",
+    "uptime": "Activo desde hace {{seconds}} s"
+  },
+  "notFound": {
+    "title": "Página no encontrada",
+    "description": "Esta celda de la colmena está vacía. Revisa la dirección o vuelve al inicio.",
+    "back": "Volver al inicio"
+  },
+  "error": {
+    "title": "Algo salió mal",
+    "description": "Ocurrió un error inesperado. Intenta recargar la página.",
+    "reload": "Recargar"
+  },
+  "loading": "Cargando…"
+}

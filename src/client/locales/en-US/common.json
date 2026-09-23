@@ -1,0 +1,65 @@
+{
+  "brand": {
+    "name": "Favo",
+    "tagline": "Lightweight servers, ready in a minute.",
+    "fictional": "Favo is a fictional brand. Demo project, no real charges."
+  },
+  "nav": {
+    "home": "Home",
+    "skipToContent": "Skip to content"
+  },
+  "language": {
+    "label": "Language",
+    "pt-BR": "Português (Brasil)",
+    "en-US": "English (US)",
+    "es-ES": "Español (España)"
+  },
+  "theme": {
+    "label": "Theme",
+    "light": "Light",
+    "dark": "Dark",
+    "system": "System"
+  },
+  "home": {
+    "eyebrow": "Proxmox lab · KVM",
+    "title": "Your next VPS is a cell in the hive.",
+    "subtitle": "Spin up Alpine, Debian or Ubuntu servers in seconds, reach them from your browser and pay only for what you use. The billing is pretend, the virtual machines are real.",
+    "ctaPrimary": "Create my VPS",
+    "ctaSecondary": "See plans",
+    "comingSoon": "Coming soon",
+    "features": {
+      "fast": {
+        "title": "Ready in a minute",
+        "description": "A linked clone of an optimized image: the VPS boots and accepts SSH in about 30 seconds."
+      },
+      "console": {
+        "title": "Console in your browser",
+        "description": "See the machine's screen (or the XFCE desktop) without installing anything."
+      },
+      "support": {
+        "title": "Human support",
+        "description": "Chat with the team, with a live support queue."
+      }
+    }
+  },
+  "status": {
+    "title": "System status",
+    "api": "API",
+    "online": "Online",
+    "offline": "Unavailable",
+    "checking": "Checking…",
+    "environment": "Environment",
+    "uptime": "Up for {{seconds}} s"
+  },
+  "notFound": {
+    "title": "Page not found",
+    "description": "This cell of the hive is empty. Check the address or go back home.",
+    "back": "Back to home"
+  },
+  "error": {
+    "title": "Something went wrong",
+    "description": "An unexpected error happened. Try reloading the page.",
+    "reload": "Reload"
+  },
+  "loading": "Loading…"
+}

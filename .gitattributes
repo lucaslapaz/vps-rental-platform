@@ -1,5 +1,5 @@
-# Auto detect text files and perform LF normalization
-* text=auto
+# Texto sempre com LF (no repositório e na cópia de trabalho), mesmo com core.autocrlf=true: o Biome e o bash exigem LF.
+* text=auto eol=lf
 
 # Scripts de shell rodam no Proxmox e nas VMs: sempre LF, mesmo com core.autocrlf=true no Windows.
 *.sh text eol=lf

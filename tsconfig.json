@@ -1,0 +1,11 @@
+{
+  // Raiz: só referências + os aliases (o shadcn CLI lê os "paths" daqui). Cada parte tem o seu tsconfig.
+  "files": [],
+  "references": [{ "path": "./tsconfig.server.json" }, { "path": "./tsconfig.client.json" }],
+  "compilerOptions": {
+    "paths": {
+      "@/*": ["./src/client/*"],
+      "@shared/*": ["./src/shared/*"]
+    }
+  }
+}

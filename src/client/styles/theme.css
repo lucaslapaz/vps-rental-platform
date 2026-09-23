@@ -1,0 +1,91 @@
+/*
+ * Tokens da marca Favo (plano §14.6), nos nomes de variáveis que o shadcn usa.
+ * Regra: o amarelo "mel" (--primary) nunca é cor de texto sobre fundo claro; para texto de destaque use --link.
+ * Status sempre com ponto + texto, nunca só com cor.
+ */
+:root {
+  --background: #faf8f3;
+  --foreground: #1c1a17;
+  --card: #ffffff;
+  --card-foreground: #1c1a17;
+  --popover: #ffffff;
+  --popover-foreground: #1c1a17;
+  --primary: #f2a516;
+  --primary-foreground: #1a1300;
+  --secondary: #f1eee6;
+  --secondary-foreground: #1c1a17;
+  --muted: #f1eee6;
+  --muted-foreground: #6b665c;
+  --accent: #f7ecd2;
+  --accent-foreground: #1c1a17;
+  --destructive: #c8372d;
+  --border: #e6e1d6;
+  --input: #e6e1d6;
+  --ring: #f2a516;
+  --link: #9a5b00;
+  --radius: 0.625rem; /* 10 px */
+
+  --status-running: #1f9d55;
+  --status-pending: #c98300;
+  --status-stopped: #6b7280;
+  --status-error: #c8372d;
+  --status-suspended: #6d4ac9;
+
+  --chart-1: #f2a516;
+  --chart-2: #1f9d55;
+  --chart-3: #6d4ac9;
+  --chart-4: #c98300;
+  --chart-5: #6b7280;
+
+  --sidebar: #ffffff;
+  --sidebar-foreground: #1c1a17;
+  --sidebar-primary: #f2a516;
+  --sidebar-primary-foreground: #1a1300;
+  --sidebar-accent: #f7ecd2;
+  --sidebar-accent-foreground: #1c1a17;
+  --sidebar-border: #e6e1d6;
+  --sidebar-ring: #f2a516;
+}
+
+.dark {
+  --background: #111214;
+  --foreground: #edeae3;
+  --card: #1a1b1f;
+  --card-foreground: #edeae3;
+  --popover: #1a1b1f;
+  --popover-foreground: #edeae3;
+  --primary: #f5b83d;
+  --primary-foreground: #1a1300;
+  --secondary: #202227;
+  --secondary-foreground: #edeae3;
+  --muted: #202227;
+  --muted-foreground: #a19c92;
+  --accent: #2a2720;
+  --accent-foreground: #edeae3;
+  --destructive: #f06a5f;
+  --border: #2b2d33;
+  --input: #2b2d33;
+  --ring: #f5b83d;
+  --link: #f7c35f;
+
+  --status-running: #3dc47a;
+  --status-pending: #f5b83d;
+  --status-stopped: #9ca3af;
+  --status-error: #f06a5f;
+  --status-suspended: #a08bf0;
+
+  --chart-1: #f5b83d;
+  --chart-2: #3dc47a;
+  --chart-3: #a08bf0;
+  --chart-4: #f7c35f;
+  --chart-5: #9ca3af;
+
+  --sidebar: #1a1b1f;
+  --sidebar-foreground: #edeae3;
+  --sidebar-primary: #f5b83d;
+  --sidebar-primary-foreground: #1a1300;
+  --sidebar-accent: #2a2720;
+  --sidebar-accent-foreground: #edeae3;
+  --sidebar-border: #2b2d33;
+  --sidebar-ring: #f5b83d;
+}

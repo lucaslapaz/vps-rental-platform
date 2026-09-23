@@ -1,0 +1,15 @@
+# Dependências e builds
+node_modules/
+dist/
+src/server/generated/
+
+# Variáveis de ambiente e segredos (apenas o .env.example é versionado)
+.env*
+!.env.example
+certs/
+
+# Testes e ferramentas
+coverage/
+playwright-report/
+test-results/
+*.log

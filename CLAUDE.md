@@ -356,6 +356,10 @@ que não dá para deduzir do código: regras combinadas com o usuário, estado d
 - **N34. Um socket só por aba:** o `RealtimeProvider` (em `AppLayout`) abre o Socket.IO e o expõe por `useSocket()`; as telas
   (chat, fila) registram os próprios eventos nele. O efeito dependia do `t` do i18next, que muda ao trocar de idioma: **trocar o
   idioma derrubava e reabria o socket**. Hoje o `t` fica numa ref. Eventos de chat vão para `user:<id>` (participantes lidos do banco).
+- **N35. Testes intermitentes por falta de RAM:** cada cadastro/login faz um argon2id (64 MiB por hash). Com o Proxmox, VPS e
+  navegadores do Playwright abertos, o Windows fica sem memória e um teste que leva <1 s passou dos 5 s padrão do Vitest (2 falhas
+  de console na Fase 8 e 3 na Fase 6, sem reproduzir depois). O `vitest.config.ts` usa `testTimeout: 15_000`. **Rode a verificação
+  final antes do commit com `&&`** (o commit da Fase 8 saiu com essas 2 falhas porque o comando usava `;`).
 - **N17.** `execFileSync('npm', …, { shell: true })` gera o aviso `DEP0190` no Node 24; os scripts de `scripts/deps/` usam
   `execSync` com o nome do pacote validado por regex.
 

@@ -20,5 +20,9 @@ export default defineConfig({
     globalSetup: ['tests/globalSetup.ts'],
     // Os testes de integração compartilham o banco de teste: arquivos em sequência evitam interferência.
     fileParallelism: false,
+    // Cada cadastro/login faz um argon2id (64 MiB por hash). Com o Proxmox ligado o Windows fica com ~0,5 GB livres e,
+    // sob pressão de memória, um teste de integração que levava <1 s passou de 5 s (padrão do Vitest). CLAUDE.md N35.
+    testTimeout: 15_000,
+    hookTimeout: 30_000,
   },
 });

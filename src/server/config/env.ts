@@ -21,6 +21,15 @@ const schema = z.object({
   DATABASE_URL: z.url({ protocol: /^mysql$/, error: 'precisa ser mysql://usuario:senha@host:porta/banco' }),
   /** Tamanho do pool de conexões do adapter MariaDB (plano §8.2). */
   DB_POOL_LIMIT: z.coerce.number().int().min(1).max(50).default(5),
+
+  // ── Sessão e CSRF (plano §9) ──
+  /** Segredo do HMAC do token CSRF (Signed Double-Submit Cookie). Trocar o segredo invalida todos os tokens. */
+  CSRF_SECRET: z.string().min(32, 'precisa ter pelo menos 32 caracteres'),
+  CSRF_TTL_HOURS: z.coerce.number().int().min(1).max(72).default(12),
+  SESSION_IDLE_TTL_HOURS: z.coerce.number().int().min(1).max(720).default(24),
+  SESSION_ABSOLUTE_TTL_DAYS: z.coerce.number().int().min(1).max(90).default(7),
+  /** true quando servido por HTTPS: cookies com Secure e prefixo __Host- (plano §9.3). */
+  COOKIE_SECURE: z.stringbool().default(false),
 });
 
 export type Env = z.infer<typeof schema> & { APP_ORIGIN: string };

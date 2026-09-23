@@ -1,0 +1,46 @@
+{
+  "title": "Minha conta",
+  "subtitle": "Seus dados, sua senha, as sessões abertas e as chaves SSH.",
+  "profile": {
+    "title": "Perfil",
+    "name": "Nome",
+    "email": "E-mail",
+    "role": "Tipo de conta"
+  },
+  "password": {
+    "title": "Trocar senha",
+    "description": "Ao trocar a senha, as suas outras sessões são encerradas.",
+    "current": "Senha atual",
+    "new": "Nova senha",
+    "submit": "Trocar senha",
+    "success_one": "Senha alterada. {{count}} outra sessão foi encerrada.",
+    "success_other": "Senha alterada. {{count}} outras sessões foram encerradas."
+  },
+  "sessions": {
+    "title": "Sessões ativas",
+    "description": "Onde a sua conta está conectada agora. Encerre as que você não reconhece.",
+    "device": "Dispositivo",
+    "lastSeen": "Último acesso",
+    "ip": "IP",
+    "current": "Esta sessão",
+    "revoke": "Encerrar",
+    "revoked": "Sessão encerrada.",
+    "unknownDevice": "Dispositivo desconhecido"
+  },
+  "sshKeys": {
+    "title": "Chaves SSH",
+    "description": "Chave SSH: um jeito mais seguro que senha de entrar no servidor. As chaves salvas aqui podem ser escolhidas ao criar uma VPS.",
+    "name": "Nome da chave",
+    "namePlaceholder": "notebook-casa",
+    "publicKey": "Chave pública",
+    "publicKeyHint": "Cole o conteúdo do arquivo .pub (ex.: ~/.ssh/id_ed25519.pub).",
+    "add": "Adicionar chave",
+    "added": "Chave adicionada.",
+    "removed": "Chave removida.",
+    "empty": "Nenhuma chave SSH ainda.",
+    "fingerprint": "Fingerprint",
+    "delete": "Remover",
+    "confirmTitle": "Remover a chave “{{name}}”?",
+    "confirmDescription": "As VPS que já usam essa chave continuam com ela; ela só deixa de aparecer nas próximas criações."
+  }
+}

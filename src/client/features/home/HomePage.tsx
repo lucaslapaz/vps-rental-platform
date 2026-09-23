@@ -1,5 +1,6 @@
 import { Headset, MonitorPlay, Timer } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import { Link } from 'react-router';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -26,9 +27,9 @@ export function HomePage() {
           </h1>
           <p className="max-w-prose text-lg text-muted-foreground">{t('home.subtitle')}</p>
           <div className="flex flex-wrap items-center gap-3">
-            {/* As telas de criação e de planos chegam nas fases 3 e 5. */}
-            <Button size="lg" disabled>
-              {t('home.ctaPrimary')}
+            {/* A tela de planos chega na Fase 5. */}
+            <Button size="lg" asChild>
+              <Link to="/register">{t('home.ctaPrimary')}</Link>
             </Button>
             <Button size="lg" variant="outline" disabled>
               {t('home.ctaSecondary')}

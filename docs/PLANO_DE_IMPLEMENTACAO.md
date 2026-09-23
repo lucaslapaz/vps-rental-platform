@@ -14,6 +14,7 @@
 | 4 | 2026-09-23 | Respostas da revisão 4 (§0.4). **Marca fictícia Favo** e identidade visual (§14.6). **Três imagens** (Alpine, Debian 13, Ubuntu 24.04), **testadas** no laboratório (§2.6, §3.7). **Console noVNC** no núcleo (§10.5). **Senha root e SSH pelo guest agent** (§10.6). Tela de criação como nas plataformas reais (§14.5). **RBAC: uma role por usuário, verificação por permissão** (§9.7) |
 | 5 | 2026-09-23 | Respostas da revisão 5 (§0.5): **marca Favo aprovada**; **imagem Alpine Desktop (XFCE)** entra no catálogo (template 9003, plano Medium de 1 GB); **`CLAUDE.md` criado** na raiz com o contexto e as lições aprendidas. Nenhuma decisão pendente (§20) |
 | 6 | 2026-09-23 | Commits: o Claude passa a **commitar ao fim de cada fase** (substitui a decisão do §0.2). Ajustados o §1, o §17 e o `CLAUDE.md` |
+| 10 | 2026-09-23 | **Fase 3 concluída** (§17): sessão, CSRF assinado, RBAC, conta, chaves SSH e administração de usuários. Detalhes da implementação em §9.8 (origem aceita, pré-sessão, validação real das chaves SSH, textos em namespaces) |
 | 9 | 2026-09-23 | **Fase 2 concluída** (§17): Prisma 7.10.0 + adapter MariaDB, migration `init`, seeds idempotentes. Ajustes: tabelas com `@@map` em snake_case (MySQL do Windows com `lower_case_table_names=1`), `IpAddress.macAddress` (MAC derivado do IP), pool `.200–.228`, plano **Medium** no seed, proteção do Prisma contra agentes de IA em comandos destrutivos (§19) |
 | 8 | 2026-09-23 | **Fase 1 concluída** (§17): fundação com servidor único, marca Favo, i18n e tema. Ajustes: `tsx --tsconfig tsconfig.server.json` (decorators), `oxc.decorator.legacy` no Vitest, pacote `cn` do shadcn no lugar de `clsx` + `tailwind-merge`, fontes nunca embutidas como `data:` (CSP), `worker-src blob:` só em dev, `tsconfig.base/server/client/test` |
 | 7 | 2026-09-23 | **Fase 0 concluída** (§2.7): disco +10 GB, `bootstrap.sh`, templates 9000–9003 e aceite com o token. Decisões novas: **MAC derivado do IP** (§3.3), **TLS validado pelo nome do nó** porque o certificado não tem o IP no SAN (§3.5, §10.1), build com upgrade explícito e remoção do usuário do build (§3.6) |
@@ -1447,6 +1448,26 @@ da revisão 1 **foi trocado por `User.roleId`**.
   afetado, para as novas permissões valerem na hora. Tudo vai para o `AuditLog`.
 - **Editor de roles** (criar roles e marcar permissões numa grade): extra da Fase 10, protegido por `admin:roles:manage`.
 
+### 9.8 Como ficou na implementação (revisão 10)
+
+- **Origem aceita:** o `originCheck` aceita `APP_ORIGIN` **ou a própria origem do servidor** (`protocolo://Host`), para funcionar
+  tanto em `localhost` quanto em `127.0.0.1`. Requisições sem `Origin` nem `Sec-Fetch-Site` (curl, testes) passam por ele, mas
+  continuam precisando do token CSRF.
+- **Por que o `originCheck` importa aqui:** cookies não isolam por porta. Uma página em `localhost:3001` lê o cookie `csrf` de
+  `localhost:3000`, e o `SameSite=Strict` a trata como mesmo site. No teste com o navegador, o POST simples chegou ao servidor com
+  os cookies e levou **403 ORIGIN_INVALID**; o POST com o token roubado no header nem saiu (preflight CORS não autorizado). Por isso
+  o servidor **não habilita CORS**.
+- **Cookies:** o `sid` expira no teto absoluto da sessão (o servidor controla a inatividade); o `psid` é cookie de sessão do
+  navegador; o login apaga o `psid` e emite um `csrf` amarrado à sessão nova; o logout emite `psid` + `csrf` novos.
+- **Sessões:** `DELETE /api/account/sessions/:id` não encerra a sessão atual (`400 USE_LOGOUT`: para isso existe o logout).
+- **Chaves SSH:** além do formato, o servidor valida a **estrutura do blob** (ed25519 com 32 bytes, curva e ponto do ECDSA, RSA
+  ≥ 2048 bits, sem bytes sobrando) e calcula o fingerprint no formato do `ssh-keygen` (conferido com uma chave real). Limite de 10
+  por usuário; a de outro usuário responde 404.
+- **Validação:** os schemas zod ficam em `src/shared/schemas`; as mensagens são chaves de tradução (`errors:validation.*`) e o
+  `400 VALIDATION_ERROR` devolve `details: [{ path, message }]`, que o formulário aplica aos campos.
+- **Textos:** um arquivo por área (`common`, `auth`, `account`, `admin`, `errors`) em cada idioma; um teste confere chaves e
+  interpolações iguais nos três.
+
 ---
 
 ## 10. Integração com o Proxmox
@@ -2078,20 +2099,29 @@ só em localhost). `/api/health` passou a checar o banco (503 se ele cair). Repo
 via container; encerramento gracioso fecha o HTTP, o Vite e o pool. 14 testes (inclusive seed idempotente e técnico sem
 nenhuma permissão `vps:*`/`billing:*`/`sshkey:*` no banco de teste).
 
-### Fase 3: Autenticação, CSRF e RBAC
-- [ ] Utils de crypto (token aleatório, SHA-256, HMAC, `timingSafeEqual`), cookies.
-- [ ] Middlewares `originCheck`, `csrf`, `authenticate`, `optionalAuthenticate`, `requirePermission`, `validate`, `rateLimit`.
-- [ ] `AuthenticatedUser`, `SessionService`, `AuthService`, `AuthController`, rotas §15 (auth + account).
-- [ ] RBAC (§9.7): constante de permissões + tipo, sincronização no seed, `requirePermission`, hook `useCan` no frontend.
-- [ ] **Administração → Usuários:** listar, buscar e trocar a role (`admin:users:assign-role`), com revogação das sessões do usuário afetado e `AuditLog`.
-- [ ] `spaHandler` emitindo `psid`/`csrf`.
-- [ ] Frontend: `lib/api.ts`, `AuthProvider`, `RequireAuth` com loader, `RequirePermission`, telas de login, registro e conta (senha, sessões).
-- [ ] Testes: unitários (token CSRF: válido, expirado, binding errado, header ausente) e integração com supertest
+### Fase 3: Autenticação, CSRF e RBAC — ✅ concluída em 2026-09-23
+- [x] Utils de crypto (token aleatório, SHA-256, HMAC, `timingSafeEqual`), cookies.
+- [x] Middlewares `originCheck`, `csrf`, `authenticate`, `optionalAuthenticate`, `requirePermission`, `validate`, `rateLimit`.
+- [x] `AuthenticatedUser`, `SessionService`, `AuthService`, `AuthController`, rotas §15 (auth + account).
+- [x] RBAC (§9.7): constante de permissões + tipo, sincronização no seed, `requirePermission`, hook `useCan` no frontend.
+- [x] **Administração → Usuários:** listar, buscar e trocar a role (`admin:users:assign-role`), com revogação das sessões do usuário afetado e `AuditLog`.
+- [x] `spaHandler` emitindo `psid`/`csrf`.
+- [x] Frontend: `lib/api.ts`, `AuthProvider`, `RequireAuth` com loader, `RequirePermission`, telas de login, registro e conta (senha, sessões).
+- [x] Testes: unitários (token CSRF: válido, expirado, binding errado, header ausente) e integração com supertest
   (login sem CSRF → 403; login com Origin estranho → 403; `me` sem cookie → 401; logout invalida a sessão; senha errada → mensagem genérica).
 
 **Aceite:** fluxo completo no navegador (Playwright): acessar `/vps` deslogado → loader → login → volta para `/vps`.
 Um `fetch` a partir de outra origem (página de teste em outra porta) com cookies é **rejeitado**. Um técnico
 que recebe a role `admin` pela tela de administração é deslogado e, ao entrar de novo, vê o menu de administração.
+
+**Resultado (rev. 10):** os três critérios verificados no navegador com o Playwright MCP: (1) `/vps` deslogado → `/login?next=%2Fvps`
+→ login → volta para `/vps`; (2) página em `localhost:3001` com `fetch` + cookies: o POST simples levou **403 ORIGIN_INVALID** e o
+POST com o token roubado nem saiu (preflight CORS); a sessão continuou ativa; (3) a técnica Carla, promovida a admin pela tela, perdeu
+a sessão aberta em outro "dispositivo" (401) e, ao entrar de novo, viu o menu **Administração** (depois voltou a ser técnica).
+Também conferido: chave SSH real do Windows (com `
+`) aceita com o mesmo fingerprint do `ssh-keygen`. 47 testes (CSRF,
+origem, login/logout, cadastro, RBAC, troca de role com revogação e AuditLog, troca de senha, chaves SSH, traduções). Fora do plano
+original e adicionados: chaves SSH na conta (`/api/account/ssh-keys`, §15) e o painel do usuário logado em `/`.
 
 ### Fase 4: Integração com o Proxmox
 - [ ] `ProxmoxClient` (undici + CA, token, zod, erros tipados, timeout).

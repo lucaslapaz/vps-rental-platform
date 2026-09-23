@@ -1,0 +1,32 @@
+{
+  "generic": "Algo deu errado. Tente de novo.",
+  "UNAUTHENTICATED": "Sua sessão expirou. Entre de novo.",
+  "FORBIDDEN": "Você não tem permissão para isso.",
+  "CSRF_INVALID": "A página ficou muito tempo aberta. Recarregue e tente de novo.",
+  "ORIGIN_INVALID": "Requisição de origem não permitida.",
+  "VALIDATION_ERROR": "Confira os campos destacados.",
+  "INVALID_CREDENTIALS": "E-mail ou senha inválidos.",
+  "EMAIL_TAKEN": "Já existe uma conta com esse e-mail.",
+  "RATE_LIMITED": "Muitas tentativas. Aguarde alguns minutos.",
+  "INVALID_CURRENT_PASSWORD": "A senha atual está incorreta.",
+  "NOT_FOUND": "Não encontrado.",
+  "CANNOT_CHANGE_OWN_ROLE": "Você não pode alterar a sua própria role.",
+  "SSH_KEY_INVALID": "Essa chave SSH não é válida. Cole a linha inteira do arquivo .pub.",
+  "SSH_KEY_DUPLICATE": "Essa chave já está cadastrada.",
+  "SSH_KEY_LIMIT": "Você atingiu o limite de 10 chaves.",
+  "USE_LOGOUT": "Para encerrar esta sessão, use Sair.",
+  "INTERNAL_ERROR": "Erro interno. Tente de novo em instantes.",
+  "BAD_REQUEST": "Requisição inválida.",
+  "NETWORK_ERROR": "Sem conexão com o servidor.",
+  "validation": {
+    "required": "Campo obrigatório.",
+    "email": "Informe um e-mail válido.",
+    "tooLong": "Texto longo demais.",
+    "nameTooShort": "Informe pelo menos 2 caracteres.",
+    "passwordTooShort": "A senha precisa ter pelo menos 10 caracteres.",
+    "passwordSame": "A nova senha precisa ser diferente da atual.",
+    "sshKeyFormat": "Formato de chave não reconhecido (ssh-ed25519, ecdsa-sha2-* ou ssh-rsa).",
+    "role": "Role inválida.",
+    "id": "Identificador inválido."
+  }
+}

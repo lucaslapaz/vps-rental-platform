@@ -1,0 +1,17 @@
+{
+  "users": {
+    "title": "Usuários",
+    "subtitle": "Cada pessoa tem uma role, e cada role define o que ela pode fazer.",
+    "searchLabel": "Buscar usuários",
+    "searchPlaceholder": "Nome ou e-mail",
+    "name": "Nome",
+    "email": "E-mail",
+    "role": "Role",
+    "createdAt": "Desde",
+    "you": "você",
+    "empty": "Nenhum usuário encontrado.",
+    "confirmTitle": "Trocar a role de {{name}}?",
+    "confirmDescription": "{{name}} passa a ser {{role}} e será desconectado(a) de todas as sessões para as novas permissões valerem na hora.",
+    "changed": "Role alterada. {{name}} precisa entrar de novo."
+  }
+}

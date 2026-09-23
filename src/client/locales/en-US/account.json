@@ -1,0 +1,46 @@
+{
+  "title": "My account",
+  "subtitle": "Your details, your password, open sessions and SSH keys.",
+  "profile": {
+    "title": "Profile",
+    "name": "Name",
+    "email": "Email",
+    "role": "Account type"
+  },
+  "password": {
+    "title": "Change password",
+    "description": "Changing your password signs out your other sessions.",
+    "current": "Current password",
+    "new": "New password",
+    "submit": "Change password",
+    "success_one": "Password changed. {{count}} other session was signed out.",
+    "success_other": "Password changed. {{count}} other sessions were signed out."
+  },
+  "sessions": {
+    "title": "Active sessions",
+    "description": "Where your account is signed in right now. Sign out the ones you don't recognize.",
+    "device": "Device",
+    "lastSeen": "Last seen",
+    "ip": "IP",
+    "current": "This session",
+    "revoke": "Sign out",
+    "revoked": "Session signed out.",
+    "unknownDevice": "Unknown device"
+  },
+  "sshKeys": {
+    "title": "SSH keys",
+    "description": "SSH key: a safer way than a password to log into your server. Keys saved here can be picked when creating a VPS.",
+    "name": "Key name",
+    "namePlaceholder": "home-laptop",
+    "publicKey": "Public key",
+    "publicKeyHint": "Paste the contents of your .pub file (e.g. ~/.ssh/id_ed25519.pub).",
+    "add": "Add key",
+    "added": "Key added.",
+    "removed": "Key removed.",
+    "empty": "No SSH keys yet.",
+    "fingerprint": "Fingerprint",
+    "delete": "Remove",
+    "confirmTitle": "Remove the key “{{name}}”?",
+    "confirmDescription": "VPS that already use this key keep it; it just won't be offered in new VPS."
+  }
+}

@@ -18,4 +18,29 @@ export class UserRepository {
   findById(id: string) {
     return this.db.user.findUnique({ where: { id }, include: withRolePermissions });
   }
+
+  async create(data: { email: string; name: string; passwordHash: string; roleKey: string }) {
+    return this.db.user.create({
+      data: { email: data.email.toLowerCase(), name: data.name, passwordHash: data.passwordHash, role: { connect: { key: data.roleKey } } },
+      include: withRolePermissions,
+    });
+  }
+
+  updatePasswordHash(id: string, passwordHash: string) {
+    return this.db.user.update({ where: { id }, data: { passwordHash } });
+  }
+
+  /** Busca por nome ou e-mail (Administração → Usuários). */
+  search(query: string | undefined, take = 50) {
+    return this.db.user.findMany({
+      where: query ? { OR: [{ name: { contains: query } }, { email: { contains: query } }] } : {},
+      include: { role: { select: { key: true } } },
+      orderBy: { createdAt: 'asc' },
+      take,
+    });
+  }
+
+  updateRole(id: string, roleId: number) {
+    return this.db.user.update({ where: { id }, data: { roleId }, include: { role: { select: { key: true } } } });
+  }
 }

@@ -1,0 +1,17 @@
+{
+  "users": {
+    "title": "Users",
+    "subtitle": "Each person has one role, and each role defines what they can do.",
+    "searchLabel": "Search users",
+    "searchPlaceholder": "Name or email",
+    "name": "Name",
+    "email": "Email",
+    "role": "Role",
+    "createdAt": "Since",
+    "you": "you",
+    "empty": "No users found.",
+    "confirmTitle": "Change {{name}}'s role?",
+    "confirmDescription": "{{name}} becomes {{role}} and will be signed out of every session so the new permissions apply right away.",
+    "changed": "Role changed. {{name}} needs to sign in again."
+  }
+}

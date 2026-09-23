@@ -1,0 +1,17 @@
+{
+  "users": {
+    "title": "Usuarios",
+    "subtitle": "Cada persona tiene un rol, y cada rol define lo que puede hacer.",
+    "searchLabel": "Buscar usuarios",
+    "searchPlaceholder": "Nombre o correo",
+    "name": "Nombre",
+    "email": "Correo electrónico",
+    "role": "Rol",
+    "createdAt": "Desde",
+    "you": "tú",
+    "empty": "No se encontraron usuarios.",
+    "confirmTitle": "¿Cambiar el rol de {{name}}?",
+    "confirmDescription": "{{name}} pasa a ser {{role}} y se cerrarán todas sus sesiones para que los nuevos permisos se apliquen de inmediato.",
+    "changed": "Rol cambiado. {{name}} tiene que volver a entrar."
+  }
+}

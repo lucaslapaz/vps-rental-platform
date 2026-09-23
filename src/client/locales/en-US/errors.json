@@ -1,0 +1,32 @@
+{
+  "generic": "Something went wrong. Please try again.",
+  "UNAUTHENTICATED": "Your session has expired. Please sign in again.",
+  "FORBIDDEN": "You are not allowed to do that.",
+  "CSRF_INVALID": "This page has been open for too long. Reload it and try again.",
+  "ORIGIN_INVALID": "Request origin not allowed.",
+  "VALIDATION_ERROR": "Check the highlighted fields.",
+  "INVALID_CREDENTIALS": "Invalid email or password.",
+  "EMAIL_TAKEN": "An account with this email already exists.",
+  "RATE_LIMITED": "Too many attempts. Please wait a few minutes.",
+  "INVALID_CURRENT_PASSWORD": "Your current password is incorrect.",
+  "NOT_FOUND": "Not found.",
+  "CANNOT_CHANGE_OWN_ROLE": "You can't change your own role.",
+  "SSH_KEY_INVALID": "This SSH key is not valid. Paste the whole line of the .pub file.",
+  "SSH_KEY_DUPLICATE": "This key is already saved.",
+  "SSH_KEY_LIMIT": "You have reached the limit of 10 keys.",
+  "USE_LOGOUT": "To end this session, use Sign out.",
+  "INTERNAL_ERROR": "Internal error. Please try again shortly.",
+  "BAD_REQUEST": "Invalid request.",
+  "NETWORK_ERROR": "Can't reach the server.",
+  "validation": {
+    "required": "This field is required.",
+    "email": "Enter a valid email.",
+    "tooLong": "Too long.",
+    "nameTooShort": "Enter at least 2 characters.",
+    "passwordTooShort": "The password must have at least 10 characters.",
+    "passwordSame": "The new password must be different from the current one.",
+    "sshKeyFormat": "Key format not recognized (ssh-ed25519, ecdsa-sha2-* or ssh-rsa).",
+    "role": "Invalid role.",
+    "id": "Invalid identifier."
+  }
+}

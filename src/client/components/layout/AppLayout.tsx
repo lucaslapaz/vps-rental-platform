@@ -1,12 +1,33 @@
 import { useTranslation } from 'react-i18next';
-import { Link, Outlet } from 'react-router';
+import { Link, NavLink, Outlet } from 'react-router';
 import { Logo } from '@/components/brand/Logo';
+import { useCan } from '@/features/auth/useAuth';
+import { cn } from '@/lib/utils';
 import { LanguageMenu } from './LanguageMenu';
 import { ThemeMenu } from './ThemeMenu';
+import { UserMenu } from './UserMenu';
 
-/** Layout base: cabeçalho (marca, idioma, tema), conteúdo e rodapé com o aviso de marca fictícia. */
+function NavItem({ to, children }: { to: string; children: string }) {
+  return (
+    <NavLink
+      to={to}
+      className={({ isActive }) =>
+        cn(
+          'rounded-md px-2.5 py-1.5 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground',
+          isActive && 'bg-muted text-foreground',
+        )
+      }
+    >
+      {children}
+    </NavLink>
+  );
+}
+
+/** Layout base: cabeçalho (marca, navegação por permissão, idioma, tema, usuário), conteúdo e rodapé. */
 export function AppLayout() {
   const { t } = useTranslation();
+  const canVps = useCan('vps:read:own');
+  const canAdmin = useCan('admin:users:read');
 
   return (
     <div className="flex min-h-svh flex-col">
@@ -18,12 +39,19 @@ export function AppLayout() {
       </a>
       <header className="sticky top-0 z-40 border-b bg-background/85 backdrop-blur supports-[backdrop-filter]:bg-background/70">
         <div className="mx-auto flex h-14 max-w-6xl items-center justify-between gap-4 px-4">
-          <Link to="/" aria-label={t('nav.home')} className="rounded-md focus-visible:outline-2">
-            <Logo />
-          </Link>
+          <div className="flex items-center gap-6">
+            <Link to="/" aria-label={t('nav.home')} className="rounded-md focus-visible:outline-2">
+              <Logo />
+            </Link>
+            <nav className="hidden items-center gap-1 sm:flex" aria-label={t('nav.home')}>
+              {canVps ? <NavItem to="/vps">{t('nav.vps')}</NavItem> : null}
+              {canAdmin ? <NavItem to="/admin/users">{t('nav.admin')}</NavItem> : null}
+            </nav>
+          </div>
           <div className="flex items-center gap-1">
             <LanguageMenu />
             <ThemeMenu />
+            <UserMenu />
           </div>
         </div>
       </header>

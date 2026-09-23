@@ -6,7 +6,14 @@
   },
   "nav": {
     "home": "Home",
-    "skipToContent": "Skip to content"
+    "skipToContent": "Skip to content",
+    "vps": "VPS",
+    "admin": "Administration",
+    "account": "My account",
+    "login": "Sign in",
+    "register": "Sign up",
+    "logout": "Sign out",
+    "userMenu": "User menu"
   },
   "language": {
     "label": "Language",
@@ -62,5 +69,48 @@
     "description": "An unexpected error happened. Try reloading the page.",
     "reload": "Reload"
   },
-  "loading": "Loading…"
+  "loading": "Loading…",
+  "roles": {
+    "customer": "Customer",
+    "support_agent": "Support agent",
+    "admin": "Administrator"
+  },
+  "actions": {
+    "cancel": "Cancel",
+    "confirm": "Confirm"
+  },
+  "forbidden": {
+    "title": "Access denied",
+    "description": "Your account is not allowed to open this page.",
+    "back": "Back to home"
+  },
+  "dashboard": {
+    "greeting": "Hi, {{name}}!",
+    "subtitle": "This is your Favo dashboard.",
+    "vps": {
+      "title": "Your VPS",
+      "description": "Create, start, stop and open the console of your machines.",
+      "cta": "See my VPS"
+    },
+    "account": {
+      "title": "Your account",
+      "description": "Password, active sessions and SSH keys.",
+      "cta": "Open my account"
+    },
+    "admin": {
+      "title": "Administration",
+      "description": "Users and their roles.",
+      "cta": "Manage users"
+    },
+    "support": {
+      "title": "Support queue",
+      "description": "Customer chat arrives in Phase 8."
+    }
+  },
+  "vps": {
+    "title": "My VPS",
+    "emptyTitle": "No VPS yet",
+    "emptyDescription": "Your first cell is one click away.",
+    "create": "Create VPS"
+  }
 }

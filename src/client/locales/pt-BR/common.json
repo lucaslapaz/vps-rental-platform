@@ -6,7 +6,14 @@
   },
   "nav": {
     "home": "Início",
-    "skipToContent": "Pular para o conteúdo"
+    "skipToContent": "Pular para o conteúdo",
+    "vps": "VPS",
+    "admin": "Administração",
+    "account": "Minha conta",
+    "login": "Entrar",
+    "register": "Criar conta",
+    "logout": "Sair",
+    "userMenu": "Menu do usuário"
   },
   "language": {
     "label": "Idioma",
@@ -62,5 +69,48 @@
     "description": "Um erro inesperado aconteceu. Tente recarregar a página.",
     "reload": "Recarregar"
   },
-  "loading": "Carregando…"
+  "loading": "Carregando…",
+  "roles": {
+    "customer": "Cliente",
+    "support_agent": "Técnico de suporte",
+    "admin": "Administrador"
+  },
+  "actions": {
+    "cancel": "Cancelar",
+    "confirm": "Confirmar"
+  },
+  "forbidden": {
+    "title": "Acesso negado",
+    "description": "Sua conta não tem permissão para abrir esta página.",
+    "back": "Voltar para o início"
+  },
+  "dashboard": {
+    "greeting": "Olá, {{name}}!",
+    "subtitle": "Este é o seu painel na Favo.",
+    "vps": {
+      "title": "Suas VPS",
+      "description": "Crie, ligue, desligue e acesse o console das suas máquinas.",
+      "cta": "Ver minhas VPS"
+    },
+    "account": {
+      "title": "Sua conta",
+      "description": "Senha, sessões ativas e chaves SSH.",
+      "cta": "Abrir minha conta"
+    },
+    "admin": {
+      "title": "Administração",
+      "description": "Usuários e as roles de cada um.",
+      "cta": "Gerenciar usuários"
+    },
+    "support": {
+      "title": "Fila de atendimento",
+      "description": "O chat com os clientes chega na Fase 8."
+    }
+  },
+  "vps": {
+    "title": "Minhas VPS",
+    "emptyTitle": "Nenhuma VPS ainda",
+    "emptyDescription": "Sua primeira célula está a um clique.",
+    "create": "Criar VPS"
+  }
 }

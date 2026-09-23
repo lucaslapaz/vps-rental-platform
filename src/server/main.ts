@@ -32,7 +32,7 @@ if (env.NODE_ENV === 'development') {
   app.use(devServer.middlewares);
   app.get(
     '/{*splat}',
-    spaHandler(async (req) => devServer.transformIndexHtml(req.originalUrl, await readFile('src/client/index.html', 'utf8'))),
+    spaHandler(di, async (req) => devServer.transformIndexHtml(req.originalUrl, await readFile('src/client/index.html', 'utf8'))),
   );
 } else {
   // Arquivos com hash do Vite: cache longo. O resto (favicon…) com cache curto. index: false → o HTML só sai pelo spaHandler.
@@ -41,7 +41,7 @@ if (env.NODE_ENV === 'development') {
   const html = await readFile('dist/client/index.html', 'utf8');
   app.get(
     '/{*splat}',
-    spaHandler(async () => html),
+    spaHandler(di, async () => html),
   );
 }
 app.use(errorHandler);

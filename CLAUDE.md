@@ -1,7 +1,7 @@
 # CLAUDE.md — Favo (VPS Rental Platform)
 
 Contexto para o Claude implementar este projeto em conversas novas. **O plano completo e as decisões estão em
-[docs/PLANO_DE_IMPLEMENTACAO.md](docs/PLANO_DE_IMPLEMENTACAO.md)** (revisão 9, 2026-09-23). Este arquivo resume o
+[docs/PLANO_DE_IMPLEMENTACAO.md](docs/PLANO_DE_IMPLEMENTACAO.md)** (revisão 10, 2026-09-23). Este arquivo resume o
 que não dá para deduzir do código: regras combinadas com o usuário, estado do ambiente, armadilhas já encontradas
 (com a solução) e comandos que já foram testados.
 
@@ -17,9 +17,15 @@ que não dá para deduzir do código: regras combinadas com o usuário, estado d
   proxy do console e o React 19 (Vite 8, Tailwind 4, shadcn). TypeScript 7, tsyringe, Prisma 7 + MySQL 8.4, Biome.
 - Fases (§17 do plano): 0 laboratório → 1 fundação → 2 banco → 3 auth/CSRF/RBAC → 4 Proxmox → 5 catálogo/pagamento →
   6 provisionamento → 7 página da VPS + console → 8 suporte → 9 qualidade → 10 extras.
-- **Situação atual:** Fases 0, 1 e 2 concluídas. Fase 0: laboratório (plano §2.7), scripts em `scripts/pve/`. Fase 1:
+- **Situação atual:** Fases 0 a 3 concluídas. Fase 0: laboratório (plano §2.7), scripts em `scripts/pve/`. Fase 1:
   fundação (servidor único Express+Vite, React com marca Favo, i18n, tema, Vitest, Biome). Fase 2: Prisma 7 + MySQL
-  (schema, migration `init`, seeds idempotentes). A próxima é a Fase 3 (auth, CSRF, RBAC).
+  (schema, migration `init`, seeds idempotentes). Fase 3: sessão, CSRF, RBAC, conta, chaves SSH e administração de
+  usuários. A próxima é a Fase 4 (integração com o Proxmox).
+- **Autenticação (Fase 3):** cookies `sid` (HttpOnly), `psid` (pré-sessão, HttpOnly) e `csrf` (lido pelo JS e devolvido
+  em `X-CSRF-Token`); HMAC com `CSRF_SECRET` (no `.env.*`). Ordem dos middlewares em `src/server/http/routes/index.ts`.
+  Permissões verificadas com `requirePermission`/`req.user.can()` no servidor e `useCan()` no cliente. Textos de tela
+  em namespaces (`src/client/locales/<idioma>/{common,auth,account,admin,errors}.json`); mensagens de validação do zod
+  são **chaves** (`errors:validation.*`) e erros da API são traduzidos pelo `code` (`src/client/lib/errors.ts`).
 - **Banco:** `npm run db:setup:dev` (migrate + seed) · `db:seed:dev` · `db:migrate:test` (reset do banco de teste: exige o
   consentimento do usuário, N20) · `db:seed:test`. Usuários de demonstração: `admin@`, `ana@`, `bruno@` (clientes),
   `carla@`, `diego@` (técnicos) `favo.local`, senha em `SEED_DEFAULT_PASSWORD` no `.env.development`. Pool de IPs das VPS:
@@ -245,6 +251,23 @@ que não dá para deduzir do código: regras combinadas com o usuário, estado d
 - **N21. `npm audit`** acusa avisos em dependências transitivas do Prisma 7.10.0 (`mariadb` 3.4.5 fixado pelo adapter,
   `mysql2` e `deepmerge-ts` da CLI). Não há correção dentro da regra (o "fix" é voltar ao Prisma 6 com `--force`). Avaliado:
   não se aplicam (MySQL local sem TLS, charset utf8mb4, config controlada por nós). Plano §19.
+- **N22. `shadcn add` na 4.21:** o `sonner` instala `next-themes` (trocado pelo `@/lib/theme` no `components/ui/sonner.tsx`
+  e desinstalado); componentes com dependências já existentes param numa pergunta de sobrescrita. Rode antes com
+  `--dry-run`, depois com `-y -o`, e **reaplique a variante `link` do `button.tsx`** (`text-link`). O Biome não faz lint em
+  `src/client/components/ui/**` (código do shadcn; override no `biome.json`), só formata.
+- **N23. Cookies não isolam por porta:** uma página em `localhost:3001` lê o cookie `csrf` de `localhost:3000`, e o
+  `SameSite=Strict` a trata como o **mesmo site** (os cookies vão junto). Testado no navegador: o POST simples chega e leva
+  **403 ORIGIN_INVALID** (`originCheck`), e o POST com o token roubado no header nem sai (o *preflight* CORS não é
+  autorizado). **Nunca habilite CORS com credenciais.** O `originCheck` aceita `APP_ORIGIN` ou a própria origem do host.
+- **N24. Express 5:** `req.query` é só leitura; o middleware `validate` grava o resultado em `res.locals.valid` (leia com
+  `valid(res, 'body', schema)`). O `express-rate-limit` 8 exige `ipKeyGenerator()` para chaves com IP; os limites ficam
+  desligados em `NODE_ENV=test`.
+- **N25. Testes de integração:** `tests/globalSetup.ts` roda o seed no banco de teste; `fileParallelism: false` (banco
+  compartilhado); `tests/helpers/client.ts` imita o navegador (cookies + `X-CSRF-Token`) e gera chaves SSH válidas.
+  O console do navegador mostra um `401` do `/api/auth/me` para visitantes: é o comportamento esperado.
+- **N26. i18next tipado:** `t()` só aceita chaves conhecidas; chaves dinâmicas (código de erro, role) passam pelos helpers
+  de `src/client/lib/errors.ts` (`errorMessage`, `validationMessage`, `roleLabel`). zod 4: `z.stringbool()` para
+  booleanos do `.env` e `{ error: 'chave' }` nas mensagens.
 - **N17.** `execFileSync('npm', …, { shell: true })` gera o aviso `DEP0190` no Node 24; os scripts de `scripts/deps/` usam
   `execSync` com o nome do pacote validado por regex.
 

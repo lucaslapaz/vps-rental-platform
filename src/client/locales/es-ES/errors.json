@@ -1,0 +1,32 @@
+{
+  "generic": "Algo salió mal. Inténtalo de nuevo.",
+  "UNAUTHENTICATED": "Tu sesión ha caducado. Vuelve a entrar.",
+  "FORBIDDEN": "No tienes permiso para hacer esto.",
+  "CSRF_INVALID": "La página estuvo abierta demasiado tiempo. Recárgala e inténtalo de nuevo.",
+  "ORIGIN_INVALID": "Origen de la solicitud no permitido.",
+  "VALIDATION_ERROR": "Revisa los campos marcados.",
+  "INVALID_CREDENTIALS": "Correo o contraseña incorrectos.",
+  "EMAIL_TAKEN": "Ya existe una cuenta con ese correo.",
+  "RATE_LIMITED": "Demasiados intentos. Espera unos minutos.",
+  "INVALID_CURRENT_PASSWORD": "La contraseña actual es incorrecta.",
+  "NOT_FOUND": "No encontrado.",
+  "CANNOT_CHANGE_OWN_ROLE": "No puedes cambiar tu propio rol.",
+  "SSH_KEY_INVALID": "Esta clave SSH no es válida. Pega la línea completa del archivo .pub.",
+  "SSH_KEY_DUPLICATE": "Esta clave ya está guardada.",
+  "SSH_KEY_LIMIT": "Has llegado al límite de 10 claves.",
+  "USE_LOGOUT": "Para cerrar esta sesión, usa Salir.",
+  "INTERNAL_ERROR": "Error interno. Inténtalo de nuevo en unos momentos.",
+  "BAD_REQUEST": "Solicitud no válida.",
+  "NETWORK_ERROR": "No hay conexión con el servidor.",
+  "validation": {
+    "required": "Campo obligatorio.",
+    "email": "Introduce un correo válido.",
+    "tooLong": "Texto demasiado largo.",
+    "nameTooShort": "Introduce al menos 2 caracteres.",
+    "passwordTooShort": "La contraseña debe tener al menos 10 caracteres.",
+    "passwordSame": "La nueva contraseña debe ser distinta de la actual.",
+    "sshKeyFormat": "Formato de clave no reconocido (ssh-ed25519, ecdsa-sha2-* o ssh-rsa).",
+    "role": "Rol no válido.",
+    "id": "Identificador no válido."
+  }
+}

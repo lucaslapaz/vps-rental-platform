@@ -14,6 +14,7 @@
 | 4 | 2026-09-23 | Respostas da revisão 4 (§0.4). **Marca fictícia Favo** e identidade visual (§14.6). **Três imagens** (Alpine, Debian 13, Ubuntu 24.04), **testadas** no laboratório (§2.6, §3.7). **Console noVNC** no núcleo (§10.5). **Senha root e SSH pelo guest agent** (§10.6). Tela de criação como nas plataformas reais (§14.5). **RBAC: uma role por usuário, verificação por permissão** (§9.7) |
 | 5 | 2026-09-23 | Respostas da revisão 5 (§0.5): **marca Favo aprovada**; **imagem Alpine Desktop (XFCE)** entra no catálogo (template 9003, plano Medium de 1 GB); **`CLAUDE.md` criado** na raiz com o contexto e as lições aprendidas. Nenhuma decisão pendente (§20) |
 | 6 | 2026-09-23 | Commits: o Claude passa a **commitar ao fim de cada fase** (substitui a decisão do §0.2). Ajustados o §1, o §17 e o `CLAUDE.md` |
+| 9 | 2026-09-23 | **Fase 2 concluída** (§17): Prisma 7.10.0 + adapter MariaDB, migration `init`, seeds idempotentes. Ajustes: tabelas com `@@map` em snake_case (MySQL do Windows com `lower_case_table_names=1`), `IpAddress.macAddress` (MAC derivado do IP), pool `.200–.228`, plano **Medium** no seed, proteção do Prisma contra agentes de IA em comandos destrutivos (§19) |
 | 8 | 2026-09-23 | **Fase 1 concluída** (§17): fundação com servidor único, marca Favo, i18n e tema. Ajustes: `tsx --tsconfig tsconfig.server.json` (decorators), `oxc.decorator.legacy` no Vitest, pacote `cn` do shadcn no lugar de `clsx` + `tailwind-merge`, fontes nunca embutidas como `data:` (CSP), `worker-src blob:` só em dev, `tsconfig.base/server/client/test` |
 | 7 | 2026-09-23 | **Fase 0 concluída** (§2.7): disco +10 GB, `bootstrap.sh`, templates 9000–9003 e aceite com o token. Decisões novas: **MAC derivado do IP** (§3.3), **TLS validado pelo nome do nó** porque o certificado não tem o IP no SAN (§3.5, §10.1), build com upgrade explícito e remoção do usuário do build (§3.6) |
 
@@ -60,7 +61,6 @@ Onde cada ponto foi tratado:
 | "Bridge" | §3.3.1 (é uma bridge **Linux dentro do Proxmox**; nada muda nos adaptadores do VirtualBox) |
 
 ### 0.2 Respostas às decisões pendentes (terceira mensagem)
-
 
 Como cada resposta foi aplicada:
 
@@ -954,6 +954,11 @@ export const prisma = new PrismaClient({ adapter });   // um único singleton, r
 
 ### 8.3 Schema (rascunho da primeira migration)
 
+> **Implementado na revisão 9** em `prisma/schema.prisma` (migration `20260923072111_init`), com estas diferenças: todas as
+> tabelas têm `@@map` em minúsculas/snake_case (`users`, `role_permissions`, `ip_addresses`…), porque o MySQL do Windows roda
+> com `lower_case_table_names=1`; `IpAddress.macAddress` (único, derivado do IP, §3.3); `OsTemplate.pveTemplateVmid` único;
+> índices nas chaves estrangeiras que não tinham (`users.roleId`, `vps.planId`…). O rascunho abaixo fica como referência.
+
 ```prisma
 generator client {
   provider = "prisma-client"
@@ -1235,6 +1240,11 @@ model AuditLog {
 ```
 
 ### 8.4 Seeds
+
+> **Implementado na revisão 9** em `prisma/seed/` (`run.ts` orquestra `rbac.ts`, `catalog-seed.ts` e `users.ts`; `index.ts` é o
+> entrypoint do `prisma db seed`). Usuários de demonstração: `admin@`, `ana@`, `bruno@`, `carla@` e `diego@favo.local`. O seed
+> **não altera usuários existentes** (nunca desfaz uma troca de role feita pela administração) e nunca muda o `status` dos IPs.
+> Pool de IPs: `.200–.228` em dev (o `.229` fica para testes manuais) e `10.99.0.10–.19` em test.
 
 Idempotentes (`upsert` por chave natural), **sem VMs**, como você pediu. O conteúdo depende do `NODE_ENV`:
 
@@ -2050,15 +2060,23 @@ sem "flash" e layout conferido em 390 px. `typecheck`, `lint` (Biome), 7 testes 
 Diferenças em relação ao plano: o logo é um componente React (`components/brand/Logo.tsx`, herda as cores do tema) em vez de
 `assets/brand/*.svg`; o favicon está em `src/client/public/favicon.svg`; o seletor de **moeda** fica para a Fase 5, junto com os preços.
 
-### Fase 2: Banco de dados
-- [ ] Prisma 7 + adapter MariaDB + `prisma.config.ts` por ambiente (os bancos já existem).
-- [ ] Schema §8.3 → `db:migrate:dev` (migration `init`).
-- [ ] Seeds §8.4 (idempotentes, com comportamento por ambiente).
-- [ ] Repositories base + singleton do Prisma no container + shutdown gracioso.
+### Fase 2: Banco de dados — ✅ concluída em 2026-09-23
+- [x] Prisma 7 + adapter MariaDB + `prisma.config.ts` por ambiente (os bancos já existem).
+- [x] Schema §8.3 → `db:migrate:dev` (migration `init`).
+- [x] Seeds §8.4 (idempotentes, com comportamento por ambiente).
+- [x] Repositories base + singleton do Prisma no container + shutdown gracioso.
 
 **Aceite:** `db:setup:dev` roda do zero. Rodar `db:seed:dev` **duas vezes** não duplica nada.
 `db:seed:prod` sem `SEED_ADMIN_*` falha com uma mensagem clara. `db:migrate:test` recria o banco de teste.
 Conexão com o MySQL 8.4 (`caching_sha2_password`) validada pelo adapter.
+
+**Resultado (rev. 9):** migration `init` aplicada no `vps_platform_dev` (um segundo `migrate dev` diz "Already in sync");
+`db:seed:dev` rodado duas vezes sem duplicar (20 permissões, 3 roles, 26 vínculos, 4 planos, 4 imagens, 29 IPs, 5 usuários);
+`db:seed:prod` sem `SEED_ADMIN_*` falha listando as duas variáveis; `db:migrate:test` recriou o `vps_platform_test` (com o
+consentimento do usuário exigido pelo Prisma, §19); o adapter conectou com `caching_sha2_password` (`allowPublicKeyRetrieval`
+só em localhost). `/api/health` passou a checar o banco (503 se ele cair). Repositórios `UserRepository` e `HealthRepository`
+via container; encerramento gracioso fecha o HTTP, o Vite e o pool. 14 testes (inclusive seed idempotente e técnico sem
+nenhuma permissão `vps:*`/`billing:*`/`sshkey:*` no banco de teste).
 
 ### Fase 3: Autenticação, CSRF e RBAC
 - [ ] Utils de crypto (token aleatório, SHA-256, HMAC, `timingSafeEqual`), cookies.
@@ -2180,6 +2198,8 @@ os dois trocam mensagens em tempo real. Um segundo técnico que tenta assumir re
 | Upgrade automático no primeiro boot (`package_upgrade` gerado pelo Proxmox) | Criação lenta (4+ min no Ubuntu) ou falha (Alpine sem DNS) | `ciupgrade=0` nos clones. Templates atualizados no build e reconstruídos periodicamente |
 | Senhas trafegando pelos jobs | Vazamento pelo banco | AES-256-GCM no payload, apagado após o uso. Nunca logadas (`redact` do pino) |
 | Mudança de rede derrubar o acesso ao Proxmox | Laboratório inacessível | Já aplicada com sucesso. Backup em `/root/interfaces.bak-20260923020356`. Técnica de rollback automático documentada (§3.3) |
+| `npm audit`: avisos em dependências transitivas do Prisma 7.10.0 (`mariadb` 3.4.5 fixado pelo adapter, `mysql2` e `deepmerge-ts` da CLI) | Vulnerabilidades conhecidas | Sem correção dentro da regra de versões (o "fix" é voltar ao Prisma 6 com `--force`). Avaliadas na rev. 9: exigem TLS com MitM, servidor malicioso, charsets asiáticos ou config não confiável; nada disso se aplica (MySQL local, utf8mb4). Reavaliar a cada atualização do Prisma |
+| Prisma 7 bloqueia comandos destrutivos (`migrate reset --force`) quando detecta um agente de IA | O Claude não consegue recriar bancos sozinho | Proteção correta: o Claude pede o consentimento do usuário a cada vez (`PRISMA_USER_CONSENT_FOR_DANGEROUS_AI_ACTION`). Os testes não dependem de reset (seed idempotente) |
 | Tag `latest` apontando para pré-release (hoje: `prisma` → 8.0.0-rc.15) | Instalar versão instável sem perceber | Política §4.1: `deps:stable` antes de instalar, versão exata no `npm install`, `deps:check` depois |
 | TypeScript 7 incompatível com `typescript-eslint` | Lint não instala | Biome no lugar do ESLint (§4). Ferramentas que dependem da API programática do TypeScript (ex.: `ts-jest`, `ts-loader`) ficam fora do projeto |
 | CLIs (shadcn) instalando versões por conta própria | Dependência fora da regra | `npm run deps:check` depois de cada uso, com correção via `npm install <pkg>@<versão>` |

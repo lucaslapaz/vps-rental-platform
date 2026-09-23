@@ -7,4 +7,5 @@ export const TOKENS = {
   Env: Symbol('Env'),
   Logger: Symbol('Logger'),
   Clock: Symbol('Clock'),
+  Prisma: Symbol('Prisma'),
 } as const;

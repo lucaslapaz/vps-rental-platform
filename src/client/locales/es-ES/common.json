@@ -45,6 +45,7 @@
   "status": {
     "title": "Estado del sistema",
     "api": "API",
+    "database": "Base de datos",
     "online": "En línea",
     "offline": "No disponible",
     "checking": "Comprobando…",

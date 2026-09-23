@@ -1,0 +1,354 @@
+// Schema da Favo (plano §8.3). Tabelas em minúsculas/snake_case via @@map: o MySQL do Windows roda com
+// lower_case_table_names=1, e nomes em PascalCase geram "drift" falso no `prisma migrate dev` (CLAUDE.md, N18).
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/server/generated/prisma"
+}
+
+datasource db {
+  provider = "mysql"
+}
+
+// ───────────── Identidade e RBAC ─────────────
+model User {
+  id                    String                @id @default(uuid()) @db.Char(36)
+  email                 String                @unique @db.VarChar(254)
+  name                  String                @db.VarChar(120)
+  passwordHash          String                @db.VarChar(255)
+  isActive              Boolean               @default(true)
+  createdAt             DateTime              @default(now())
+  updatedAt             DateTime              @updatedAt
+  roleId                Int
+  role                  Role                  @relation(fields: [roleId], references: [id])
+  sessions              Session[]
+  sshKeys               SshKey[]
+  vpsList               Vps[]
+  invoices              Invoice[]
+  customerConversations SupportConversation[] @relation("CustomerConversations")
+  agentConversations    SupportConversation[] @relation("AgentConversations")
+  messages              SupportMessage[]
+
+  @@index([roleId])
+  @@map("users")
+}
+
+model Role {
+  id          Int              @id @default(autoincrement())
+  key         String           @unique @db.VarChar(50) // customer | support_agent | admin
+  name        String           @db.VarChar(100)
+  description String?          @db.VarChar(255)
+  isSystem    Boolean          @default(false) // roles do seed não podem ser apagadas
+  permissions RolePermission[]
+  users       User[]
+
+  @@map("roles")
+}
+
+model Permission {
+  id          Int              @id @default(autoincrement())
+  key         String           @unique @db.VarChar(100) // ex.: "vps:create" (fonte da verdade: src/shared/constants/permissions.ts)
+  description String           @db.VarChar(255)
+  roles       RolePermission[]
+
+  @@map("permissions")
+}
+
+model RolePermission {
+  roleId       Int
+  permissionId Int
+  role         Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@id([roleId, permissionId])
+  @@index([permissionId])
+  @@map("role_permissions")
+}
+
+model Session {
+  id                String    @id @default(uuid()) @db.Char(36)
+  tokenHash         String    @unique @db.Char(64) // SHA-256 (hex) do token do cookie; o token em si nunca é guardado
+  userId            String    @db.Char(36)
+  user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt         DateTime  @default(now())
+  lastSeenAt        DateTime  @default(now())
+  expiresAt         DateTime // expiração por inatividade (deslizante)
+  absoluteExpiresAt DateTime // teto absoluto
+  revokedAt         DateTime?
+  ip                String?   @db.VarChar(45)
+  userAgent         String?   @db.VarChar(512)
+
+  @@index([userId])
+  @@index([expiresAt])
+  @@map("sessions")
+}
+
+model SshKey {
+  id          Int      @id @default(autoincrement())
+  userId      String   @db.Char(36)
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name        String   @db.VarChar(80)
+  publicKey   String   @db.Text
+  fingerprint String   @db.VarChar(100)
+  createdAt   DateTime @default(now())
+
+  @@unique([userId, fingerprint])
+  @@map("ssh_keys")
+}
+
+// ───────────── Catálogo ─────────────
+model Plan {
+  id            Int     @id @default(autoincrement())
+  slug          String  @unique @db.VarChar(40) // nano | micro | small | medium
+  name          String  @db.VarChar(80)
+  cores         Int
+  memoryMb      Int
+  diskGb        Int
+  bandwidthMbps Int // vira net0.rate (MB/s = Mbps/8)
+  priceCents    Int // mensal, BRL
+  isActive      Boolean @default(true)
+  sortOrder     Int     @default(0)
+  vpsList       Vps[]
+
+  @@map("plans")
+}
+
+model OsTemplate {
+  id                   Int     @id @default(autoincrement())
+  slug                 String  @unique @db.VarChar(40) // alpine-3.24
+  name                 String  @db.VarChar(80) // "Alpine Linux 3.24"
+  pveTemplateVmid      Int     @unique // 9000 (golden image, §3.6)
+  defaultUser          String  @db.VarChar(32) // alpine
+  family               String  @db.VarChar(20) // alpine | debian | ubuntu (define o ImageProfile)
+  version              String  @db.VarChar(20) // 3.24 | 13 | 24.04
+  sudoCommand          String  @db.VarChar(10) // doas | sudo
+  minMemoryMb          Int
+  minDiskGb            Int
+  supportsRootPassword Boolean @default(true)
+  supportsSshKeys      Boolean @default(true)
+  requiresPassword     Boolean @default(false) // true na Desktop: o login gráfico exige senha
+  hasGui               Boolean @default(false)
+  sortOrder            Int     @default(0)
+  isActive             Boolean @default(true)
+  vpsList              Vps[]
+
+  @@map("os_templates")
+}
+
+// ───────────── Infraestrutura ─────────────
+enum IpStatus {
+  FREE
+  RESERVED
+  ASSIGNED
+}
+
+model IpAddress {
+  id         Int      @id @default(autoincrement())
+  address    String   @unique @db.VarChar(45)
+  prefix     Int // 24
+  gateway    String   @db.VarChar(45)
+  macAddress String   @unique @db.Char(17) // derivado do IP (02:00 + IPv4 em hex), plano §3.3
+  status     IpStatus @default(FREE)
+  vps        Vps?
+  updatedAt  DateTime @updatedAt
+
+  @@index([status])
+  @@map("ip_addresses")
+}
+
+enum VpsStatus {
+  PENDING_PAYMENT
+  PROVISIONING
+  RUNNING
+  STOPPED
+  STARTING
+  STOPPING
+  REBOOTING
+  UPDATING
+  DELETING
+  DELETED
+  SUSPENDED
+  ERROR
+}
+
+model Vps {
+  id              String     @id @default(uuid()) @db.Char(36)
+  userId          String     @db.Char(36)
+  user            User       @relation(fields: [userId], references: [id])
+  planId          Int
+  plan            Plan       @relation(fields: [planId], references: [id])
+  osTemplateId    Int
+  osTemplate      OsTemplate @relation(fields: [osTemplateId], references: [id])
+  hostname        String     @db.VarChar(63)
+  username        String     @db.VarChar(32) // usuário criado pelo cloud-init (ciuser)
+  sshPasswordAuth Boolean    @default(false) // escolha do cliente, aplicada pelo guest agent
+  rootPasswordSet Boolean    @default(false) // só o indicador; senhas nunca são guardadas
+  status          VpsStatus  @default(PENDING_PAYMENT)
+  // cópia dos recursos no momento da contratação (o plano pode mudar depois)
+  cores           Int
+  memoryMb        Int
+  diskGb          Int
+  bandwidthMbps   Int
+  pveNode         String?    @db.VarChar(64)
+  pveVmid         Int?       @unique
+  ipAddressId     Int?       @unique
+  ipAddress       IpAddress? @relation(fields: [ipAddressId], references: [id])
+  lastError       String?    @db.Text
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
+  deletedAt       DateTime?
+  invoices        Invoice[]
+  events          VpsEvent[]
+
+  @@index([userId, status])
+  @@index([planId])
+  @@index([osTemplateId])
+  @@map("vps")
+}
+
+model VpsEvent {
+  id        Int      @id @default(autoincrement())
+  vpsId     String   @db.Char(36)
+  vps       Vps      @relation(fields: [vpsId], references: [id], onDelete: Cascade)
+  actorId   String?  @db.Char(36)
+  action    String   @db.VarChar(40) // create | start | stop | resize | delete …
+  status    String   @db.VarChar(20) // requested | succeeded | failed
+  pveUpid   String?  @db.VarChar(255)
+  message   String?  @db.Text
+  createdAt DateTime @default(now())
+
+  @@index([vpsId, createdAt])
+  @@map("vps_events")
+}
+
+// ───────────── Cobrança (simulada) ─────────────
+enum InvoiceStatus {
+  PENDING
+  PAID
+  FAILED
+  CANCELED
+}
+
+enum PaymentStatus {
+  APPROVED
+  DECLINED
+}
+
+model Invoice {
+  id          String        @id @default(uuid()) @db.Char(36)
+  number      Int           @unique @default(autoincrement())
+  userId      String        @db.Char(36)
+  user        User          @relation(fields: [userId], references: [id])
+  vpsId       String?       @db.Char(36)
+  vps         Vps?          @relation(fields: [vpsId], references: [id])
+  description String        @db.VarChar(255)
+  amountCents Int
+  currency    String        @default("BRL") @db.Char(3)
+  status      InvoiceStatus @default(PENDING)
+  periodStart DateTime?
+  periodEnd   DateTime?
+  dueAt       DateTime
+  paidAt      DateTime?
+  createdAt   DateTime      @default(now())
+  payments    Payment[]
+
+  @@index([userId, status])
+  @@index([vpsId])
+  @@map("invoices")
+}
+
+model Payment {
+  id               String        @id @default(uuid()) @db.Char(36)
+  invoiceId        String        @db.Char(36)
+  invoice          Invoice       @relation(fields: [invoiceId], references: [id])
+  status           PaymentStatus
+  amountCents      Int
+  cardBrand        String        @db.VarChar(20)
+  cardLast4        String        @db.Char(4) // nunca PAN completo nem CVV
+  gatewayReference String        @db.VarChar(64)
+  failureCode      String?       @db.VarChar(40)
+  createdAt        DateTime      @default(now())
+
+  @@index([invoiceId])
+  @@map("payments")
+}
+
+// ───────────── Jobs assíncronos (fila no MySQL) ─────────────
+enum JobStatus {
+  QUEUED
+  RUNNING
+  SUCCEEDED
+  FAILED
+}
+
+model Job {
+  id          Int       @id @default(autoincrement())
+  type        String    @db.VarChar(50) // provision_vps | delete_vps | vps_action | reconcile
+  payload     Json
+  status      JobStatus @default(QUEUED)
+  attempts    Int       @default(0)
+  maxAttempts Int       @default(5)
+  runAt       DateTime  @default(now())
+  lockedAt    DateTime?
+  lockedBy    String?   @db.VarChar(64)
+  lastError   String?   @db.Text
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([status, runAt])
+  @@map("jobs")
+}
+
+// ───────────── Suporte ─────────────
+enum ConversationStatus {
+  WAITING
+  ACTIVE
+  CLOSED
+}
+
+model SupportConversation {
+  id         String             @id @default(uuid()) @db.Char(36)
+  customerId String             @db.Char(36)
+  customer   User               @relation("CustomerConversations", fields: [customerId], references: [id])
+  agentId    String?            @db.Char(36)
+  agent      User?              @relation("AgentConversations", fields: [agentId], references: [id])
+  subject    String             @db.VarChar(150)
+  status     ConversationStatus @default(WAITING)
+  createdAt  DateTime           @default(now())
+  claimedAt  DateTime?
+  closedAt   DateTime?
+  messages   SupportMessage[]
+
+  @@index([status, createdAt])
+  @@index([customerId, status])
+  @@index([agentId, status])
+  @@map("support_conversations")
+}
+
+model SupportMessage {
+  id             Int                 @id @default(autoincrement())
+  conversationId String              @db.Char(36)
+  conversation   SupportConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  senderId       String?             @db.Char(36) // null = mensagem do sistema ("Técnico X entrou")
+  sender         User?               @relation(fields: [senderId], references: [id])
+  body           String              @db.Text
+  createdAt      DateTime            @default(now())
+
+  @@index([conversationId, id])
+  @@index([senderId])
+  @@map("support_messages")
+}
+
+model AuditLog {
+  id         Int      @id @default(autoincrement())
+  actorId    String?  @db.Char(36)
+  action     String   @db.VarChar(60) // auth.login_failed, vps.delete, invoice.paid …
+  targetType String?  @db.VarChar(40)
+  targetId   String?  @db.VarChar(64)
+  metadata   Json?
+  ip         String?  @db.VarChar(45)
+  createdAt  DateTime @default(now())
+
+  @@index([action, createdAt])
+  @@map("audit_logs")
+}

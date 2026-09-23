@@ -18,6 +18,9 @@ const schema = z.object({
   /** Origem pública do app (usada no originCheck e no CSP). */
   APP_ORIGIN: z.url().optional(),
   LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent']).default('info'),
+  DATABASE_URL: z.url({ protocol: /^mysql$/, error: 'precisa ser mysql://usuario:senha@host:porta/banco' }),
+  /** Tamanho do pool de conexões do adapter MariaDB (plano §8.2). */
+  DB_POOL_LIMIT: z.coerce.number().int().min(1).max(50).default(5),
 });
 
 export type Env = z.infer<typeof schema> & { APP_ORIGIN: string };

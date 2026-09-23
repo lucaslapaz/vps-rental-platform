@@ -1,7 +1,7 @@
 # CLAUDE.md — Favo (VPS Rental Platform)
 
 Contexto para o Claude implementar este projeto em conversas novas. **O plano completo e as decisões estão em
-[docs/PLANO_DE_IMPLEMENTACAO.md](docs/PLANO_DE_IMPLEMENTACAO.md)** (revisão 8, 2026-09-23). Este arquivo resume o
+[docs/PLANO_DE_IMPLEMENTACAO.md](docs/PLANO_DE_IMPLEMENTACAO.md)** (revisão 9, 2026-09-23). Este arquivo resume o
 que não dá para deduzir do código: regras combinadas com o usuário, estado do ambiente, armadilhas já encontradas
 (com a solução) e comandos que já foram testados.
 
@@ -17,8 +17,13 @@ que não dá para deduzir do código: regras combinadas com o usuário, estado d
   proxy do console e o React 19 (Vite 8, Tailwind 4, shadcn). TypeScript 7, tsyringe, Prisma 7 + MySQL 8.4, Biome.
 - Fases (§17 do plano): 0 laboratório → 1 fundação → 2 banco → 3 auth/CSRF/RBAC → 4 Proxmox → 5 catálogo/pagamento →
   6 provisionamento → 7 página da VPS + console → 8 suporte → 9 qualidade → 10 extras.
-- **Situação atual:** Fases 0 e 1 concluídas. Fase 0: laboratório (plano §2.7), scripts em `scripts/pve/`. Fase 1:
-  fundação (servidor único Express+Vite, React com marca Favo, i18n, tema, Vitest, Biome). A próxima é a Fase 2 (banco).
+- **Situação atual:** Fases 0, 1 e 2 concluídas. Fase 0: laboratório (plano §2.7), scripts em `scripts/pve/`. Fase 1:
+  fundação (servidor único Express+Vite, React com marca Favo, i18n, tema, Vitest, Biome). Fase 2: Prisma 7 + MySQL
+  (schema, migration `init`, seeds idempotentes). A próxima é a Fase 3 (auth, CSRF, RBAC).
+- **Banco:** `npm run db:setup:dev` (migrate + seed) · `db:seed:dev` · `db:migrate:test` (reset do banco de teste: exige o
+  consentimento do usuário, N20) · `db:seed:test`. Usuários de demonstração: `admin@`, `ana@`, `bruno@` (clientes),
+  `carla@`, `diego@` (técnicos) `favo.local`, senha em `SEED_DEFAULT_PASSWORD` no `.env.development`. Pool de IPs das VPS:
+  `.200–.228` (o `.229` fica para testes manuais). Permissões: `src/shared/constants/permissions.ts` (fonte da verdade).
 - **Comandos:** `npm run dev` (porta 3000, HMR na mesma porta) · `npm run build && npm start` · `npm run typecheck` ·
   `npm run lint` · `npm test` · `npm run deps:stable -- <pkg>` · `npm run deps:check`.
 - **Convenções do código:** servidor com imports relativos **com extensão `.ts`** (reescritos para `.js` no build; nada de
@@ -36,7 +41,9 @@ que não dá para deduzir do código: regras combinadas com o usuário, estado d
    `--no-verify` nem reescrever o histórico (`push --force`, `reset --hard`, `rebase`) sem o usuário pedir.
 3. **Dependências — só a maior versão ESTÁVEL** (sem `-rc`, `-beta`, `-dev`…). A tag `latest` do npm **não** é critério.
    - Conferir antes: `npm run deps:stable -- <pkg>` (`scripts/deps/stable-versions.mjs`; depois de CLIs que instalam pacotes, `npm run deps:check`).
-   - Instalar **sempre com versão exata**: `npm install <pkg>@<versão>` (o projeto terá `save-exact=true` no `.npmrc`).
+   - **A versão instalada vem SEMPRE da saída do `deps:stable` rodado na hora**, nunca da memória do Claude nem da tabela
+     do plano (que é só uma fotografia de 2026-09-23). Sem consulta prévia, não há `npm install`.
+   - Instalar **sempre com versão exata**: `npm install <pkg>@<versão>` (`save-exact=true` no `.npmrc`).
    - **Nunca editar dependências do `package.json` à mão.** Só `npm install`/`npm uninstall`; outros campos com `npm pkg set`.
    - **Proibido `--force`/`--legacy-peer-deps`.** Em conflito de peer dependency, trocar de ferramenta ou perguntar ao usuário.
    - Depois de CLIs que instalam pacotes sozinhas (`shadcn init/add`), rodar `npm run deps:check`.
@@ -70,7 +77,7 @@ que não dá para deduzir do código: regras combinadas com o usuário, estado d
 | VM no VirtualBox | 2 vCPU, **3 GB**, **nested VT-x ligado**, Adaptador 1 = NAT (`nic0`), Adaptador 2 = Host-only com promíscuo `allow-all` (`nic1`) |
 | Se o PC reiniciar | Ligar a VM: `VBoxManage startvm "Segundo Proxmox" --type headless` e esperar ~20 s pela porta 8006 |
 | Rede | `vmbr0` = 10.0.2.15/24 sobre `nic0` (NAT, saída para a internet) · **`vmbr1` = 192.168.56.10/24 sobre `nic1`** + `MASQUERADE -s 192.168.56.0/24 -o vmbr0` |
-| IPs | DHCP do host-only: `.101–.199`. **VPS: `.200–.229`** (IPAM no banco). `.229` = testes manuais. `.250` = build de templates. Windows = `.1` |
+| IPs | DHCP do host-only: `.101–.199`. **VPS: `.200–.228`** (IPAM no banco, tabela `ip_addresses`). `.229` = testes manuais. `.250` = build de templates. Windows = `.1` |
 | DNS do nó | 45.5.96.96 (search `promox.teste`) |
 | Storage | `local` (dir, `/var/lib/vz`, ~2,8 GB livres) · `local-lvm` (lvmthin `data`, **16,8 GB**; VDI aumentado para 30 GB na Fase 0) |
 | RAM | O Proxmox usa ~1,3–1,4 GB; sobram **~1,5 GB para as VPS**. O Windows costuma ficar com só ~0,5 GB livres com o Proxmox ligado |
@@ -223,6 +230,21 @@ que não dá para deduzir do código: regras combinadas com o usuário, estado d
 - **N15.** `dotenv` 18 é só CJS e loga por padrão: `config({ path, quiet: true })`.
 - **N16. Cache do npx corrompido** (`ECOMPROMISED` / `Cannot find module …\_npx\<hash>\…`): apague só
   `%LOCALAPPDATA%\npm-cache\_npx\<hash>` e rode de novo.
+- **N18. MySQL do Windows com `lower_case_table_names=1`:** todas as tabelas usam `@@map("snake_case")` em minúsculas
+  (nomes PascalCase causariam *drift* falso no `migrate dev`). Com isso, um segundo `migrate dev` diz "Already in sync".
+- **N19. Prisma 7 + adapter MariaDB:** conexão com `caching_sha2_password` funcionou com `allowPublicKeyRetrieval: true`
+  (só para 127.0.0.1/localhost). Com o MySQL **fora do ar**, uma consulta espera o `acquireTimeout` (configurado para 5 s)
+  e o **`$disconnect()` trava** (o pool continua tentando): o `/api/health` usa um `Promise.race` de 2 s, e o shutdown tem
+  timeout forçado. O client gerado (`src/server/generated/prisma/`, fora do git) usa imports `.js`; importe
+  `../generated/prisma/client.ts`. Rode `npm run db:generate` depois de clonar ou de mudar o schema.
+- **N20. O Prisma 7 detecta agentes de IA e BLOQUEIA comandos destrutivos** (`migrate reset --force`, e provavelmente
+  `db push --force-reset`): exige `PRISMA_USER_CONSENT_FOR_DANGEROUS_AI_ACTION="<texto exato da mensagem do usuário
+  autorizando>"`. **Nunca contorne:** pergunte ao usuário (AskUserQuestion) a cada vez. Em 2026-09-23 o usuário autorizou
+  o reset **só do `vps_platform_test`**. Os testes não dependem de reset: o
+  seed é idempotente e cada teste cria/limpa os próprios dados.
+- **N21. `npm audit`** acusa avisos em dependências transitivas do Prisma 7.10.0 (`mariadb` 3.4.5 fixado pelo adapter,
+  `mysql2` e `deepmerge-ts` da CLI). Não há correção dentro da regra (o "fix" é voltar ao Prisma 6 com `--force`). Avaliado:
+  não se aplicam (MySQL local sem TLS, charset utf8mb4, config controlada por nós). Plano §19.
 - **N17.** `execFileSync('npm', …, { shell: true })` gera o aviso `DEP0190` no Node 24; os scripts de `scripts/deps/` usam
   `execSync` com o nome do pacote validado por regex.
 
@@ -245,9 +267,12 @@ que não dá para deduzir do código: regras combinadas com o usuário, estado d
 - **T11.** Script enviado por `ssh host 'bash -s' < script`: qualquer comando interno que leia o stdin (outro `ssh`, por exemplo)
   **consome o resto do script**. Para scripts assim, copie com `scp` e execute (é o que o `build-template.sh` faz) ou use `ssh -n`.
 - **T12.** `core.autocrlf=true` neste Windows: o `.gitattributes` força `*.sh` com LF (CRLF quebra o bash no Proxmox).
-- **T13. Parar o `npm run dev`/`npm start` em segundo plano** (TaskStop) mata o `npm`, mas o `node` filho **continua ouvindo na
-  porta 3000** (o próximo start falha, e o curl responde o servidor antigo). Mate pela porta:
-  `powershell -NoProfile -Command "Get-NetTCPConnection -LocalPort 3000 -State Listen | % { Stop-Process -Id $_.OwningProcess -Force }"`.
+- **T13. Parar o `npm run dev`/`npm start` em segundo plano** (TaskStop) mata só o `npm`: o `node` filho **continua na porta
+  3000**, e o **`tsx watch` pai também sobrevive** e sobe o servidor de novo quando algum arquivo muda (ex.: `db:generate`).
+  Já houve 4 `tsx watch` órfãos ao mesmo tempo, e o curl respondia o servidor errado (confira `environment` no `/api/health`).
+  Mate todos os `node` do projeto:
+  `powershell -NoProfile -Command "Get-CimInstance Win32_Process -Filter \"Name='node.exe'\" | ? { $_.CommandLine -match 'vps-rental-platform' } | % { Stop-Process -Id $_.ProcessId -Force }"`.
+  `npm start` exige o `.env.production` (fora do git; aponta para `vps_platform_prod`, criado na Fase 2).
 - **T14. Playwright MCP:** grava capturas e snapshots em `.playwright-mcp/` (no `.gitignore`). Salve capturas em `test-results/`.
   `browser_console_messages` com `all: true` mostra o histórico da sessão inteira, não só da página atual.
 

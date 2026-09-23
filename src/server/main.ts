@@ -6,13 +6,16 @@ import type { ViteDevServer } from 'vite';
 import { createApp } from './app.ts';
 import { loadEnv } from './config/env.ts';
 import { registerDependencies } from './container/register.ts';
+import { createPrismaClient } from './db/prisma.ts';
 import { errorHandler } from './http/middlewares/errorHandler.ts';
 import { spaHandler } from './http/spa.ts';
 import { createLogger } from './utils/logger.ts';
 
 const env = loadEnv();
 const logger = createLogger(env);
-const di = registerDependencies({ env, logger });
+// Um único PrismaClient (e um único pool) por processo.
+const prisma = createPrismaClient({ url: env.DATABASE_URL, poolLimit: env.DB_POOL_LIMIT });
+const di = registerDependencies({ env, logger, prisma });
 
 const app = createApp(di);
 const httpServer = http.createServer(app);
@@ -47,7 +50,8 @@ httpServer.listen(env.PORT, env.HOST, () => {
   logger.info(`Favo rodando em ${env.APP_ORIGIN} (${env.NODE_ENV})`);
 });
 
-// Encerramento gracioso (a lista cresce nas próximas fases: worker de jobs, Socket.IO, Prisma).
+// Encerramento gracioso: para de aceitar conexões → fecha o Vite → devolve o pool do banco (plano §8.2).
+// Nas próximas fases entram o worker de jobs e o Socket.IO, antes do banco.
 let closing = false;
 async function shutdown(signal: string) {
   if (closing) return;
@@ -55,9 +59,12 @@ async function shutdown(signal: string) {
   logger.info(`${signal} recebido, encerrando…`);
   const forceExit = setTimeout(() => process.exit(1), 10_000);
   forceExit.unref();
-  await vite?.close();
+  const serverClosed = new Promise<void>((resolve) => httpServer.close(() => resolve()));
   httpServer.closeAllConnections();
-  httpServer.close(() => process.exit(0));
+  await serverClosed;
+  await vite?.close();
+  await prisma.$disconnect();
+  process.exit(0);
 }
 process.on('SIGINT', () => void shutdown('SIGINT'));
 process.on('SIGTERM', () => void shutdown('SIGTERM'));

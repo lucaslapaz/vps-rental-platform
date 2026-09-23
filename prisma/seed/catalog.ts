@@ -1,0 +1,67 @@
+/** Catálogo inicial (plano §3.7 e §8.4). Os VMIDs são os templates construídos na Fase 0. */
+
+export const PLANS = [
+  { slug: 'nano', name: 'Nano', cores: 1, memoryMb: 256, diskGb: 2, bandwidthMbps: 10, priceCents: 990, sortOrder: 1 },
+  { slug: 'micro', name: 'Micro', cores: 1, memoryMb: 512, diskGb: 4, bandwidthMbps: 25, priceCents: 1990, sortOrder: 2 },
+  { slug: 'small', name: 'Small', cores: 2, memoryMb: 768, diskGb: 6, bandwidthMbps: 50, priceCents: 3490, sortOrder: 3 },
+  { slug: 'medium', name: 'Medium', cores: 2, memoryMb: 1024, diskGb: 8, bandwidthMbps: 100, priceCents: 4990, sortOrder: 4 },
+] as const;
+
+export const OS_TEMPLATES = [
+  {
+    slug: 'alpine-3.24',
+    name: 'Alpine Linux 3.24',
+    pveTemplateVmid: 9000,
+    defaultUser: 'alpine',
+    family: 'alpine',
+    version: '3.24',
+    sudoCommand: 'doas',
+    minMemoryMb: 256,
+    minDiskGb: 2,
+    requiresPassword: false,
+    hasGui: false,
+    sortOrder: 1,
+  },
+  {
+    slug: 'debian-13',
+    name: 'Debian 13 "trixie"',
+    pveTemplateVmid: 9001,
+    defaultUser: 'debian',
+    family: 'debian',
+    version: '13',
+    sudoCommand: 'sudo',
+    minMemoryMb: 512,
+    minDiskGb: 3,
+    requiresPassword: false,
+    hasGui: false,
+    sortOrder: 2,
+  },
+  {
+    slug: 'ubuntu-24.04',
+    name: 'Ubuntu 24.04 LTS (minimal)',
+    pveTemplateVmid: 9002,
+    defaultUser: 'ubuntu',
+    family: 'ubuntu',
+    version: '24.04',
+    sudoCommand: 'sudo',
+    minMemoryMb: 512,
+    minDiskGb: 4,
+    requiresPassword: false,
+    hasGui: false,
+    sortOrder: 3,
+  },
+  {
+    slug: 'alpine-3.24-desktop',
+    name: 'Alpine Linux 3.24 Desktop (XFCE)',
+    pveTemplateVmid: 9003,
+    defaultUser: 'alpine',
+    family: 'alpine',
+    version: '3.24',
+    sudoCommand: 'doas',
+    minMemoryMb: 1024,
+    minDiskGb: 4,
+    requiresPassword: true, // o login gráfico (LightDM) exige senha
+    hasGui: true,
+    sortOrder: 4,
+  },
+] as const;

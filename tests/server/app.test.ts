@@ -1,16 +1,28 @@
 import request from 'supertest';
-import { describe, expect, it } from 'vitest';
-import { createTestApp } from '../helpers/app.ts';
+import { afterAll, describe, expect, it } from 'vitest';
+import { createPrismaClient } from '../../src/server/db/prisma.ts';
+import { closeTestPrisma, createTestApp } from '../helpers/app.ts';
 
 describe('API base', () => {
   const fixedNow = new Date('2026-09-23T12:00:00.000Z');
   const { app } = createTestApp({ clock: { now: () => fixedNow } });
+  afterAll(closeTestPrisma);
 
-  it('GET /api/health responde 200 com o estado do app', async () => {
+  it('GET /api/health responde 200 com o estado do app e do banco', async () => {
     const res = await request(app).get('/api/health');
     expect(res.status).toBe(200);
-    expect(res.body).toMatchObject({ status: 'ok', environment: 'test', time: fixedNow.toISOString() });
+    expect(res.body).toMatchObject({ status: 'ok', environment: 'test', time: fixedNow.toISOString(), checks: { database: 'ok' } });
   });
+
+  it('GET /api/health responde 503 quando o banco não responde', async () => {
+    // Porta 1: conexão recusada na hora, sem depender de rede.
+    const down = createPrismaClient({ url: 'mysql://ninguem:x@127.0.0.1:1/nada', poolLimit: 1 });
+    const res = await request(createTestApp({ prisma: down }).app).get('/api/health');
+    expect(res.status).toBe(503);
+    expect(res.body).toMatchObject({ status: 'degraded', checks: { database: 'down' } });
+    // Sem await: com o banco inacessível, o $disconnect espera o pool desistir (CLAUDE.md, N19).
+    void down.$disconnect();
+  }, 10_000);
 
   it('rota inexistente em /api devolve 404 em JSON, nunca o HTML da SPA', async () => {
     const res = await request(app).get('/api/nao-existe');

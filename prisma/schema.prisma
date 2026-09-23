@@ -194,6 +194,9 @@ model Vps {
   ipAddressId     Int?       @unique
   ipAddress       IpAddress? @relation(fields: [ipAddressId], references: [id])
   lastError       String?    @db.Text
+  /// Senhas e chaves escolhidas na criação, CIFRADAS (AES-256-GCM, SecretBox). Existem só entre o pedido e o pagamento:
+  /// no pagamento vão para o payload do job provision_vps e esta coluna é apagada (plano §10.6).
+  provisionSecrets String?   @db.Text
   createdAt       DateTime   @default(now())
   updatedAt       DateTime   @updatedAt
   deletedAt       DateTime?

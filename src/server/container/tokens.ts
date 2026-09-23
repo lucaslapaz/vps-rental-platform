@@ -10,4 +10,5 @@ export const TOKENS = {
   Prisma: Symbol('Prisma'),
   VirtualizationProvider: Symbol('VirtualizationProvider'),
   SecretBox: Symbol('SecretBox'),
+  PaymentGateway: Symbol('PaymentGateway'),
 } as const;

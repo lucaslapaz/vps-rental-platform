@@ -14,6 +14,7 @@
 | 4 | 2026-09-23 | Respostas da revisão 4 (§0.4). **Marca fictícia Favo** e identidade visual (§14.6). **Três imagens** (Alpine, Debian 13, Ubuntu 24.04), **testadas** no laboratório (§2.6, §3.7). **Console noVNC** no núcleo (§10.5). **Senha root e SSH pelo guest agent** (§10.6). Tela de criação como nas plataformas reais (§14.5). **RBAC: uma role por usuário, verificação por permissão** (§9.7) |
 | 5 | 2026-09-23 | Respostas da revisão 5 (§0.5): **marca Favo aprovada**; **imagem Alpine Desktop (XFCE)** entra no catálogo (template 9003, plano Medium de 1 GB); **`CLAUDE.md` criado** na raiz com o contexto e as lições aprendidas. Nenhuma decisão pendente (§20) |
 | 6 | 2026-09-23 | Commits: o Claude passa a **commitar ao fim de cada fase** (substitui a decisão do §0.2). Ajustados o §1, o §17 e o `CLAUDE.md` |
+| 12 | 2026-09-23 | **Fase 5 concluída** (§17): catálogo, capacidade, pedido, pagamento simulado com trava da fatura (`FOR UPDATE`), telas de criação/checkout/faturas e moeda de exibição. Mudança no schema: `vps.provisionSecrets` (senhas cifradas entre o pedido e o pagamento, §12) |
 | 11 | 2026-09-23 | **Fase 4 concluída** (§17): cliente do Proxmox, provider real, agente, CLI `npm run pve` e suíte `@lab` 30/30 nas quatro imagens. Mudanças: drop-in do sshd **`01-favo.conf`** (§10.6) e formato do ticket do `vncproxy` (§10.5) |
 | 10 | 2026-09-23 | **Fase 3 concluída** (§17): sessão, CSRF assinado, RBAC, conta, chaves SSH e administração de usuários. Detalhes da implementação em §9.8 (origem aceita, pré-sessão, validação real das chaves SSH, textos em namespaces) |
 | 9 | 2026-09-23 | **Fase 2 concluída** (§17): Prisma 7.10.0 + adapter MariaDB, migration `init`, seeds idempotentes. Ajustes: tabelas com `@@map` em snake_case (MySQL do Windows com `lower_case_table_names=1`), `IpAddress.macAddress` (MAC derivado do IP), pool `.200–.228`, plano **Medium** no seed, proteção do Prisma contra agentes de IA em comandos destrutivos (§19) |
@@ -1724,6 +1725,11 @@ Por que no MySQL: evita outra dependência no PC, é persistente (sobrevive a re
 - Job `expire_pending`: faturas de criação não pagas em 24h → `CANCELED` e VPS `DELETED` (sem nada no Proxmox).
 - **Renovação mensal, suspensão por inadimplência e "relógio acelerado" para demonstração:** Fase 10.
 - A UI deixa claro, em vários pontos, que é **ambiente de demonstração, sem cobrança real**.
+- **Implementação (rev. 12):** as senhas escolhidas na criação ficam **cifradas** (AES-256-GCM) em `vps.provisionSecrets` entre o
+  pedido e o pagamento; no pagamento aprovado vão para o payload do job `provision_vps` e a coluna é apagada. A fatura é travada com
+  `SELECT … FOR UPDATE` durante a cobrança (pagamentos simultâneos → exatamente um aprova, os outros 409). Recusa → `402
+  PAYMENT_DECLINED` e a fatura continua em aberto. Capacidade (§11.5): limite por cliente, tetos `CAPACITY_MAX_*` e a memória/disco
+  livres do nó, descontando as VPS pagas que ainda não existem no Proxmox; Proxmox fora → `503 PROXMOX_UNAVAILABLE`.
 
 ---
 
@@ -2149,16 +2155,23 @@ prefixado com a senha VNC (§10.5). Implementação: `src/server/integrations/pr
 `QemuCloudInitProvider`, `ImageProfile`), interface `VirtualizationProvider`, `SecretBox` (AES-256-GCM, `JOB_SECRET_KEY`),
 provider falso para os testes comuns e o `/api/health` com o estado do Proxmox.
 
-### Fase 5: Catálogo, pedido e pagamento simulado
-- [ ] `PlanService`, `OsTemplateService`, rotas de catálogo.
-- [ ] `CapacityService` (limites + nó real).
-- [ ] `PaymentGateway` + `FakePaymentGateway`, `InvoiceService`, `POST /api/vps` (cria o pedido), `POST /api/invoices/:id/pay`.
-- [ ] Frontend: **tela de criação de VPS** (§14.5) com campos condicionais vindos da imagem, `/checkout/:id`, `/billing`,
+### Fase 5: Catálogo, pedido e pagamento simulado — ✅ concluída em 2026-09-23
+- [x] `PlanService`, `OsTemplateService`, rotas de catálogo.
+- [x] `CapacityService` (limites + nó real).
+- [x] `PaymentGateway` + `FakePaymentGateway`, `InvoiceService`, `POST /api/vps` (cria o pedido), `POST /api/invoices/:id/pay`.
+- [x] Frontend: **tela de criação de VPS** (§14.5) com campos condicionais vindos da imagem, `/checkout/:id`, `/billing`,
   **seletor de moeda** e formatação de valores (§14.4).
-- [ ] Validação no servidor espelhando a tela (mínimos da imagem, regras de usuário, senha e chave).
+- [x] Validação no servidor espelhando a tela (mínimos da imagem, regras de usuário, senha e chave).
 
 **Aceite:** cartão `…0002` recusa e permite tentar de novo; `…4242` aprova e gera o job `provision_vps` (visível no banco);
 pagar a mesma fatura duas vezes → 409. Escolher Debian desabilita o plano Nano, e forçar pela API retorna `422 PLAN_BELOW_IMAGE_MINIMUM`. Com USD selecionado, os preços aparecem convertidos com "≈", e o checkout mostra o valor em BRL.
+
+**Resultado (rev. 12):** verificado no navegador (Playwright MCP) com a Ana: Debian desabilita o Nano ("Debian 13 requer 512 MB e 3 GB")
+e escolhe o Micro; com USD os preços aparecem como "≈ US$ 3,58" e o resumo avisa "Cobrado em reais: R$ 19,90"; pedido Alpine Nano
+(chave salva + senha) → checkout com **R$ 9,90** em destaque e a conversão como referência; cartão `…0002` recusado com mensagem e
+nova tentativa; `…4242` aprovado → VPS "Criando" e job `provision_vps` no banco (senhas cifradas, nenhuma em claro); pagar de novo
+→ **409 INVOICE_NOT_PAYABLE**. 72 testes (catálogo, validações do pedido, limites, capacidade, Proxmox fora, pagamento
+recusado/aprovado, 3 pagamentos simultâneos → 1 aprovação, cartão inválido, fatura de outro cliente → 404, Luhn, moeda).
 
 ### Fase 6: Provisionamento e ciclo de vida
 - [ ] `JobQueue` + `Worker` (SKIP LOCKED, retry, locks órfãos), handlers §11.

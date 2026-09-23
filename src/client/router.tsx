@@ -5,9 +5,12 @@ import { AdminUsersPage } from '@/features/admin/AdminUsersPage';
 import { RequireAuth, RequireGuest, RequirePermission } from '@/features/auth/guards';
 import { LoginPage } from '@/features/auth/LoginPage';
 import { RegisterPage } from '@/features/auth/RegisterPage';
+import { BillingPage } from '@/features/billing/BillingPage';
+import { CheckoutPage } from '@/features/billing/CheckoutPage';
 import { NotFoundPage } from '@/features/errors/NotFoundPage';
 import { RouteErrorPage } from '@/features/errors/RouteErrorPage';
 import { HomeRoute } from '@/features/home/HomeRoute';
+import { CreateVpsPage } from '@/features/vps/CreateVpsPage';
 import { VpsListPage } from '@/features/vps/VpsListPage';
 
 // Rotas do plano §14.1; as demais entram nas fases seguintes.
@@ -39,6 +42,36 @@ export const router = createBrowserRouter([
           <RequireAuth>
             <RequirePermission permission="vps:read:own">
               <VpsListPage />
+            </RequirePermission>
+          </RequireAuth>
+        ),
+      },
+      {
+        path: 'vps/new',
+        element: (
+          <RequireAuth>
+            <RequirePermission permission="vps:create">
+              <CreateVpsPage />
+            </RequirePermission>
+          </RequireAuth>
+        ),
+      },
+      {
+        path: 'checkout/:invoiceId',
+        element: (
+          <RequireAuth>
+            <RequirePermission permission="billing:pay:own">
+              <CheckoutPage />
+            </RequirePermission>
+          </RequireAuth>
+        ),
+      },
+      {
+        path: 'billing',
+        element: (
+          <RequireAuth>
+            <RequirePermission permission="billing:read:own">
+              <BillingPage />
             </RequirePermission>
           </RequireAuth>
         ),

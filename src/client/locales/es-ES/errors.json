@@ -18,6 +18,19 @@
   "INTERNAL_ERROR": "Error interno. Inténtalo de nuevo en unos momentos.",
   "BAD_REQUEST": "Solicitud no válida.",
   "NETWORK_ERROR": "No hay conexión con el servidor.",
+  "PLAN_BELOW_IMAGE_MINIMUM": "Este plan es menor que el mínimo de la imagen elegida.",
+  "PASSWORD_REQUIRED": "Esta imagen exige contraseña (inicio de sesión gráfico).",
+  "ROOT_PASSWORD_NOT_SUPPORTED": "Esta imagen no acepta contraseña de root.",
+  "SSH_KEYS_NOT_SUPPORTED": "Esta imagen no acepta claves SSH.",
+  "SSH_KEY_NOT_FOUND": "Una de las claves elegidas ya no existe.",
+  "IMAGE_NOT_FOUND": "Imagen no disponible.",
+  "PLAN_NOT_FOUND": "Plan no disponible.",
+  "NO_CAPACITY": "Sin existencias por ahora: el laboratorio está lleno. Prueba un plan menor o más tarde.",
+  "VPS_LIMIT_REACHED": "Has alcanzado el límite de VPS de tu cuenta.",
+  "PROXMOX_UNAVAILABLE": "La infraestructura no está disponible ahora. Inténtalo en unos momentos.",
+  "INVOICE_NOT_PAYABLE": "Esta factura ya no está pendiente.",
+  "INVOICE_EXPIRED": "El plazo de esta factura terminó.",
+  "PAYMENT_DECLINED": "Pago rechazado.",
   "validation": {
     "required": "Campo obligatorio.",
     "email": "Introduce un correo válido.",
@@ -27,6 +40,16 @@
     "passwordSame": "La nueva contraseña debe ser distinta de la actual.",
     "sshKeyFormat": "Formato de clave no reconocido (ssh-ed25519, ecdsa-sha2-* o ssh-rsa).",
     "role": "Rol no válido.",
-    "id": "Identificador no válido."
+    "id": "Identificador no válido.",
+    "username": "Usa minúsculas, números, _ o -, empezando por letra (hasta 32).",
+    "usernameReserved": "Ese nombre está reservado por el sistema. Elige otro.",
+    "hostname": "Usa minúsculas, números y guiones (hasta 63), sin empezar ni terminar con guion.",
+    "authMethodRequired": "Elige al menos una forma de entrar: clave SSH o contraseña.",
+    "sshPasswordNeedsPassword": "Para entrar por SSH con contraseña, define una contraseña.",
+    "passwordMismatch": "Las contraseñas no coinciden.",
+    "cardNumber": "Número de tarjeta no válido.",
+    "cardExpiry": "Fecha de caducidad no válida.",
+    "cardExpired": "Tarjeta caducada.",
+    "cardCvc": "CVC no válido."
   }
 }

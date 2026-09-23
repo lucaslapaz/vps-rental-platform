@@ -1,0 +1,91 @@
+{
+  "list": {
+    "title": "Minhas VPS",
+    "create": "Criar VPS",
+    "emptyTitle": "Nenhuma VPS ainda",
+    "emptyDescription": "Sua primeira célula está a um clique.",
+    "pay": "Pagar",
+    "ipPending": "IP na criação",
+    "limitHint": "Você pode ter até {{count}} VPS nesta conta de demonstração.",
+    "columns": {
+      "hostname": "Hostname",
+      "image": "Imagem",
+      "plan": "Plano",
+      "ip": "IP",
+      "status": "Situação"
+    }
+  },
+  "create": {
+    "title": "Criar VPS",
+    "subtitle": "Escolha a imagem, o plano e como você vai entrar no servidor.",
+    "location": {
+      "title": "Localização",
+      "lab": "Laboratório",
+      "node": "Nó {{node}} · Proxmox VE (KVM)"
+    },
+    "image": {
+      "title": "Imagem",
+      "light": "Leve",
+      "popular": "Popular",
+      "gui": "Interface gráfica",
+      "minimum": "Mínimo: {{memory}} de RAM e {{disk}} GB de disco"
+    },
+    "plan": {
+      "title": "Plano",
+      "vcpu_one": "{{count}} vCPU",
+      "vcpu_other": "{{count}} vCPUs",
+      "ram": "{{value}} de RAM",
+      "disk": "{{value}} GB de disco",
+      "bandwidth": "{{value}} Mbps",
+      "perMonth": "/mês",
+      "belowMinimum": "{{image}} requer {{memory}} e {{disk}} GB"
+    },
+    "auth": {
+      "title": "Acesso",
+      "method": "Como você vai entrar",
+      "methodKey": "Chave SSH",
+      "methodKeyHint": "Recomendado: mais seguro que senha.",
+      "methodPassword": "Senha",
+      "methodBoth": "Chave e senha",
+      "username": "Nome de usuário",
+      "usernameHint": "Seu usuário terá acesso administrativo via {{sudo}}.",
+      "savedKeys": "Chaves salvas na sua conta",
+      "noSavedKeys": "Nenhuma chave salva. Cole uma abaixo.",
+      "newKey": "Colar uma chave nova",
+      "newKeyPlaceholder": "ssh-ed25519 AAAA… voce@computador",
+      "saveKey": "Salvar esta chave na minha conta",
+      "password": "Senha do usuário",
+      "passwordConfirm": "Confirme a senha",
+      "passwordRequired": "Esta imagem tem interface gráfica: a senha é necessária para o login na tela.",
+      "strength": {
+        "label": "Força da senha",
+        "weak": "Fraca",
+        "fair": "Razoável",
+        "good": "Boa",
+        "strong": "Forte"
+      },
+      "sshPasswordAuth": "Permitir login SSH com senha",
+      "sshPasswordAuthHint": "Desligado, o SSH aceita só chave (mais seguro). Dá para mudar depois.",
+      "rootPassword": "Definir senha root",
+      "rootPasswordHint": "Para o console e o su; o login SSH como root fica sempre desativado.",
+      "rootPasswordField": "Senha root"
+    },
+    "details": {
+      "title": "Detalhes",
+      "hostname": "Hostname",
+      "hostnameHint": "Nome da máquina na rede. Letras minúsculas, números e hífen.",
+      "suggest": "Sugerir outro"
+    },
+    "summary": {
+      "title": "Resumo",
+      "image": "Imagem",
+      "plan": "Plano",
+      "monthly": "Mensalidade",
+      "chargedInBrl": "Cobrado em reais: {{value}}",
+      "demo": "Pagamento simulado: nenhum valor é cobrado de verdade.",
+      "submit": "Criar e pagar",
+      "submitting": "Criando pedido…",
+      "choose": "Escolha a imagem e o plano"
+    }
+  }
+}

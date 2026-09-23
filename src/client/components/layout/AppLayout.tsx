@@ -3,6 +3,7 @@ import { Link, NavLink, Outlet } from 'react-router';
 import { Logo } from '@/components/brand/Logo';
 import { useCan } from '@/features/auth/useAuth';
 import { cn } from '@/lib/utils';
+import { CurrencyMenu } from './CurrencyMenu';
 import { LanguageMenu } from './LanguageMenu';
 import { ThemeMenu } from './ThemeMenu';
 import { UserMenu } from './UserMenu';
@@ -28,6 +29,7 @@ export function AppLayout() {
   const { t } = useTranslation();
   const canVps = useCan('vps:read:own');
   const canAdmin = useCan('admin:users:read');
+  const canBilling = useCan('billing:read:own');
 
   return (
     <div className="flex min-h-svh flex-col">
@@ -45,11 +47,13 @@ export function AppLayout() {
             </Link>
             <nav className="hidden items-center gap-1 sm:flex" aria-label={t('nav.home')}>
               {canVps ? <NavItem to="/vps">{t('nav.vps')}</NavItem> : null}
+              {canBilling ? <NavItem to="/billing">{t('nav.billing')}</NavItem> : null}
               {canAdmin ? <NavItem to="/admin/users">{t('nav.admin')}</NavItem> : null}
             </nav>
           </div>
           <div className="flex items-center gap-1">
             <LanguageMenu />
+            <CurrencyMenu />
             <ThemeMenu />
             <UserMenu />
           </div>

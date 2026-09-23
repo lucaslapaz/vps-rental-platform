@@ -1,0 +1,49 @@
+{
+  "list": {
+    "title": "Invoices",
+    "subtitle": "Everything here is simulated: no real charge is made.",
+    "number": "No.",
+    "description": "Description",
+    "amount": "Amount",
+    "status": "Status",
+    "due": "Due",
+    "pay": "Pay",
+    "empty": "No invoices yet."
+  },
+  "checkout": {
+    "title": "Payment",
+    "invoice": "Invoice #{{number}}",
+    "total": "Total due",
+    "converted": "In your selected currency: {{value}}",
+    "due": "Pay by {{date}}",
+    "card": {
+      "title": "Test card",
+      "number": "Card number",
+      "holder": "Name on card",
+      "expMonth": "Month",
+      "expYear": "Year",
+      "cvc": "CVC",
+      "submit": "Pay {{value}}",
+      "submitting": "Processing…"
+    },
+    "testCards": {
+      "title": "Test cards",
+      "hint": "Use any name, a future expiry date and any CVC.",
+      "use": "Use",
+      "approved": "Approved",
+      "card_declined": "Declined",
+      "insufficient_funds": "Insufficient funds"
+    },
+    "declined": {
+      "card_declined": "The card was declined. Try another card.",
+      "insufficient_funds": "Insufficient funds. Try another card."
+    },
+    "paidTitle": "Payment approved",
+    "paidDescription": "Your VPS is being created. It takes about a minute.",
+    "success": "Payment approved! Your VPS is being created.",
+    "notPayable": "This invoice is not open.",
+    "goToVps": "See my VPS",
+    "goToBilling": "See invoices",
+    "demo": "Demo environment: the card number and CVC are never stored; only the brand and the last 4 digits."
+  }
+}

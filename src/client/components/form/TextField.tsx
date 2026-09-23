@@ -1,5 +1,5 @@
 import type { ComponentProps } from 'react';
-import type { FieldError as RhfFieldError, UseFormRegisterReturn } from 'react-hook-form';
+import type { UseFormRegisterReturn } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { Field, FieldDescription, FieldError, FieldLabel } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
@@ -8,7 +8,7 @@ import { validationMessage } from '@/lib/errors';
 interface TextFieldProps extends Omit<ComponentProps<typeof Input>, 'id' | 'name'> {
   label: string;
   registration: UseFormRegisterReturn;
-  error?: RhfFieldError;
+  error?: { message?: string } | undefined;
   description?: string;
 }
 

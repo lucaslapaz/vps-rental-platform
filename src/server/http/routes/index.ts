@@ -2,12 +2,16 @@ import { Router } from 'express';
 import type { DependencyContainer } from 'tsyringe';
 import { changeRoleSchema, intIdParamSchema, sshKeySchema, userSearchSchema, uuidParamSchema } from '../../../shared/schemas/account.ts';
 import { changePasswordSchema, loginSchema, registerSchema } from '../../../shared/schemas/auth.ts';
+import { createVpsSchema, payInvoiceSchema } from '../../../shared/schemas/vps.ts';
 import type { Env } from '../../config/env.ts';
 import { TOKENS } from '../../container/tokens.ts';
 import { AccountController } from '../../controllers/AccountController.ts';
 import { AdminController } from '../../controllers/AdminController.ts';
 import { AuthController } from '../../controllers/AuthController.ts';
+import { CatalogController } from '../../controllers/CatalogController.ts';
 import { HealthController } from '../../controllers/HealthController.ts';
+import { InvoiceController } from '../../controllers/InvoiceController.ts';
+import { VpsController } from '../../controllers/VpsController.ts';
 import { CsrfService } from '../../services/CsrfService.ts';
 import { SessionService } from '../../services/SessionService.ts';
 import { authenticate, requirePermission } from '../middlewares/auth.ts';
@@ -31,6 +35,9 @@ export function createApiRouter(di: DependencyContainer) {
   const auth = di.resolve(AuthController);
   const account = di.resolve(AccountController);
   const admin = di.resolve(AdminController);
+  const catalog = di.resolve(CatalogController);
+  const vps = di.resolve(VpsController);
+  const invoices = di.resolve(InvoiceController);
 
   const router = Router();
   router.get('/health', health.show);
@@ -80,6 +87,38 @@ export function createApiRouter(di: DependencyContainer) {
     P('admin:users:assign-role'),
     validate({ params: uuidParamSchema, body: changeRoleSchema }),
     admin.changeRole,
+  );
+
+  // ── Catálogo (público) ──
+  router.get('/plans', catalog.plans);
+  router.get('/os-templates', catalog.osTemplates);
+
+  // ── VPS (Fase 5: pedido; as ações entram nas fases 6 e 7) ──
+  router.get('/vps', A, P('vps:read:own'), vps.list);
+  router.get('/vps/:id', A, P('vps:read:own'), validate({ params: uuidParamSchema }), vps.get);
+  router.post(
+    '/vps',
+    O,
+    limiter(env, { windowMinutes: 60, limit: 20 }),
+    C,
+    A,
+    P('vps:create'),
+    validate({ body: createVpsSchema }),
+    vps.create,
+  );
+
+  // ── Faturas e pagamento simulado ──
+  router.get('/invoices', A, P('billing:read:own'), invoices.list);
+  router.get('/invoices/:id', A, P('billing:read:own'), validate({ params: uuidParamSchema }), invoices.get);
+  router.post(
+    '/invoices/:id/pay',
+    O,
+    limiter(env, { windowMinutes: 15, limit: 20 }),
+    C,
+    A,
+    P('billing:pay:own'),
+    validate({ params: uuidParamSchema, body: payInvoiceSchema }),
+    invoices.pay,
   );
 
   return router;

@@ -1,0 +1,91 @@
+{
+  "list": {
+    "title": "My VPS",
+    "create": "Create VPS",
+    "emptyTitle": "No VPS yet",
+    "emptyDescription": "Your first cell is one click away.",
+    "pay": "Pay",
+    "ipPending": "IP on creation",
+    "limitHint": "You can have up to {{count}} VPS in this demo account.",
+    "columns": {
+      "hostname": "Hostname",
+      "image": "Image",
+      "plan": "Plan",
+      "ip": "IP",
+      "status": "Status"
+    }
+  },
+  "create": {
+    "title": "Create VPS",
+    "subtitle": "Pick the image, the plan and how you will log into the server.",
+    "location": {
+      "title": "Location",
+      "lab": "Lab",
+      "node": "Node {{node}} · Proxmox VE (KVM)"
+    },
+    "image": {
+      "title": "Image",
+      "light": "Lightweight",
+      "popular": "Popular",
+      "gui": "Desktop",
+      "minimum": "Minimum: {{memory}} RAM and {{disk}} GB disk"
+    },
+    "plan": {
+      "title": "Plan",
+      "vcpu_one": "{{count}} vCPU",
+      "vcpu_other": "{{count}} vCPUs",
+      "ram": "{{value}} RAM",
+      "disk": "{{value}} GB disk",
+      "bandwidth": "{{value}} Mbps",
+      "perMonth": "/mo",
+      "belowMinimum": "{{image}} requires {{memory}} and {{disk}} GB"
+    },
+    "auth": {
+      "title": "Access",
+      "method": "How you will log in",
+      "methodKey": "SSH key",
+      "methodKeyHint": "Recommended: safer than a password.",
+      "methodPassword": "Password",
+      "methodBoth": "Key and password",
+      "username": "Username",
+      "usernameHint": "Your user will have admin access via {{sudo}}.",
+      "savedKeys": "Keys saved in your account",
+      "noSavedKeys": "No saved keys. Paste one below.",
+      "newKey": "Paste a new key",
+      "newKeyPlaceholder": "ssh-ed25519 AAAA… you@computer",
+      "saveKey": "Save this key to my account",
+      "password": "User password",
+      "passwordConfirm": "Confirm the password",
+      "passwordRequired": "This image has a desktop: the password is needed for the on-screen login.",
+      "strength": {
+        "label": "Password strength",
+        "weak": "Weak",
+        "fair": "Fair",
+        "good": "Good",
+        "strong": "Strong"
+      },
+      "sshPasswordAuth": "Allow SSH password login",
+      "sshPasswordAuthHint": "When off, SSH only accepts keys (safer). You can change it later.",
+      "rootPassword": "Set a root password",
+      "rootPasswordHint": "For the console and su; SSH login as root is always disabled.",
+      "rootPasswordField": "Root password"
+    },
+    "details": {
+      "title": "Details",
+      "hostname": "Hostname",
+      "hostnameHint": "Machine name on the network. Lowercase letters, digits and hyphens.",
+      "suggest": "Suggest another"
+    },
+    "summary": {
+      "title": "Summary",
+      "image": "Image",
+      "plan": "Plan",
+      "monthly": "Monthly price",
+      "chargedInBrl": "Charged in reais: {{value}}",
+      "demo": "Simulated payment: no real charge is made.",
+      "submit": "Create and pay",
+      "submitting": "Creating order…",
+      "choose": "Pick the image and the plan"
+    }
+  }
+}

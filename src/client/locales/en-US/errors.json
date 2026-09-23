@@ -18,6 +18,19 @@
   "INTERNAL_ERROR": "Internal error. Please try again shortly.",
   "BAD_REQUEST": "Invalid request.",
   "NETWORK_ERROR": "Can't reach the server.",
+  "PLAN_BELOW_IMAGE_MINIMUM": "This plan is below the minimum for the selected image.",
+  "PASSWORD_REQUIRED": "This image requires a password (graphical login).",
+  "ROOT_PASSWORD_NOT_SUPPORTED": "This image does not accept a root password.",
+  "SSH_KEYS_NOT_SUPPORTED": "This image does not accept SSH keys.",
+  "SSH_KEY_NOT_FOUND": "One of the selected keys no longer exists.",
+  "IMAGE_NOT_FOUND": "Image unavailable.",
+  "PLAN_NOT_FOUND": "Plan unavailable.",
+  "NO_CAPACITY": "Out of stock: the lab is full. Try a smaller plan or later.",
+  "VPS_LIMIT_REACHED": "You have reached the VPS limit of your account.",
+  "PROXMOX_UNAVAILABLE": "The infrastructure is unavailable right now. Please try again shortly.",
+  "INVOICE_NOT_PAYABLE": "This invoice is no longer open.",
+  "INVOICE_EXPIRED": "This invoice has expired.",
+  "PAYMENT_DECLINED": "Payment declined.",
   "validation": {
     "required": "This field is required.",
     "email": "Enter a valid email.",
@@ -27,6 +40,16 @@
     "passwordSame": "The new password must be different from the current one.",
     "sshKeyFormat": "Key format not recognized (ssh-ed25519, ecdsa-sha2-* or ssh-rsa).",
     "role": "Invalid role.",
-    "id": "Invalid identifier."
+    "id": "Invalid identifier.",
+    "username": "Use lowercase letters, digits, _ or -, starting with a letter (up to 32).",
+    "usernameReserved": "This name is reserved by the system. Pick another one.",
+    "hostname": "Use lowercase letters, digits and hyphens (up to 63), not starting or ending with a hyphen.",
+    "authMethodRequired": "Choose at least one way to log in: SSH key or password.",
+    "sshPasswordNeedsPassword": "Set a password to allow SSH password login.",
+    "passwordMismatch": "Passwords do not match.",
+    "cardNumber": "Invalid card number.",
+    "cardExpiry": "Invalid expiry date.",
+    "cardExpired": "Card expired.",
+    "cardCvc": "Invalid CVC."
   }
 }

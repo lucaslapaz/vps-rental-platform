@@ -1,7 +1,7 @@
 # CLAUDE.md — Favo (VPS Rental Platform)
 
 Contexto para o Claude implementar este projeto em conversas novas. **O plano completo e as decisões estão em
-[docs/PLANO_DE_IMPLEMENTACAO.md](docs/PLANO_DE_IMPLEMENTACAO.md)** (revisão 11, 2026-09-23). Este arquivo resume o
+[docs/PLANO_DE_IMPLEMENTACAO.md](docs/PLANO_DE_IMPLEMENTACAO.md)** (revisão 12, 2026-09-23). Este arquivo resume o
 que não dá para deduzir do código: regras combinadas com o usuário, estado do ambiente, armadilhas já encontradas
 (com a solução) e comandos que já foram testados.
 
@@ -17,11 +17,13 @@ que não dá para deduzir do código: regras combinadas com o usuário, estado d
   proxy do console e o React 19 (Vite 8, Tailwind 4, shadcn). TypeScript 7, tsyringe, Prisma 7 + MySQL 8.4, Biome.
 - Fases (§17 do plano): 0 laboratório → 1 fundação → 2 banco → 3 auth/CSRF/RBAC → 4 Proxmox → 5 catálogo/pagamento →
   6 provisionamento → 7 página da VPS + console → 8 suporte → 9 qualidade → 10 extras.
-- **Situação atual:** Fases 0 a 4 concluídas. Fase 0: laboratório (plano §2.7), scripts em `scripts/pve/`. Fase 1:
+- **Situação atual:** Fases 0 a 5 concluídas. Fase 0: laboratório (plano §2.7), scripts em `scripts/pve/`. Fase 1:
   fundação (servidor único Express+Vite, React com marca Favo, i18n, tema, Vitest, Biome). Fase 2: Prisma 7 + MySQL
   (schema, migration `init`, seeds idempotentes). Fase 3: sessão, CSRF, RBAC, conta, chaves SSH e administração de
   usuários. Fase 4: integração com o Proxmox (`src/server/integrations/proxmox/`, provider atrás da interface
-  `VirtualizationProvider`, CLI `npm run pve`, suíte `npm run test:lab`). A próxima é a Fase 5 (catálogo e pagamento).
+  `VirtualizationProvider`, CLI `npm run pve`, suíte `npm run test:lab`). Fase 5: catálogo, capacidade, pedido (`POST /api/vps`), pagamento simulado e telas de criação,
+  checkout e faturas. A próxima é a Fase 6 (worker de jobs e provisionamento). **Há 1 VPS paga no banco de dev** (`favo-demo`,
+  Alpine Nano, da Ana, com a chave real do Windows) e o job `provision_vps` na fila, esperando o worker da Fase 6.
 - **Proxmox no código:** `ProxmoxClient` (undici + CA + servername, token, zod), `TaskWaiter` (UPID), `QemuCloudInitProvider`
   (clone, cloud-init, resize, energia, status, pendências, métricas, console, guest agent) e `ImageProfile` (comandos fixos por
   família). Os testes comuns usam `tests/helpers/FakeVirtualizationProvider.ts`; só o `npm run test:lab` (LAB=1) toca o Proxmox.
@@ -286,6 +288,17 @@ que não dá para deduzir do código: regras combinadas com o usuário, estado d
 - **N26. i18next tipado:** `t()` só aceita chaves conhecidas; chaves dinâmicas (código de erro, role) passam pelos helpers
   de `src/client/lib/errors.ts` (`errorMessage`, `validationMessage`, `roleLabel`). zod 4: `z.stringbool()` para
   booleanos do `.env` e `{ error: 'chave' }` nas mensagens.
+- **N27. Prisma 7: `migrate dev` NÃO roda mais o `generate`.** Depois de mudar o schema, o client ficava sem a coluna nova e
+  o `create` falhava com *"Unknown argument"* (500). Os scripts `postdb:migrate:dev`, `postdb:migrate:reset` e `postinstall`
+  do package.json regeneram o client sozinhos. Aplique a migration também nos bancos de teste e de produção local:
+  `npx cross-env NODE_ENV=test prisma migrate deploy` (e `NODE_ENV=production`).
+- **N28. Pagamento:** `POST /api/invoices/:id/pay` trava a fatura com `SELECT … FOR UPDATE` dentro de uma transação interativa
+  (timeout 20 s) enquanto o gateway simulado "cobra"; pagamentos simultâneos esperam e levam 409 (testado com 3 em paralelo).
+  Aprovado → fatura PAID + VPS PROVISIONING + job `provision_vps` na MESMA transação (outbox). As senhas escolhidas na criação
+  ficam cifradas em `vps.provisionSecrets` até o pagamento e depois só no payload do job (SecretBox, `v1.<iv>.<tag>.<dados>`).
+  Recusado → 402 `PAYMENT_DECLINED` com `details.failureCode`, e a fatura continua em aberto.
+- **N29. Moeda:** só exibição (`src/client/lib/currency.ts`, taxas fixas de demonstração, prefixo "≈"); o checkout destaca o BRL.
+  O `ApiError.details` do cliente é `unknown`: lista de campos no `VALIDATION_ERROR`, objeto nos outros erros.
 - **N17.** `execFileSync('npm', …, { shell: true })` gera o aviso `DEP0190` no Node 24; os scripts de `scripts/deps/` usam
   `execSync` com o nome do pacote validado por regex.
 

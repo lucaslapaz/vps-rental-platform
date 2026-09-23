@@ -18,6 +18,19 @@
   "INTERNAL_ERROR": "Erro interno. Tente de novo em instantes.",
   "BAD_REQUEST": "Requisição inválida.",
   "NETWORK_ERROR": "Sem conexão com o servidor.",
+  "PLAN_BELOW_IMAGE_MINIMUM": "Este plano é menor que o mínimo da imagem escolhida.",
+  "PASSWORD_REQUIRED": "Esta imagem exige senha (login gráfico).",
+  "ROOT_PASSWORD_NOT_SUPPORTED": "Esta imagem não aceita senha root.",
+  "SSH_KEYS_NOT_SUPPORTED": "Esta imagem não aceita chaves SSH.",
+  "SSH_KEY_NOT_FOUND": "Uma das chaves escolhidas não existe mais.",
+  "IMAGE_NOT_FOUND": "Imagem indisponível.",
+  "PLAN_NOT_FOUND": "Plano indisponível.",
+  "NO_CAPACITY": "Sem estoque no momento: o laboratório está cheio. Tente um plano menor ou mais tarde.",
+  "VPS_LIMIT_REACHED": "Você atingiu o limite de VPS da sua conta.",
+  "PROXMOX_UNAVAILABLE": "A infraestrutura está indisponível agora. Tente em instantes.",
+  "INVOICE_NOT_PAYABLE": "Esta fatura não está mais em aberto.",
+  "INVOICE_EXPIRED": "O prazo desta fatura acabou.",
+  "PAYMENT_DECLINED": "Pagamento recusado.",
   "validation": {
     "required": "Campo obrigatório.",
     "email": "Informe um e-mail válido.",
@@ -27,6 +40,16 @@
     "passwordSame": "A nova senha precisa ser diferente da atual.",
     "sshKeyFormat": "Formato de chave não reconhecido (ssh-ed25519, ecdsa-sha2-* ou ssh-rsa).",
     "role": "Role inválida.",
-    "id": "Identificador inválido."
+    "id": "Identificador inválido.",
+    "username": "Use letras minúsculas, números, _ ou -, começando por letra (até 32).",
+    "usernameReserved": "Esse nome é reservado pelo sistema. Escolha outro.",
+    "hostname": "Use letras minúsculas, números e hífen (até 63), sem começar ou terminar com hífen.",
+    "authMethodRequired": "Escolha pelo menos um jeito de entrar: chave SSH ou senha.",
+    "sshPasswordNeedsPassword": "Para o login SSH por senha, defina uma senha.",
+    "passwordMismatch": "As senhas não conferem.",
+    "cardNumber": "Número de cartão inválido.",
+    "cardExpiry": "Validade inválida.",
+    "cardExpired": "Cartão vencido.",
+    "cardCvc": "CVC inválido."
   }
 }

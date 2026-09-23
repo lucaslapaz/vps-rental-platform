@@ -13,7 +13,8 @@
     "login": "Entrar",
     "register": "Criar conta",
     "logout": "Sair",
-    "userMenu": "Menu do usuário"
+    "userMenu": "Menu do usuário",
+    "billing": "Faturas"
   },
   "language": {
     "label": "Idioma",
@@ -108,10 +109,31 @@
       "description": "O chat com os clientes chega na Fase 8."
     }
   },
-  "vps": {
-    "title": "Minhas VPS",
-    "emptyTitle": "Nenhuma VPS ainda",
-    "emptyDescription": "Sua primeira célula está a um clique.",
-    "create": "Criar VPS"
+  "currency": {
+    "label": "Moeda de exibição",
+    "BRL": "Real (BRL)",
+    "USD": "Dólar (USD) ≈",
+    "EUR": "Euro (EUR) ≈",
+    "note": "Conversão aproximada, só para exibição. A cobrança é sempre em reais."
+  },
+  "vpsStatus": {
+    "PENDING_PAYMENT": "Aguardando pagamento",
+    "PROVISIONING": "Criando",
+    "RUNNING": "Ligada",
+    "STOPPED": "Desligada",
+    "STARTING": "Ligando",
+    "STOPPING": "Desligando",
+    "REBOOTING": "Reiniciando",
+    "UPDATING": "Atualizando",
+    "DELETING": "Excluindo",
+    "DELETED": "Excluída",
+    "SUSPENDED": "Suspensa",
+    "ERROR": "Erro"
+  },
+  "invoiceStatus": {
+    "PENDING": "Em aberto",
+    "PAID": "Paga",
+    "FAILED": "Falhou",
+    "CANCELED": "Cancelada"
   }
 }

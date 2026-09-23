@@ -1,0 +1,91 @@
+{
+  "list": {
+    "title": "Mis VPS",
+    "create": "Crear VPS",
+    "emptyTitle": "Todavía no hay VPS",
+    "emptyDescription": "Tu primera celda está a un clic.",
+    "pay": "Pagar",
+    "ipPending": "IP al crearse",
+    "limitHint": "Puedes tener hasta {{count}} VPS en esta cuenta de demostración.",
+    "columns": {
+      "hostname": "Hostname",
+      "image": "Imagen",
+      "plan": "Plan",
+      "ip": "IP",
+      "status": "Estado"
+    }
+  },
+  "create": {
+    "title": "Crear VPS",
+    "subtitle": "Elige la imagen, el plan y cómo entrarás al servidor.",
+    "location": {
+      "title": "Ubicación",
+      "lab": "Laboratorio",
+      "node": "Nodo {{node}} · Proxmox VE (KVM)"
+    },
+    "image": {
+      "title": "Imagen",
+      "light": "Ligera",
+      "popular": "Popular",
+      "gui": "Escritorio",
+      "minimum": "Mínimo: {{memory}} de RAM y {{disk}} GB de disco"
+    },
+    "plan": {
+      "title": "Plan",
+      "vcpu_one": "{{count}} vCPU",
+      "vcpu_other": "{{count}} vCPU",
+      "ram": "{{value}} de RAM",
+      "disk": "{{value}} GB de disco",
+      "bandwidth": "{{value}} Mbps",
+      "perMonth": "/mes",
+      "belowMinimum": "{{image}} requiere {{memory}} y {{disk}} GB"
+    },
+    "auth": {
+      "title": "Acceso",
+      "method": "Cómo vas a entrar",
+      "methodKey": "Clave SSH",
+      "methodKeyHint": "Recomendado: más seguro que la contraseña.",
+      "methodPassword": "Contraseña",
+      "methodBoth": "Clave y contraseña",
+      "username": "Nombre de usuario",
+      "usernameHint": "Tu usuario tendrá acceso de administrador con {{sudo}}.",
+      "savedKeys": "Claves guardadas en tu cuenta",
+      "noSavedKeys": "No hay claves guardadas. Pega una abajo.",
+      "newKey": "Pegar una clave nueva",
+      "newKeyPlaceholder": "ssh-ed25519 AAAA… tu@ordenador",
+      "saveKey": "Guardar esta clave en mi cuenta",
+      "password": "Contraseña del usuario",
+      "passwordConfirm": "Confirma la contraseña",
+      "passwordRequired": "Esta imagen tiene escritorio: la contraseña es necesaria para entrar en la pantalla.",
+      "strength": {
+        "label": "Seguridad de la contraseña",
+        "weak": "Débil",
+        "fair": "Aceptable",
+        "good": "Buena",
+        "strong": "Fuerte"
+      },
+      "sshPasswordAuth": "Permitir entrar por SSH con contraseña",
+      "sshPasswordAuthHint": "Si está desactivado, el SSH solo acepta claves (más seguro). Puedes cambiarlo después.",
+      "rootPassword": "Definir contraseña de root",
+      "rootPasswordHint": "Para la consola y su; el acceso SSH como root siempre está desactivado.",
+      "rootPasswordField": "Contraseña de root"
+    },
+    "details": {
+      "title": "Detalles",
+      "hostname": "Hostname",
+      "hostnameHint": "Nombre de la máquina en la red. Minúsculas, números y guiones.",
+      "suggest": "Sugerir otro"
+    },
+    "summary": {
+      "title": "Resumen",
+      "image": "Imagen",
+      "plan": "Plan",
+      "monthly": "Cuota mensual",
+      "chargedInBrl": "Cobrado en reales: {{value}}",
+      "demo": "Pago simulado: no se cobra nada de verdad.",
+      "submit": "Crear y pagar",
+      "submitting": "Creando pedido…",
+      "choose": "Elige la imagen y el plan"
+    }
+  }
+}

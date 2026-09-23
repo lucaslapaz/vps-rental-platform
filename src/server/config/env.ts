@@ -47,6 +47,17 @@ const schema = z.object({
   PVE_TIMEOUT_MS: z.coerce.number().int().min(1000).default(15_000),
   VPS_NAMESERVERS: z.string().default('1.1.1.1 8.8.8.8'),
 
+  // ── Capacidade e cobrança (plano §11.5 e §12) ──
+  /** Teto de RAM somada de todas as VPS (o lab tem ~1,5 GB livres para elas). */
+  CAPACITY_MAX_MEMORY_MB: z.coerce.number().int().min(128).default(1536),
+  /** Teto de disco somado (o thin pool tem 16,8 GB, com ~4 GB dos templates). */
+  CAPACITY_MAX_DISK_GB: z.coerce.number().int().min(1).default(12),
+  MAX_VPS_PER_USER: z.coerce.number().int().min(1).default(2),
+  /** Prazo para pagar a fatura de criação; depois ela é cancelada (job expire_pending). */
+  INVOICE_DUE_HOURS: z.coerce.number().int().min(1).default(24),
+  /** Latência artificial do gateway simulado (0 nos testes). */
+  PAYMENT_LATENCY_MS: z.coerce.number().int().min(0).max(10_000).optional(),
+
   /** Chave AES-256-GCM (32 bytes em base64) que cifra as senhas no payload dos jobs (plano §10.6). */
   JOB_SECRET_KEY: z
     .string()

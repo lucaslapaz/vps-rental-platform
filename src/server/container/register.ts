@@ -1,6 +1,7 @@
 import { container, type DependencyContainer, Lifecycle } from 'tsyringe';
 import type { Env } from '../config/env.ts';
 import type { Database } from '../db/prisma.ts';
+import { FakePaymentGateway } from '../integrations/payment/FakePaymentGateway.ts';
 import { ProxmoxClient } from '../integrations/proxmox/ProxmoxClient.ts';
 import { QemuCloudInitProvider } from '../integrations/proxmox/QemuCloudInitProvider.ts';
 import { TaskWaiter } from '../integrations/proxmox/TaskWaiter.ts';
@@ -32,6 +33,8 @@ export function registerDependencies(
   target.registerInstance(TOKENS.Prisma, prisma);
   target.registerInstance(TOKENS.Clock, clock);
   target.registerInstance(TOKENS.SecretBox, new SecretBox(env.JOB_SECRET_KEY));
+  // Pagamento SIMULADO (plano §12): um gateway real seria outra implementação da mesma interface.
+  target.register(TOKENS.PaymentGateway, { useClass: FakePaymentGateway }, { lifecycle: Lifecycle.ContainerScoped });
   if (virtualization) {
     target.registerInstance(TOKENS.VirtualizationProvider, virtualization);
   } else {

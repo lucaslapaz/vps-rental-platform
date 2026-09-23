@@ -1,0 +1,49 @@
+{
+  "list": {
+    "title": "Faturas",
+    "subtitle": "Tudo aqui é simulado: nenhum valor é cobrado de verdade.",
+    "number": "Nº",
+    "description": "Descrição",
+    "amount": "Valor",
+    "status": "Situação",
+    "due": "Vencimento",
+    "pay": "Pagar",
+    "empty": "Nenhuma fatura ainda."
+  },
+  "checkout": {
+    "title": "Pagamento",
+    "invoice": "Fatura nº {{number}}",
+    "total": "Total a pagar",
+    "converted": "Na moeda escolhida: {{value}}",
+    "due": "Pague até {{date}}",
+    "card": {
+      "title": "Cartão de teste",
+      "number": "Número do cartão",
+      "holder": "Nome impresso no cartão",
+      "expMonth": "Mês",
+      "expYear": "Ano",
+      "cvc": "CVC",
+      "submit": "Pagar {{value}}",
+      "submitting": "Processando…"
+    },
+    "testCards": {
+      "title": "Cartões de teste",
+      "hint": "Use qualquer nome, uma validade futura e qualquer CVC.",
+      "use": "Usar",
+      "approved": "Aprovado",
+      "card_declined": "Recusado",
+      "insufficient_funds": "Saldo insuficiente"
+    },
+    "declined": {
+      "card_declined": "O cartão foi recusado. Tente outro cartão.",
+      "insufficient_funds": "Saldo insuficiente. Tente outro cartão."
+    },
+    "paidTitle": "Pagamento aprovado",
+    "paidDescription": "Sua VPS está sendo criada. Isso leva cerca de um minuto.",
+    "success": "Pagamento aprovado! Sua VPS está sendo criada.",
+    "notPayable": "Esta fatura não está em aberto.",
+    "goToVps": "Ver minhas VPS",
+    "goToBilling": "Ver faturas",
+    "demo": "Ambiente de demonstração: o número do cartão e o CVC nunca são guardados; só a bandeira e os 4 últimos dígitos."
+  }
+}

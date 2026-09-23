@@ -28,7 +28,10 @@
     "db:setup:dev": "npm run db:migrate:dev && npm run db:seed:dev",
     "db:studio": "cross-env NODE_ENV=development prisma studio",
     "test:lab": "cross-env NODE_ENV=test LAB=1 vitest run --reporter=verbose",
-    "pve": "cross-env NODE_ENV=development tsx --tsconfig tsconfig.server.json scripts/pve/cli.ts"
+    "pve": "cross-env NODE_ENV=development tsx --tsconfig tsconfig.server.json scripts/pve/cli.ts",
+    "postdb:migrate:dev": "npm run db:generate",
+    "postdb:migrate:reset": "npm run db:generate",
+    "postinstall": "prisma generate"
   },
   "repository": {
     "type": "git",

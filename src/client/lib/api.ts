@@ -14,7 +14,8 @@ export class ApiError extends Error {
     readonly status: number,
     readonly code: string,
     message: string,
-    readonly details?: ApiErrorDetail[],
+    /** Lista de campos (VALIDATION_ERROR) ou dados do erro (ex.: { failureCode } no PAYMENT_DECLINED). */
+    readonly details?: unknown,
   ) {
     super(message);
     this.name = 'ApiError';
@@ -57,7 +58,7 @@ async function send(method: string, path: string, body?: unknown): Promise<Respo
 }
 
 async function toError(res: Response): Promise<ApiError> {
-  const data = (await res.json().catch(() => null)) as { error?: { code?: string; message?: string; details?: ApiErrorDetail[] } } | null;
+  const data = (await res.json().catch(() => null)) as { error?: { code?: string; message?: string; details?: unknown } } | null;
   return new ApiError(res.status, data?.error?.code ?? 'HTTP_ERROR', data?.error?.message ?? res.statusText, data?.error?.details);
 }
 

@@ -1,2 +1,5 @@
 # Auto detect text files and perform LF normalization
 * text=auto
+
+# Scripts de shell rodam no Proxmox e nas VMs: sempre LF, mesmo com core.autocrlf=true no Windows.
+*.sh text eol=lf

@@ -14,6 +14,7 @@
 | 4 | 2026-09-23 | Respostas da revisão 4 (§0.4). **Marca fictícia Favo** e identidade visual (§14.6). **Três imagens** (Alpine, Debian 13, Ubuntu 24.04), **testadas** no laboratório (§2.6, §3.7). **Console noVNC** no núcleo (§10.5). **Senha root e SSH pelo guest agent** (§10.6). Tela de criação como nas plataformas reais (§14.5). **RBAC: uma role por usuário, verificação por permissão** (§9.7) |
 | 5 | 2026-09-23 | Respostas da revisão 5 (§0.5): **marca Favo aprovada**; **imagem Alpine Desktop (XFCE)** entra no catálogo (template 9003, plano Medium de 1 GB); **`CLAUDE.md` criado** na raiz com o contexto e as lições aprendidas. Nenhuma decisão pendente (§20) |
 | 6 | 2026-09-23 | Commits: o Claude passa a **commitar ao fim de cada fase** (substitui a decisão do §0.2). Ajustados o §1, o §17 e o `CLAUDE.md` |
+| 7 | 2026-09-23 | **Fase 0 concluída** (§2.7): disco +10 GB, `bootstrap.sh`, templates 9000–9003 e aceite com o token. Decisões novas: **MAC derivado do IP** (§3.3), **TLS validado pelo nome do nó** porque o certificado não tem o IP no SAN (§3.5, §10.1), build com upgrade explícito e remoção do usuário do build (§3.6) |
 
 ## Sumário
 
@@ -272,6 +273,31 @@ As imagens ficaram em `/var/lib/vz/import/` com checksum conferido (Debian: `SHA
    passa a aplicar a escolha do cliente pelo guest agent (§10.6).
 4. As imagens do Debian e do Ubuntu **não podem ter disco menor que 3 GiB / 3,5 GiB**, então os planos precisam respeitar mínimos por imagem (§3.7).
 
+### 2.7 Fase 0 concluída (revisão 7)
+
+| Item | Resultado |
+|---|---|
+| Disco da VM do Proxmox | VDI de 20 → **30 GB**; `sgdisk -e` + `growpart /dev/sda 3` + `pvresize` + `lvextend -l +100%FREE pve/data`. O `local-lvm` passou de 6,8 para **16,8 GB**. O `growpart` atualizou a tabela no kernel sem reboot |
+| `scripts/pve/bootstrap.sh` | Pools, role `VPSPlatformVM`, `vpsplatform@pve`, token `!backend` (`privsep=1`), ACLs e CA em `certs/`. Idempotente (rodado duas vezes). Secret no `.env.development` |
+| `scripts/pve/build-template.sh` | Templates **9000** (Alpine, 1 GB), **9001** (Debian 13, 3 GB), **9002** (Ubuntu 24.04, 3,5 GB) e **9003** (Alpine Desktop, 3 GB) no pool `vps-templates`, todos com `ciupgrade: 0` herdado pelos clones |
+| Aceite (`scripts/pve/test-template.mjs`, só com o token) | Os quatro aprovados: clone vinculado (~1 s), ping do Windows, SSH com a chave, DNS, `sudo`/`doas` com um usuário **diferente do padrão** (`favo`), raiz expandida, hostname, `agent/ping`, `agent/set-user-password` (root), `vncproxy`, `login:` no VGA, desligamento ACPI e exclusão. `DELETE` do template → **403** (`VM.Allocate`) |
+| Tempo do start até o SSH | Clone ~1 s; start → `agent/ping` ~30 s → SSH ~33 s. Pingar do Windows durante o boot atrasava o primeiro contato para ~72 s (cache ARP, §3.3) |
+| RAM após o boot | Alpine 58 MB · Debian 113 MB · Ubuntu 185 MB · Desktop 253 MB no greeter e ~350 MB com o XFCE aberto |
+| Alpine Desktop | **Login gráfico no LightDM com a senha do cliente funciona** e abre o XFCE (testado digitando pelo monitor QEMU). Não precisa dos grupos `audio`/`video` (o `elogind` cuida do seat). VGA em 1280×800 |
+
+**Descobertas:**
+1. **Certificado do Proxmox sem o IP no SAN** (tem `10.0.2.15`, `primeiro` e `primeiro.promox.teste`): a validação TLS é feita com a CA
+   **e o nome `primeiro`** (`servername`), em vez de desligar a verificação (§3.5).
+2. **Cache ARP do Windows:** pingar a VM a partir do Windows enquanto ela ainda bootava (ou com uma entrada ARP antiga, de outro MAC,
+   no mesmo IP) deixava o Windows ~45 s sem alcançá-la, embora o Proxmox já alcançasse. Decisões: a plataforma considera a VM pronta
+   pelo **`agent/ping`** (§11.3, já era o plano) e usa **MAC derivado do IP** (§3.3).
+5. **`gecos` do Alpine:** o `default_user` do Alpine tem `gecos: alpine Cloud User`, que aparecia no LightDM para qualquer usuário. O
+   `99-vpsplatform.cfg` dos templates Alpine sobrescreve com `system_info.default_user.gecos: ""`.
+3. **Ubuntu: a raiz de 2,9 GB num disco de 4 GB não é falha do `growpart`** (armadilha C7): a partição raiz vai até o fim do disco,
+   mas o `/boot` (913 MB) e a ESP (106 MB) ocupam ~1 GiB.
+4. **Alpine e `doas`:** o cloud-init grava `permit nopass <usuário>` no `/etc/doas.conf`, e a imagem já traz `/etc/doas.d/wheel.conf`
+   (`permit nopass :wheel`), com o usuário padrão no grupo `wheel`. Por isso qualquer nome de usuário escolhido pelo cliente tem `doas`.
+
 ---
 
 ## 3. Decisões de arquitetura do Proxmox
@@ -330,7 +356,7 @@ $vb = "C:\Program Files\Oracle\VirtualBox\VBoxManage.exe"
   Memória" no Windows faz o VirtualBox cair para o modo NEM (lento) e desliga a virtualização
   aninhada (§2.4).
 
-**Aumentar o disco da VM do Proxmox (+10 GB), só se a capacidade apertar.** Hoje o VDI tem 20 GB
+**Aumentar o disco da VM do Proxmox (+10 GB)** — ✅ **feito na revisão 7** (§2.7); a receita abaixo funcionou como está. O VDI tinha 20 GB
 (o padrão), divididos em `root` 8,8 GB, `swap` 1,9 GB e o pool `data` (onde ficam as VPS) com
 6,8 GB. Os clones vinculados ocupam pouco, então isso deve bastar para o laboratório. Se faltar:
 
@@ -436,6 +462,13 @@ feita com um `UPDATE … WHERE status='FREE'` atômico, e o IP é passado ao Pro
 `ipconfig0=ip=192.168.56.200/24,gw=192.168.56.10` (cloud-init) e `net0=virtio,bridge=vmbr1,rate=<MB/s>`.
 O campo `rate` (limite de banda, confirmado no schema do `net[n]` de QEMU: "megabytes per second") implementa a "banda" do plano.
 
+**MAC derivado do IP (revisão 7):** `net0=virtio=<MAC>,bridge=vmbr1,rate=…`, com `MAC = 02:00:` + os 4 octetos do IPv4 em
+hexadecimal (ex.: `192.168.56.200` → `02:00:C0:A8:38:C8`). `02` é o bit de "administrado localmente" (unicast), que não
+colide com o OUI `BC:24:11` dos MACs aleatórios do Proxmox. Motivo, medido na Fase 0: quando um IP é reutilizado por uma VPS
+nova com outro MAC, o Windows continua com a entrada ARP antiga (`Stale`) e pode levar ~45 s para alcançar a VM, que o Proxmox já
+alcança. Com o MAC fixo por IP, a entrada continua válida. É também o que provedores reais fazem (MAC e IP amarrados, base para o
+`macfilter`/`ipfilter` do firewall na Fase 10).
+
 ### 3.4 Identidade da plataforma no Proxmox (menor privilégio)
 
 A plataforma **não usa root**. Ela usa um usuário e token dedicados, com escopo limitado a **pools**:
@@ -496,8 +529,15 @@ O secret do token vai para o `.env.development` (fora do git).
 
 TLS: o certificado do Proxmox é autoassinado. O script também copia `/etc/pve/pve-root-ca.pem` para
 `certs/pve-root-ca.pem` (fora do git), e o cliente HTTP do backend confia **nessa CA**, em vez de
-desligar a verificação. Se o certificado não tiver o IP no SAN, existe o fallback
-`PVE_TLS_INSECURE=true` (só no laboratório).
+desligar a verificação.
+
+**Implementado na revisão 7:** o script roda na máquina de desenvolvimento e envia a si mesmo por SSH (`bash -s -- --remote`).
+O certificado do nó **não tem `192.168.56.10` no SAN** (só `127.0.0.1`, `::1`, `localhost`, `10.0.2.15`, `primeiro`,
+`primeiro.promox.teste`, porque foi gerado quando o IP de gerência era o da NAT). Em vez de regenerar o certificado (mexer no
+`/etc/hosts` do nó afeta o `pve-cluster`) ou desligar a verificação, a conexão vai para o IP e **valida o certificado pelo nome
+do nó**: `PVE_TLS_SERVERNAME=primeiro` (no Node, `servername` no `https`/`undici`; no curl, `--resolve primeiro:8006:192.168.56.10`
+e a URL `https://primeiro:8006`). O `PVE_TLS_INSECURE` deixa de ser necessário. Variáveis gravadas pelo script:
+`PVE_URL`, `PVE_NODE`, `PVE_TLS_SERVERNAME`, `PVE_CA_FILE`, `PVE_TOKEN_ID`, `PVE_TOKEN_SECRET`.
 
 ### 3.6 Golden images: templates 9000–9003 (`scripts/pve/build-template.sh <imagem>`)
 
@@ -530,6 +570,19 @@ imagem cloud oficial já baixada e conferida em `/var/lib/vz/import/`.
    DNS (`getent hosts`), `qm agent ping`, `agent/set-user-password` em root, captura do VGA (`screendump` pelo
    monitor QEMU) → destrói o clone.
 
+**Como ficou na implementação (revisão 7)**, `scripts/pve/build-template.sh <alpine|debian|ubuntu|alpine-desktop|all> [--force] [--no-test]`:
+- Roda na máquina de desenvolvimento: copia a si mesmo para `/root/favo/` no Proxmox (por `scp`, e não por `ssh … bash -s`, porque
+  os `ssh` internos consumiriam o resto do script pelo stdin) e executa lá o modo `--remote`. Depois roda o teste de aceite
+  `scripts/pve/test-template.mjs <vmid>` com o **token**.
+- **`ciupgrade=0` também no build**, com o upgrade feito explicitamente pelo script (`apk upgrade` / `apt-get full-upgrade`): no
+  Alpine o upgrade do cloud-init falharia sem DNS, e assim o log fica visível. O template sai com `ciupgrade: 0`, que os clones herdam.
+- Disco do template = menor VPS possível da imagem (Alpine 1 GB, Debian 3 GB, Ubuntu 3,5 GB, Desktop 3 GB); os clones só aumentam.
+- **Limpeza pelo guest agent como root** (`qm guest exec`), depois de encerrada a sessão SSH: remove o **usuário do build**
+  (`userdel -r`) e as regras de `sudo`/`doas` dele, `cloud-init clean --logs --seed --machine-id` (opção conferida no
+  `--help` do cloud-init 26.1), chaves de host SSH e históricos. Sem isso, um cliente que escolhesse outro nome de usuário
+  ficaria com um usuário `alpine`/`debian`/`ubuntu` sobrando na VPS.
+- Nome das VMs: `favo-tpl-<imagem>` (sem pontos, porque o nome vira hostname, armadilha C5).
+
 **Template 9003: Alpine 3.24 Desktop (XFCE).** Parte do template Alpine (mesma imagem, mesma correção de DNS e mesmo
 agente) e, no passo 3 do build, instala a área de trabalho com o script oficial do Alpine. Conferido no código-fonte do
 `setup-desktop` (repositório `alpine-conf`): ele aceita o ambiente como argumento e, **com argumento, roda sem perguntas**.
@@ -546,8 +599,9 @@ BROWSER=xfce4-taskmanager setup-desktop xfce
 - O login gráfico é pelo **LightDM** com o usuário e a senha do cliente, visto pelo noVNC. Por isso essa imagem
   **exige senha** (`requiresPassword`): só chave SSH não serve para a tela de login.
 - A wiki do Alpine (páginas *Xfce* e *Setup-desktop*) bloqueou o acesso automatizado (HTTP 403). A fonte usada foi o próprio script.
-- **A validar no build:** RAM em uso com o XFCE aberto (a estimativa de ~1 GB é conservadora), resolução do VGA no noVNC e
-  se o usuário criado pelo cloud-init precisa dos grupos `audio,video` (o `setup-desktop` sem argumento criaria o usuário com esses grupos).
+- ✅ **Validado no build (revisão 7):** ~350 MB em uso com o XFCE aberto (253 MB no greeter), então 1 GB tem folga; VGA em
+  1280×800; o login gráfico com a senha do cliente funciona **sem** os grupos `audio,video` (o `elogind` gerencia o seat). O
+  `setup-xorg-base` já habilita o repositório `community` e troca o `mdev` pelo `udev` sozinho.
 
 ### 3.7 Catálogo de imagens (e requisitos mínimos)
 
@@ -683,7 +737,8 @@ vps-rental-platform/
 │     ├─ permissions.ts · roles.ts · users.ts · plans.ts · os-templates.ts · ip-pool.ts
 ├─ scripts/
 │  ├─ pve/bootstrap.sh           # setup idempotente do Proxmox (via SSH)
-│  ├─ pve/build-template.sh     # golden image 9000: Alpine cloud-init + DNS + qemu-guest-agent (§3.6)
+│  ├─ pve/build-template.sh     # golden images 9000–9003: cloud-init + DNS (Alpine) + qemu-guest-agent (§3.6)
+│  ├─ pve/test-template.mjs     # aceite de um template com o token da plataforma (Node puro)
 │  ├─ pve/cli.ts                 # CLI de desenvolvimento: npm run pve -- <comando>
 │  ├─ db/create-databases.sql    # cria bancos dev/test/prod-local e o usuário vps_app
 │  ├─ deps/stable-versions.mjs   # maior versão estável de cada pacote (§4.1)
@@ -1394,7 +1449,8 @@ confiável, mais fácil de testar e mostra mais no portfólio.
 ```ts
 @singleton()
 export class ProxmoxClient {
-  // fetch + undici.Agent({ connect: { ca: pveRootCa } })  ·  timeout via AbortSignal.timeout
+  // fetch + undici.Agent({ connect: { ca: pveRootCa, servername: env.PVE_TLS_SERVERNAME } })  ·  timeout via AbortSignal.timeout
+  // (o certificado não tem o IP no SAN; valida pelo nome do nó, §3.5)
   // Authorization: PVEAPIToken=<id>=<secret>   (sem CSRF, sem expiração de 2h)
   get<T>(path: string, schema: ZodType<T>, query?: Params): Promise<T>
   post<T>(path: string, schema: ZodType<T>, body?: Params): Promise<T>  // form-urlencoded
@@ -1437,7 +1493,7 @@ POST /nodes/primeiro/qemu/2000/config
   cipassword=<senha do cliente>          # e/ou:
   sshkeys=<chave(s) pública(s)>          # ver observação sobre codificação abaixo
   ipconfig0=ip=192.168.56.200/24,gw=192.168.56.10
-  net0=virtio,bridge=vmbr1,rate=1.25     # rate em MB/s (10 Mbps = 1,25 MB/s), conforme o schema
+  net0=virtio=02:00:C0:A8:38:C8,bridge=vmbr1,rate=1.25   # MAC derivado do IP (§3.3); rate em MB/s (10 Mbps = 1,25 MB/s)
   tags=vpsplatform  onboot=1
 → esperar UPID
 
@@ -1447,8 +1503,8 @@ POST /nodes/primeiro/qemu/2000/status/start                     → esperar UPID
 
 **Observações do teste real:**
 - O Proxmox guarda `sshkeys` **URL-encoded** (visto na saída do `qm set`: `ssh-ed25519%20AAAA…`). Pela
-  API, a chave precisa ser enviada já codificada (`encodeURIComponent`). Isso será validado com um
-  teste `@lab` na Fase 4.
+  API, a chave precisa ser enviada já codificada (`encodeURIComponent`, e depois o form-urlencoded normal).
+  ✅ **Validado na Fase 0** pelo `test-template.mjs`: o login com a chave funcionou nas quatro imagens.
 - A chave pública lida do Windows veio com **`\r\n`** (`%0D%0A`). O login funcionou mesmo assim, mas o
   backend deve normalizar as chaves (remover `\r`, espaços extras e linhas vazias) e validar o formato
   antes de enviar.
@@ -1945,7 +2001,7 @@ Cada fase termina com **critérios de aceite verificáveis** e com `typecheck` +
 **Ao fim de cada fase, o Claude faz um commit** na `main` (decisão da rev. 6, que substitui a do §0.2), depois de conferir
 que nenhum segredo entra, e entrega um resumo das mudanças (arquivos, decisões e como testar).
 
-### Fase 0: Preparação do laboratório — ✅ maior parte concluída em 2026-09-23
+### Fase 0: Preparação do laboratório — ✅ concluída em 2026-09-23 (resultados em §2.7)
 - [x] Responder às decisões pendentes (§0.2).
 - [x] VirtualBox: nested VT-x, 2 vCPU, 3 GB, promíscuo `allow-all` no Adaptador 2, DHCP até `.199` (§3.2).
 - [x] Validar a aceleração: `NestedHWVirt = 1`, `vmx` no `/proc/cpuinfo`, `/dev/kvm` presente.
@@ -1955,11 +2011,13 @@ que nenhum segredo entra, e entrega um resumo das mudanças (arquivos, decisões
 - [x] MySQL: bancos + usuário `vps_app` (§8.1). `DATABASE_URL` em `.env.development`/`.env.test`, e `.gitignore` criado.
 - [x] Teste de viabilidade das VPS em VM (§2.5), que revelou o problema do DNS.
 - [x] Teste das imagens Debian 13 e Ubuntu 24.04, do console VGA e da senha root pelo guest agent (§2.6). Imagens baixadas e conferidas.
-- [ ] **Aumentar o disco da VM do Proxmox em +10 GB** (§3.2), recomendado agora que são quatro templates: o pool `data` tem 6,8 GB, e os templates somam ~2,5–3 GB antes de qualquer VPS.
-- [ ] `scripts/pve/bootstrap.sh`: pools `vps-platform` e `vps-templates`, role, usuário, token, ACLs, CA (§3.4–3.5). Secret do token no `.env.development`.
-- [ ] `scripts/pve/build-template.sh`: templates 9000 (Alpine), 9001 (Debian), 9002 (Ubuntu) e 9003 (Alpine Desktop, §3.6), com agente, correção de DNS (Alpine), VGA padrão e teste automático (§3.6).
+- [x] **Aumentar o disco da VM do Proxmox em +10 GB** (§3.2): `local-lvm` de 6,8 para 16,8 GB.
+- [x] `scripts/pve/bootstrap.sh`: pools `vps-platform` e `vps-templates`, role, usuário, token, ACLs, CA (§3.4–3.5). Secret do token no `.env.development`.
+- [x] `scripts/pve/build-template.sh`: templates 9000 (Alpine), 9001 (Debian), 9002 (Ubuntu) e 9003 (Alpine Desktop, §3.6), com agente, correção de DNS (Alpine), VGA padrão e teste automático (§3.6).
+- [x] Aceite dos quatro templates com o token (`scripts/pve/test-template.mjs`, Node puro com `node:https` no lugar do curl, porque o
+  Windows não tem `jq` para ler o JSON). Resultado em §2.7.
 
-**Aceite (itens restantes):** para **cada** template, uma VM clonada **com o token da plataforma** (não root), via curl, com
+**Aceite:** para **cada** template, uma VM clonada **com o token da plataforma** (não root), via API, com
 `ipconfig0=ip=192.168.56.229/24,gw=192.168.56.10` e `ciupgrade=0`: responde a `ping` a partir do Windows, aceita SSH, resolve
 nomes, responde ao `agent/ping`, aceita `agent/set-user-password` para root, mostra o `login:` no VGA e é excluída com sucesso.
 Com o mesmo token, `DELETE /nodes/primeiro/qemu/9000` retorna **403** (os templates estão protegidos).
@@ -2120,7 +2178,7 @@ os dois trocam mensagens em tempo real. Um segundo técnico que tenta assumir re
 | tsyringe pouco ativo; esbuild sem metadata | DI falha em dev | `@inject` explícito sempre. Se o projeto for abandonado, a troca é localizada (container/register) |
 | MySQL 8.4 + adapter MariaDB (`caching_sha2_password`, confirmado no usuário `vps_app`) | Falha de conexão | Validar na F2. Se necessário: `allowPublicKeyRetrieval` no adapter (só local) ou trocar o plugin de autenticação do `vps_app` |
 | Express 5: sintaxe de curinga | Fallback SPA não casa | Usar `/{*splat}` (path-to-regexp v8) |
-| Certificado autoassinado do Proxmox | Fetch falha | Confiar na `pve-root-ca.pem`. Fallback `PVE_TLS_INSECURE` só no laboratório |
+| Certificado autoassinado do Proxmox, sem o IP no SAN | Fetch falha | Confiar na `pve-root-ca.pem` e validar pelo nome do nó (`PVE_TLS_SERVERNAME=primeiro`, §3.5) |
 | Condições de corrida (IP, VMID, claim, pagamento) | Duplicidade | Atualizações condicionais atômicas + índices únicos + testes de concorrência |
 | Senhas (Proxmox e MySQL) no §0 deste arquivo, num repositório público | Exposição | Trocar as senhas ou removê-las do §0/§0.2 antes de publicar. `.env*` e `certs/` já estão no `.gitignore` |
 | Desalinhamento banco ↔ Proxmox | Status errado | Job `reconcile`, tags e `description` com o UUID da VPS, pool isolado |

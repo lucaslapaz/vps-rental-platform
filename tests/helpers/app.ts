@@ -5,6 +5,7 @@ import { registerDependencies } from '../../src/server/container/register.ts';
 import { createPrismaClient, type Database } from '../../src/server/db/prisma.ts';
 import type { Clock } from '../../src/server/utils/clock.ts';
 import { createLogger } from '../../src/server/utils/logger.ts';
+import { FakeVirtualizationProvider } from './FakeVirtualizationProvider.ts';
 
 let sharedPrisma: Database | undefined;
 
@@ -26,11 +27,20 @@ export async function closeTestPrisma() {
 }
 
 /** App Express isolado para testes: container filho, então cada teste pode trocar dependências sem vazar estado. */
-export function createTestApp(overrides: { env?: Partial<Env>; clock?: Clock; prisma?: Database } = {}) {
+export function createTestApp(
+  overrides: { env?: Partial<Env>; clock?: Clock; prisma?: Database; virtualization?: FakeVirtualizationProvider } = {},
+) {
+  const virtualization = overrides.virtualization ?? new FakeVirtualizationProvider();
   const env = { ...loadEnv(), ...overrides.env };
   const di = registerDependencies(
-    { env, logger: createLogger(env), prisma: overrides.prisma ?? testPrisma(), ...(overrides.clock ? { clock: overrides.clock } : {}) },
+    {
+      env,
+      logger: createLogger(env),
+      prisma: overrides.prisma ?? testPrisma(),
+      virtualization,
+      ...(overrides.clock ? { clock: overrides.clock } : {}),
+    },
     container.createChildContainer(),
   );
-  return { app: createApp(di), di, env };
+  return { app: createApp(di), di, env, virtualization };
 }

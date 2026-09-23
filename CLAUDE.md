@@ -1,7 +1,7 @@
 # CLAUDE.md — Favo (VPS Rental Platform)
 
 Contexto para o Claude implementar este projeto em conversas novas. **O plano completo e as decisões estão em
-[docs/PLANO_DE_IMPLEMENTACAO.md](docs/PLANO_DE_IMPLEMENTACAO.md)** (revisão 10, 2026-09-23). Este arquivo resume o
+[docs/PLANO_DE_IMPLEMENTACAO.md](docs/PLANO_DE_IMPLEMENTACAO.md)** (revisão 11, 2026-09-23). Este arquivo resume o
 que não dá para deduzir do código: regras combinadas com o usuário, estado do ambiente, armadilhas já encontradas
 (com a solução) e comandos que já foram testados.
 
@@ -17,10 +17,15 @@ que não dá para deduzir do código: regras combinadas com o usuário, estado d
   proxy do console e o React 19 (Vite 8, Tailwind 4, shadcn). TypeScript 7, tsyringe, Prisma 7 + MySQL 8.4, Biome.
 - Fases (§17 do plano): 0 laboratório → 1 fundação → 2 banco → 3 auth/CSRF/RBAC → 4 Proxmox → 5 catálogo/pagamento →
   6 provisionamento → 7 página da VPS + console → 8 suporte → 9 qualidade → 10 extras.
-- **Situação atual:** Fases 0 a 3 concluídas. Fase 0: laboratório (plano §2.7), scripts em `scripts/pve/`. Fase 1:
+- **Situação atual:** Fases 0 a 4 concluídas. Fase 0: laboratório (plano §2.7), scripts em `scripts/pve/`. Fase 1:
   fundação (servidor único Express+Vite, React com marca Favo, i18n, tema, Vitest, Biome). Fase 2: Prisma 7 + MySQL
   (schema, migration `init`, seeds idempotentes). Fase 3: sessão, CSRF, RBAC, conta, chaves SSH e administração de
-  usuários. A próxima é a Fase 4 (integração com o Proxmox).
+  usuários. Fase 4: integração com o Proxmox (`src/server/integrations/proxmox/`, provider atrás da interface
+  `VirtualizationProvider`, CLI `npm run pve`, suíte `npm run test:lab`). A próxima é a Fase 5 (catálogo e pagamento).
+- **Proxmox no código:** `ProxmoxClient` (undici + CA + servername, token, zod), `TaskWaiter` (UPID), `QemuCloudInitProvider`
+  (clone, cloud-init, resize, energia, status, pendências, métricas, console, guest agent) e `ImageProfile` (comandos fixos por
+  família). Os testes comuns usam `tests/helpers/FakeVirtualizationProvider.ts`; só o `npm run test:lab` (LAB=1) toca o Proxmox.
+  `npm run pve -- status | capacity | list | show <vmid> | task <upid> | reconcile --dry-run`.
 - **Autenticação (Fase 3):** cookies `sid` (HttpOnly), `psid` (pré-sessão, HttpOnly) e `csrf` (lido pelo JS e devolvido
   em `X-CSRF-Token`); HMAC com `CSRF_SECRET` (no `.env.*`). Ordem dos middlewares em `src/server/http/routes/index.ts`.
   Permissões verificadas com `requirePermission`/`req.user.can()` no servidor e `useCan()` no cliente. Textos de tela
@@ -193,6 +198,19 @@ que não dá para deduzir do código: regras combinadas com o usuário, estado d
   `alpine`/`debian`/`ubuntu` sobrando.
 - **C16.** Tempos (A11): clone vinculado ~1 s; start → `agent/ping` ~30 s → SSH ~33 s (Alpine/Debian/Ubuntu). RAM após o boot:
   Alpine 58 MB, Debian 113 MB, Ubuntu 185 MB. O `apk upgrade` do build levou o kernel do Alpine para 6.18.53.
+- **C18. Política de SSH pelo agente:** nas três imagens o `Include /etc/ssh/sshd_config.d/*.conf` vem ANTES das diretivas, e
+  **no sshd o primeiro valor lido vence**. O Alpine traz `50-cloud-init.conf` e o Ubuntu `60-cloudimg-settings.conf` (os dois com
+  `PasswordAuthentication no`); o Debian define no `sshd_config`. Por isso o arquivo da Favo é **`01-favo.conf`** (um `60-favo.conf`
+  perderia). Alpine vem com `KbdInteractiveAuthentication yes` (desligado no drop-in). Reload: Alpine `rc-service sshd reload`;
+  Debian/Ubuntu `systemctl try-reload-or-restart ssh` (no Ubuntu 24.04 o ssh é ativado por socket e o serviço pode estar
+  parado), sempre depois de `sshd -t`. Testado com **login por senha de verdade** (SSH_ASKPASS) nas quatro imagens.
+- **C19. `vncproxy` com token:** o `ticket` vem como **`<senha VNC de 8 caracteres>:PVEVNC:…`** (o prefixo é o próprio `password`
+  da resposta), com caracteres especiais: use `encodeURIComponent` ao passar o `vncticket` na URL do `vncwebsocket` (Fase 7).
+- **C20. Guest agent:** `agent/exec` recebe `command` como array (form-urlencoded com a chave repetida) e devolve `pid`; o
+  resultado vem de `agent/exec-status?pid=` (`exited`, `exitcode`, `out-data`, `err-data`). `agent/file-write` codifica em
+  base64 sozinho (`encode` padrão). Enquanto a VM boota, `agent/ping` devolve erro (o provider trata como "ainda não").
+  O status de um VMID fora dos pools do token volta como "não existe" (o provider devolve `null`). Trocar memória com a VM
+  ligada fica pendente (aparece em `/pending`); o `net0` com `rate` é aplicado na hora.
 - **C17. Alpine Desktop:** o LightDM sobe com ~50 s de uptime; RAM 253 MB no greeter e ~350 MB com o XFCE aberto (VM de 1 GB).
   **Login gráfico com a senha do `cipassword` funciona** (testado digitando pelo monitor QEMU: `sendkey shift-f`, `minus`, `ret`…),
   sem precisar dos grupos `audio`/`video` (o `elogind` cuida do seat). O `default_user` do Alpine tinha `gecos: alpine Cloud User`,
@@ -306,7 +324,7 @@ que não dá para deduzir do código: regras combinadas com o usuário, estado d
 - Rede das VPS: IP fixo do pool no banco → `ipconfig0=ip=…/24,gw=192.168.56.10` + `net0=virtio=<MAC do IP>,bridge=vmbr1,rate=…` (A11).
 - TLS até o Proxmox: CA `certs/pve-root-ca.pem` + `servername` = nome do nó (A9).
 - Jobs assíncronos numa fila no MySQL (`SELECT … FOR UPDATE SKIP LOCKED`), com retry e idempotência; `TaskWaiter` para UPIDs; reconciliação a cada 60 s.
-- Pós-boot pelo guest agent: senha root, política de SSH (`sshd_config.d/60-favo.conf`), redefinir senha. `ImageProfile` por imagem.
+- Pós-boot pelo guest agent: senha root, política de SSH (`sshd_config.d/01-favo.conf`, ver C18), redefinir senha. `ImageProfile` por imagem.
 - Console: `POST /api/vps/:id/console` → `consoleId` de uso único (30 s) + senha VNC → WebSocket `/ws/console/:id` com proxy para o `vncwebsocket` do Proxmox.
 - CSRF: *Signed Double-Submit Cookie* (HMAC ligado à sessão/pré-sessão, enviado no header `X-CSRF-Token`), **não** salvo no banco.
   A sessão fica no banco (só o hash SHA-256), com cookie `HttpOnly; SameSite=Strict`.

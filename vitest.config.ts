@@ -12,7 +12,9 @@ export default defineConfig({
     },
   },
   test: {
-    include: ['src/**/*.test.ts', 'tests/**/*.test.ts'],
+    // Testes @lab (contra o Proxmox de verdade) só com LAB=1 (npm run test:lab); fora do npm test e do CI.
+    include: process.env.LAB ? ['tests/lab/**/*.test.ts'] : ['src/**/*.test.ts', 'tests/**/*.test.ts'],
+    exclude: process.env.LAB ? [] : ['tests/lab/**', 'node_modules/**'],
     environment: 'node',
     setupFiles: ['tests/setup.ts'],
     globalSetup: ['tests/globalSetup.ts'],

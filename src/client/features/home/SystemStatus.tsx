@@ -41,6 +41,8 @@ export function SystemStatus() {
       ? 'checking'
       : 'offline';
 
+  const proxmox: State = health.data ? (health.data.checks.proxmox === 'ok' ? 'online' : 'offline') : database;
+
   return (
     <Card size="sm" data-testid="system-status">
       <CardHeader>
@@ -49,6 +51,7 @@ export function SystemStatus() {
       <CardContent className="flex flex-col gap-2 text-sm">
         <StatusRow label={t('status.api')} state={api} />
         <StatusRow label={t('status.database')} state={database} />
+        <StatusRow label={t('status.proxmox')} state={proxmox} />
         {health.data ? (
           <div className="flex items-center justify-between text-muted-foreground">
             <span>

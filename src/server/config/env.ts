@@ -30,6 +30,27 @@ const schema = z.object({
   SESSION_ABSOLUTE_TTL_DAYS: z.coerce.number().int().min(1).max(90).default(7),
   /** true quando servido por HTTPS: cookies com Secure e prefixo __Host- (plano §9.3). */
   COOKIE_SECURE: z.stringbool().default(false),
+
+  // ── Proxmox (plano §3.4–3.5 e §10; gravadas por scripts/pve/bootstrap.sh) ──
+  PVE_URL: z.url({ protocol: /^https$/ }),
+  PVE_NODE: z.string().min(1),
+  PVE_TOKEN_ID: z.string().regex(/^[^@\s]+@[^!\s]+![A-Za-z][\w.-]*$/, 'formato usuario@realm!token'),
+  PVE_TOKEN_SECRET: z.uuid(),
+  PVE_CA_FILE: z.string().min(1),
+  /** O certificado do nó não tem o IP no SAN: valida pelo nome do nó (CLAUDE.md, A9). */
+  PVE_TLS_SERVERNAME: z.string().optional(),
+  PVE_POOL: z.string().default('vps-platform'),
+  PVE_STORAGE: z.string().default('local-lvm'),
+  PVE_BRIDGE: z.string().default('vmbr1'),
+  /** VMIDs das VPS começam aqui (os templates ficam em 9000+). */
+  PVE_VMID_START: z.coerce.number().int().min(100).default(2000),
+  PVE_TIMEOUT_MS: z.coerce.number().int().min(1000).default(15_000),
+  VPS_NAMESERVERS: z.string().default('1.1.1.1 8.8.8.8'),
+
+  /** Chave AES-256-GCM (32 bytes em base64) que cifra as senhas no payload dos jobs (plano §10.6). */
+  JOB_SECRET_KEY: z
+    .string()
+    .refine((v) => Buffer.from(v, 'base64').length === 32, 'precisa ser 32 bytes em base64 (openssl rand -base64 32)'),
 });
 
 export type Env = z.infer<typeof schema> & { APP_ORIGIN: string };

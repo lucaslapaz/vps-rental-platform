@@ -11,7 +11,12 @@ describe('API base', () => {
   it('GET /api/health responde 200 com o estado do app e do banco', async () => {
     const res = await request(app).get('/api/health');
     expect(res.status).toBe(200);
-    expect(res.body).toMatchObject({ status: 'ok', environment: 'test', time: fixedNow.toISOString(), checks: { database: 'ok' } });
+    expect(res.body).toMatchObject({
+      status: 'ok',
+      environment: 'test',
+      time: fixedNow.toISOString(),
+      checks: { database: 'ok', proxmox: 'ok' },
+    });
   });
 
   it('GET /api/health responde 503 quando o banco não responde', async () => {

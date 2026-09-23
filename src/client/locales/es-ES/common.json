@@ -53,6 +53,7 @@
     "title": "Estado del sistema",
     "api": "API",
     "database": "Base de datos",
+    "proxmox": "Proxmox (VM)",
     "online": "En línea",
     "offline": "No disponible",
     "checking": "Comprobando…",

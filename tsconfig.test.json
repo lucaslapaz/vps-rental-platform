@@ -4,6 +4,15 @@
     "noEmit": true,
     "rootDir": "."
   },
-  "include": ["src/server", "src/shared", "tests", "prisma", "prisma.config.ts", "vitest.config.ts", "vite.config.ts"],
+  "include": [
+    "src/server",
+    "src/shared",
+    "tests",
+    "prisma",
+    "scripts/pve/cli.ts",
+    "prisma.config.ts",
+    "vitest.config.ts",
+    "vite.config.ts"
+  ],
   "exclude": []
 }

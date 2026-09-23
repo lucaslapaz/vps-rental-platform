@@ -8,4 +8,6 @@ export const TOKENS = {
   Logger: Symbol('Logger'),
   Clock: Symbol('Clock'),
   Prisma: Symbol('Prisma'),
+  VirtualizationProvider: Symbol('VirtualizationProvider'),
+  SecretBox: Symbol('SecretBox'),
 } as const;

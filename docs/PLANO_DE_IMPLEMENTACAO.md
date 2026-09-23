@@ -14,6 +14,7 @@
 | 4 | 2026-09-23 | Respostas da revisão 4 (§0.4). **Marca fictícia Favo** e identidade visual (§14.6). **Três imagens** (Alpine, Debian 13, Ubuntu 24.04), **testadas** no laboratório (§2.6, §3.7). **Console noVNC** no núcleo (§10.5). **Senha root e SSH pelo guest agent** (§10.6). Tela de criação como nas plataformas reais (§14.5). **RBAC: uma role por usuário, verificação por permissão** (§9.7) |
 | 5 | 2026-09-23 | Respostas da revisão 5 (§0.5): **marca Favo aprovada**; **imagem Alpine Desktop (XFCE)** entra no catálogo (template 9003, plano Medium de 1 GB); **`CLAUDE.md` criado** na raiz com o contexto e as lições aprendidas. Nenhuma decisão pendente (§20) |
 | 6 | 2026-09-23 | Commits: o Claude passa a **commitar ao fim de cada fase** (substitui a decisão do §0.2). Ajustados o §1, o §17 e o `CLAUDE.md` |
+| 11 | 2026-09-23 | **Fase 4 concluída** (§17): cliente do Proxmox, provider real, agente, CLI `npm run pve` e suíte `@lab` 30/30 nas quatro imagens. Mudanças: drop-in do sshd **`01-favo.conf`** (§10.6) e formato do ticket do `vncproxy` (§10.5) |
 | 10 | 2026-09-23 | **Fase 3 concluída** (§17): sessão, CSRF assinado, RBAC, conta, chaves SSH e administração de usuários. Detalhes da implementação em §9.8 (origem aceita, pré-sessão, validação real das chaves SSH, textos em namespaces) |
 | 9 | 2026-09-23 | **Fase 2 concluída** (§17): Prisma 7.10.0 + adapter MariaDB, migration `init`, seeds idempotentes. Ajustes: tabelas com `@@map` em snake_case (MySQL do Windows com `lower_case_table_names=1`), `IpAddress.macAddress` (MAC derivado do IP), pool `.200–.228`, plano **Medium** no seed, proteção do Prisma contra agentes de IA em comandos destrutivos (§19) |
 | 8 | 2026-09-23 | **Fase 1 concluída** (§17): fundação com servidor único, marca Favo, i18n e tema. Ajustes: `tsx --tsconfig tsconfig.server.json` (decorators), `oxc.decorator.legacy` no Vitest, pacote `cn` do shadcn no lugar de `clsx` + `tailwind-merge`, fontes nunca embutidas como `data:` (CSP), `worker-src blob:` só em dev, `tsconfig.base/server/client/test` |
@@ -1603,6 +1604,8 @@ Navegador (noVNC)                       Servidor Favo (Node)                    
   (a regra do suporte continua valendo).
 - **Barra de ferramentas:** tela cheia, ajustar à janela (`scaleViewport`), Ctrl+Alt+Del (`sendCtrlAltDel`), reconectar,
   indicador de conexão. "Colar texto" (digitar o conteúdo da área de transferência) é um extra.
+- **Conferido na Fase 4 (rev. 11):** com o API token, o `ticket` do `vncproxy` vem como `<senha VNC de 8 caracteres>:PVEVNC:…`
+  (o prefixo é o próprio `password` da resposta) e tem caracteres especiais: vai com `encodeURIComponent` na URL do `vncwebsocket`.
 - **A verificar na implementação:** como a interface web do próprio Proxmox passa as credenciais ao noVNC
   (código do `pve-manager`), para confirmar o uso do `password` retornado pelo `vncproxy`.
 
@@ -1615,7 +1618,7 @@ reiniciar a VM**:
 |---|---|---|
 | Esperar a VM ficar pronta | `POST …/agent/ping` até responder (com timeout) | `VM.GuestAgent.Audit` |
 | **Definir a senha root** (criação) e **redefinir senhas** (usuário ou root, depois) | `POST …/agent/set-user-password` `username`, `password` (**testado**, §2.6) | `VM.GuestAgent.Unrestricted` |
-| **Login SSH por senha** (liga/desliga) | `POST …/agent/file-write` de `/etc/ssh/sshd_config.d/60-favo.conf` (`PasswordAuthentication yes\|no`, `PermitRootLogin no`) + `agent/exec` para recarregar o sshd | `VM.GuestAgent.FileWrite` / `Unrestricted` |
+| **Login SSH por senha** (liga/desliga) | `POST …/agent/file-write` de `/etc/ssh/sshd_config.d/01-favo.conf` (`PasswordAuthentication yes\|no`, `KbdInteractiveAuthentication no`, `PermitRootLogin no`) + `agent/exec` com `sshd -t` e o reload da imagem. **Rev. 11:** `01-` e não `60-`: no sshd o primeiro valor lido vence, e o Alpine traz `50-cloud-init.conf` e o Ubuntu `60-cloudimg-settings.conf` (ambos com `PasswordAuthentication no`) | `VM.GuestAgent.FileWrite` / `Unrestricted` |
 | IPs reais da VM | `GET …/agent/network-get-interfaces` | `VM.GuestAgent.Audit` |
 
 - **Comandos por imagem:** cada imagem tem um `ImageProfile` no backend (padrão Strategy), com os comandos próprios
@@ -2123,18 +2126,28 @@ Também conferido: chave SSH real do Windows (com `
 origem, login/logout, cadastro, RBAC, troca de role com revogação e AuditLog, troca de senha, chaves SSH, traduções). Fora do plano
 original e adicionados: chaves SSH na conta (`/api/account/ssh-keys`, §15) e o painel do usuário logado em `/`.
 
-### Fase 4: Integração com o Proxmox
-- [ ] `ProxmoxClient` (undici + CA, token, zod, erros tipados, timeout).
-- [ ] `VirtualizationProvider` + `QemuCloudInitProvider` (clone, config com `ciupgrade=0`, resize, status, power, pending, delete, rrddata).
-- [ ] Ações pelo guest agent (§10.6): `ping`, `set-user-password`, `file-write` + recarregar o sshd, com um `ImageProfile` por imagem.
-- [ ] Cifragem AES-256-GCM das senhas no payload dos jobs (`JOB_SECRET_KEY`).
-- [ ] `TaskWaiter` (UPID).
-- [ ] Normalização e validação de chaves SSH, e codificação correta do `sshkeys` (§10.2).
-- [ ] `npm run pve` (CLI §16.3).
-- [ ] Testes de integração **contra o laboratório** (marcados com `@lab`, fora do CI), **para as quatro imagens**: clonar → configurar →
+### Fase 4: Integração com o Proxmox — ✅ concluída em 2026-09-23
+- [x] `ProxmoxClient` (undici + CA, token, zod, erros tipados, timeout).
+- [x] `VirtualizationProvider` + `QemuCloudInitProvider` (clone, config com `ciupgrade=0`, resize, status, power, pending, delete, rrddata).
+- [x] Ações pelo guest agent (§10.6): `ping`, `set-user-password`, `file-write` + recarregar o sshd, com um `ImageProfile` por imagem.
+- [x] Cifragem AES-256-GCM das senhas no payload dos jobs (`JOB_SECRET_KEY`).
+- [x] `TaskWaiter` (UPID).
+- [x] Normalização e validação de chaves SSH, e codificação correta do `sshkeys` (§10.2).
+- [x] `npm run pve` (CLI §16.3).
+- [x] Testes de integração **contra o laboratório** (marcados com `@lab`, fora do CI), **para as quatro imagens**: clonar → configurar →
   ligar → agente → senha root → SSH por senha liga/desliga → SSH → resize → desligar → excluir.
 
 **Aceite:** a suíte `@lab` passa. `npm run pve -- capacity` mostra memória e disco reais.
+
+**Resultado (rev. 11):** `npm run test:lab` passou **30/30** com o token da plataforma (≈3,5 min): para as quatro imagens,
+clone vinculado → cloud-init (usuário `cliente`, senha, chave, IP `.229`, MAC do IP, banda) → resize → start → agente em ~30 s →
+SSH com a chave e `sudo`/`doas` → senha root pelo agente → **login SSH por senha liga/desliga provado com login de verdade**
+(SSH_ASKPASS) e root sempre recusado → chave extra pelo agente funcionando → memória nova pendente até reiniciar → métricas →
+`vncproxy` → shutdown ACPI → exclusão idempotente. `npm run pve -- capacity` mostra memória e disco reais do nó.
+Descobertas que mudaram o desenho: o drop-in do sshd passou a ser **`01-favo.conf`** (§10.6) e o `ticket` do `vncproxy` vem
+prefixado com a senha VNC (§10.5). Implementação: `src/server/integrations/proxmox/` (`ProxmoxClient`, `TaskWaiter`,
+`QemuCloudInitProvider`, `ImageProfile`), interface `VirtualizationProvider`, `SecretBox` (AES-256-GCM, `JOB_SECRET_KEY`),
+provider falso para os testes comuns e o `/api/health` com o estado do Proxmox.
 
 ### Fase 5: Catálogo, pedido e pagamento simulado
 - [ ] `PlanService`, `OsTemplateService`, rotas de catálogo.

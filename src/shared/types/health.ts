@@ -5,5 +5,5 @@ export interface HealthResponse {
   environment: 'development' | 'test' | 'production';
   uptimeSeconds: number;
   time: string;
-  checks: { database: CheckStatus };
+  checks: { database: CheckStatus; proxmox: CheckStatus };
 }

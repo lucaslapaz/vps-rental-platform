@@ -11,12 +11,31 @@ export interface ImageProfile {
   sshdDropIn: string;
   /** Valida a configuração e recarrega o sshd. */
   reloadSshd: readonly string[];
+  /**
+   * Conta criada só com chave: o cloud-init a deixa bloqueada (`!` no shadow). O sshd do Alpine é compilado SEM PAM e
+   * recusa até login por chave de conta bloqueada ("account is locked"); Debian/Ubuntu usam PAM e não precisam disto.
+   * O comando troca `!` por `*` (nenhuma senha válida, mas não bloqueada), só se estiver bloqueada. O usuário vai como
+   * argumento posicional ($1), nunca interpolado.
+   */
+  unlockForKeyLogin?: readonly string[];
 }
+
+const UNLOCK_FOR_KEY_LOGIN = [
+  'sh',
+  '-c',
+  `set -e; s=$(awk -F: -v u="$1" '$1 == u { print $2 }' /etc/shadow); case "$s" in "!"*) usermod -p "*" "$1" ;; esac`,
+  'favo-unlock',
+] as const;
 
 const SSHD_DROP_IN = '/etc/ssh/sshd_config.d/01-favo.conf';
 
 const PROFILES: Record<ImageProfile['family'], ImageProfile> = {
-  alpine: { family: 'alpine', sshdDropIn: SSHD_DROP_IN, reloadSshd: ['sh', '-c', 'sshd -t && rc-service sshd reload'] },
+  alpine: {
+    family: 'alpine',
+    sshdDropIn: SSHD_DROP_IN,
+    reloadSshd: ['sh', '-c', 'sshd -t && rc-service sshd reload'],
+    unlockForKeyLogin: UNLOCK_FOR_KEY_LOGIN,
+  },
   // Debian: ssh.service habilitado. Ubuntu 24.04: ativado por socket (o serviço pode nem estar rodando): try-reload-or-restart.
   debian: { family: 'debian', sshdDropIn: SSHD_DROP_IN, reloadSshd: ['sh', '-c', 'sshd -t && systemctl try-reload-or-restart ssh'] },
   ubuntu: { family: 'ubuntu', sshdDropIn: SSHD_DROP_IN, reloadSshd: ['sh', '-c', 'sshd -t && systemctl try-reload-or-restart ssh'] },

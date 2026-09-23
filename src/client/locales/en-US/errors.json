@@ -31,6 +31,12 @@
   "INVOICE_NOT_PAYABLE": "This invoice is no longer open.",
   "INVOICE_EXPIRED": "This invoice has expired.",
   "PAYMENT_DECLINED": "Payment declined.",
+  "VPS_BUSY": "Another operation is already running on this VPS. Wait for it to finish.",
+  "VPS_INVALID_STATE": "This action is not available in the current VPS state.",
+  "SAME_PLAN": "The VPS is already on this plan.",
+  "DISK_SHRINK_NOT_SUPPORTED": "The disk cannot be shrunk. Choose a plan with the same or a larger disk.",
+  "NO_IP_AVAILABLE": "No free IPs right now.",
+  "SESSION_REVOKED": "Your session was ended. Please sign in again.",
   "validation": {
     "required": "This field is required.",
     "email": "Enter a valid email.",

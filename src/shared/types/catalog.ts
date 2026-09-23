@@ -39,6 +39,15 @@ export type VpsStatusDTO =
   | 'SUSPENDED'
   | 'ERROR';
 
+/** Item do histórico da VPS. Nas etapas da criação: action "provision", status "progress" e a etapa em message. */
+export interface VpsEventDTO {
+  id: number;
+  action: string;
+  status: string;
+  message: string | null;
+  createdAt: string;
+}
+
 export interface VpsDTO {
   id: string;
   hostname: string;

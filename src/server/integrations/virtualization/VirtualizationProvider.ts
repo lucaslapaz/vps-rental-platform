@@ -98,6 +98,10 @@ export interface VirtualizationProvider {
   // Guest agent (plano §10.6)
   agentPing(vmid: number): Promise<boolean>;
   waitForAgent(vmid: number, timeoutMs?: number): Promise<void>;
+  /** Espera o cloud-init do primeiro boot terminar (usuário, chaves e rede aplicados). */
+  waitForCloudInit(vmid: number, timeoutMs?: number): Promise<void>;
+  /** Conta criada só com chave SSH: garante que o sshd aceite a chave (no Alpine, a conta nasce bloqueada). */
+  allowKeyLogin(vmid: number, family: string, username: string): Promise<void>;
   setUserPassword(vmid: number, username: string, password: string): Promise<void>;
   setSshPasswordAuth(vmid: number, family: string, enabled: boolean): Promise<void>;
   addAuthorizedKey(vmid: number, username: string, publicKey: string): Promise<void>;

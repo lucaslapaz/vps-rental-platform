@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { POWER_ACTIONS } from '../constants/vps.ts';
 import { expiryValid, luhnValid, onlyDigits } from '../utils/card.ts';
 import { newPasswordSchema } from './auth.ts';
 
@@ -88,3 +89,9 @@ export const payInvoiceSchema = z
   })
   .refine((v) => expiryValid(v.expMonth, v.expYear), { error: 'cardExpired', path: ['expMonth'] });
 export type PayInvoiceInput = z.input<typeof payInvoiceSchema>;
+
+/** POST /api/vps/:id/actions/:action */
+export const vpsActionParamsSchema = z.object({ id: z.uuid({ error: 'id' }), action: z.enum(POWER_ACTIONS, { error: 'action' }) });
+
+/** POST /api/vps/:id/resize: troca para outro plano (sem diminuir o disco). */
+export const resizeVpsSchema = z.object({ plan: z.string().min(1, { error: 'required' }) });

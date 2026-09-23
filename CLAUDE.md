@@ -1,7 +1,7 @@
 # CLAUDE.md — Favo (VPS Rental Platform)
 
 Contexto para o Claude implementar este projeto em conversas novas. **O plano completo e as decisões estão em
-[docs/PLANO_DE_IMPLEMENTACAO.md](docs/PLANO_DE_IMPLEMENTACAO.md)** (revisão 12, 2026-09-23). Este arquivo resume o
+[docs/PLANO_DE_IMPLEMENTACAO.md](docs/PLANO_DE_IMPLEMENTACAO.md)** (revisão 13, 2026-09-23). Este arquivo resume o
 que não dá para deduzir do código: regras combinadas com o usuário, estado do ambiente, armadilhas já encontradas
 (com a solução) e comandos que já foram testados.
 
@@ -17,13 +17,16 @@ que não dá para deduzir do código: regras combinadas com o usuário, estado d
   proxy do console e o React 19 (Vite 8, Tailwind 4, shadcn). TypeScript 7, tsyringe, Prisma 7 + MySQL 8.4, Biome.
 - Fases (§17 do plano): 0 laboratório → 1 fundação → 2 banco → 3 auth/CSRF/RBAC → 4 Proxmox → 5 catálogo/pagamento →
   6 provisionamento → 7 página da VPS + console → 8 suporte → 9 qualidade → 10 extras.
-- **Situação atual:** Fases 0 a 5 concluídas. Fase 0: laboratório (plano §2.7), scripts em `scripts/pve/`. Fase 1:
+- **Situação atual:** Fases 0 a 6 concluídas. Fase 0: laboratório (plano §2.7), scripts em `scripts/pve/`. Fase 1:
   fundação (servidor único Express+Vite, React com marca Favo, i18n, tema, Vitest, Biome). Fase 2: Prisma 7 + MySQL
   (schema, migration `init`, seeds idempotentes). Fase 3: sessão, CSRF, RBAC, conta, chaves SSH e administração de
   usuários. Fase 4: integração com o Proxmox (`src/server/integrations/proxmox/`, provider atrás da interface
   `VirtualizationProvider`, CLI `npm run pve`, suíte `npm run test:lab`). Fase 5: catálogo, capacidade, pedido (`POST /api/vps`), pagamento simulado e telas de criação,
-  checkout e faturas. A próxima é a Fase 6 (worker de jobs e provisionamento). **Há 1 VPS paga no banco de dev** (`favo-demo`,
-  Alpine Nano, da Ana, com a chave real do Windows) e o job `provision_vps` na fila, esperando o worker da Fase 6.
+  checkout e faturas. Fase 6: fila de jobs no MySQL + worker no próprio processo (`src/server/jobs/`), provisionamento real,
+  ações de energia, troca de plano, exclusão, reconciliação a cada 60 s e Socket.IO autenticado (`src/server/realtime/`,
+  cliente em `src/client/features/realtime/useRealtime.ts`). A próxima é a Fase 7 (página da VPS e console noVNC).
+  **VPS no banco de dev (da Ana):** `favo-demo` (VMID 2000, `.200`, com senha, desligada) e `favo-chave` (VMID 2001, `.201`,
+  só chave, ligada); as duas com a chave real do Windows (`ssh ana@192.168.56.20x`).
 - **Proxmox no código:** `ProxmoxClient` (undici + CA + servername, token, zod), `TaskWaiter` (UPID), `QemuCloudInitProvider`
   (clone, cloud-init, resize, energia, status, pendências, métricas, console, guest agent) e `ImageProfile` (comandos fixos por
   família). Os testes comuns usam `tests/helpers/FakeVirtualizationProvider.ts`; só o `npm run test:lab` (LAB=1) toca o Proxmox.
@@ -94,7 +97,7 @@ que não dá para deduzir do código: regras combinadas com o usuário, estado d
 | DNS do nó | 45.5.96.96 (search `promox.teste`) |
 | Storage | `local` (dir, `/var/lib/vz`, ~2,8 GB livres) · `local-lvm` (lvmthin `data`, **16,8 GB**; VDI aumentado para 30 GB na Fase 0) |
 | RAM | O Proxmox usa ~1,3–1,4 GB; sobram **~1,5 GB para as VPS**. O Windows costuma ficar com só ~0,5 GB livres com o Proxmox ligado |
-| VMs | Só os templates **9000** `favo-tpl-alpine`, **9001** `favo-tpl-debian`, **9002** `favo-tpl-ubuntu`, **9003** `favo-tpl-alpine-desktop` (pool `vps-templates`). VMID **9199** = clone temporário do teste de aceite (IP `.229`) |
+| VMs | VPS da plataforma a partir do VMID **2000** (pool `vps-platform`; hoje 2000 e 2001, ver §1). Templates **9000** `favo-tpl-alpine`, **9001** `favo-tpl-debian`, **9002** `favo-tpl-ubuntu`, **9003** `favo-tpl-alpine-desktop` (pool `vps-templates`). VMID **9199** = clone temporário do teste de aceite (IP `.229`) |
 | Identidade da plataforma | Pools `vps-platform` e `vps-templates`, role `VPSPlatformVM`, usuário `vpsplatform@pve`, token `vpsplatform@pve!backend` (`privsep=1`). Secret e demais `PVE_*` no `.env.development`; CA em `certs/pve-root-ca.pem` |
 | Imagens cloud (checksums conferidos) | `/var/lib/vz/import/`: `generic_alpine-3.24.1-x86_64-bios-cloudinit-r0.qcow2`, `debian-13-genericcloud-amd64.qcow2`, `ubuntu-24.04-minimal-cloudimg-amd64.img` |
 | Backup da rede | `/root/interfaces.bak-20260923020356` |
@@ -218,6 +221,15 @@ que não dá para deduzir do código: regras combinadas com o usuário, estado d
   sem precisar dos grupos `audio`/`video` (o `elogind` cuida do seat). O `default_user` do Alpine tinha `gecos: alpine Cloud User`,
   que aparecia no LightDM para qualquer usuário: o `99-vpsplatform.cfg` sobrescreve com `system_info.default_user.gecos: ""`
   (o merge dos `cloud.cfg.d` é recursivo; testado).
+- **C21. Alpine: conta só com chave nasce BLOQUEADA e o SSH recusa até a chave.** Sem `cipassword`, o cloud-init grava `!` no
+  `/etc/shadow`; o sshd do Alpine é compilado **sem PAM**, e o OpenSSH só checa conta bloqueada sem PAM (`auth.c`:
+  `!options.use_pam && platform_locked_account`; no Linux, bloqueada = hash começando com `!`). Log: *"User ana not allowed because
+  account is locked"*. Correção: `unlockForKeyLogin` no `ImageProfile` do Alpine troca `!` por `*` (sem senha válida, mas não
+  bloqueada). Debian/Ubuntu usam PAM e não têm o problema. A `favo-demo` não tinha o problema porque a conta tinha senha.
+- **C22. O guest agent responde ANTES de o cloud-init terminar** (usuário, `authorized_keys`). Sem esperar, a VPS chegava a
+  `RUNNING` com o SSH ainda recusando a chave. O job roda `cloud-init status --wait` pelo agente depois do `agent/ping` (saída 0 = ok,
+  **2 = concluído com avisos**, ex. o `user:` deprecated da C8; 1 = erro). Com isso, pagamento → `RUNNING` em ~34 s no Alpine e o SSH
+  funciona no mesmo instante.
 
 ### Stack Node / npm (situação em 2026-09-23)
 - **N1. `prisma` `latest` = `8.0.0-rc.15`** (pré-release). A maior estável é a **7.10.0** (igual para `@prisma/client` e
@@ -299,6 +311,12 @@ que não dá para deduzir do código: regras combinadas com o usuário, estado d
   Recusado → 402 `PAYMENT_DECLINED` com `details.failureCode`, e a fatura continua em aberto.
 - **N29. Moeda:** só exibição (`src/client/lib/currency.ts`, taxas fixas de demonstração, prefixo "≈"); o checkout destaca o BRL.
   O `ApiError.details` do cliente é `unknown`: lista de campos no `VALIDATION_ERROR`, objeto nos outros erros.
+- **N30. Worker e Socket.IO (Fase 6):** o `main.ts` sobe o Socket.IO (`attachSocketIo`) no mesmo `http.Server` e o `JobWorker`
+  (se `WORKER_ENABLED`, padrão `true`). Nos testes não há timers: `di.resolve(JobWorker).drain()` processa a fila na hora com o
+  `FakeVirtualizationProvider` (use `VPS_WAIT_SSH: false` no `createTestApp`). Quem emite eventos usa o `RealtimeHub`
+  (`TOKENS.Realtime`), que guarda os últimos 200 em `sent` (útil nos testes). `Vps.lastError` guarda só **códigos**
+  (`VPS_ERROR_CODES` em `src/shared/constants/vps.ts`, traduzidos em `vps:lastError.*`); o detalhe técnico fica no `Job.lastError`.
+  A tabela de transições (`VPS_TRANSITIONS`) é compartilhada entre servidor e cliente.
 - **N17.** `execFileSync('npm', …, { shell: true })` gera o aviso `DEP0190` no Node 24; os scripts de `scripts/deps/` usam
   `execSync` com o nome do pacote validado por regex.
 
@@ -327,6 +345,14 @@ que não dá para deduzir do código: regras combinadas com o usuário, estado d
   Mate todos os `node` do projeto:
   `powershell -NoProfile -Command "Get-CimInstance Win32_Process -Filter \"Name='node.exe'\" | ? { $_.CommandLine -match 'vps-rental-platform' } | % { Stop-Process -Id $_.ProcessId -Force }"`.
   `npm start` exige o `.env.production` (fora do git; aponta para `vps_platform_prod`, criado na Fase 2).
+  **Com o worker (Fase 6), um órfão também PROCESSA A FILA:** um `tsx watch` esquecido recarregou o `main.ts` novo e
+  provisionou a `favo-demo` sozinho. Antes de testar jobs, confira que não há `node` do projeto rodando.
+- **T15. Captura do Playwright pode mostrar a tela atrasada:** uma captura tirada 20 s depois do evento ainda mostrava o estado
+  antigo, embora o navegador já tivesse buscado os dados novos (causa provável, não confirmada: a janela sem foco atrasa os
+  `setTimeout` com que o TanStack Query agenda o re-render). Para medir o tempo real, use um `MutationObserver` via `browser_evaluate` e leia o resultado depois.
+- **T16. Script `.ts` avulso com `tsx`:** os pacotes são resolvidos a partir da pasta do ARQUIVO (no scratchpad não há
+  `node_modules`), e `.ts` fora de um pacote `"type": "module"` vira CJS (sem top-level await). Crie como `.mts` na raiz do projeto,
+  rode com `npx cross-env NODE_ENV=development tsx --tsconfig tsconfig.server.json <arq>.mts` e apague em seguida.
 - **T14. Playwright MCP:** grava capturas e snapshots em `.playwright-mcp/` (no `.gitignore`). Salve capturas em `test-results/`.
   `browser_console_messages` com `all: true` mostra o histórico da sessão inteira, não só da página atual.
 

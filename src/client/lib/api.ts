@@ -40,6 +40,11 @@ export function onUnauthenticated(handler: () => void) {
   unauthenticatedHandler = handler;
 }
 
+/** Dispara o mesmo tratamento de um 401 (usado quando o servidor avisa pelo socket que a sessão foi revogada). */
+export function signalUnauthenticated() {
+  unauthenticatedHandler?.();
+}
+
 async function send(method: string, path: string, body?: unknown): Promise<Response> {
   const headers: Record<string, string> = { Accept: 'application/json' };
   if (body !== undefined) headers['Content-Type'] = 'application/json';

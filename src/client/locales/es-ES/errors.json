@@ -31,6 +31,12 @@
   "INVOICE_NOT_PAYABLE": "Esta factura ya no está pendiente.",
   "INVOICE_EXPIRED": "El plazo de esta factura terminó.",
   "PAYMENT_DECLINED": "Pago rechazado.",
+  "VPS_BUSY": "Ya hay una operación en curso en este VPS. Espera a que termine.",
+  "VPS_INVALID_STATE": "Esta acción no está disponible en el estado actual del VPS.",
+  "SAME_PLAN": "El VPS ya está en este plan.",
+  "DISK_SHRINK_NOT_SUPPORTED": "No es posible reducir el disco. Elige un plan con un disco igual o mayor.",
+  "NO_IP_AVAILABLE": "No hay IP libres en este momento.",
+  "SESSION_REVOKED": "Tu sesión se cerró. Inicia sesión de nuevo.",
   "validation": {
     "required": "Campo obligatorio.",
     "email": "Introduce un correo válido.",

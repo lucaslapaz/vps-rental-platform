@@ -138,6 +138,12 @@ export class FakeVirtualizationProvider implements VirtualizationProvider {
   async waitForAgent(vmid: number) {
     if (!(await this.agentPing(vmid))) throw new Error(`agente da VM ${vmid} não respondeu`);
   }
+  async waitForCloudInit(vmid: number) {
+    this.track('waitForCloudInit', String(vmid));
+  }
+  async allowKeyLogin(vmid: number, _family: string, username: string) {
+    this.track('allowKeyLogin', `${vmid}:${username}`);
+  }
   async setUserPassword(vmid: number, username: string, password: string) {
     this.track('setUserPassword', `${vmid}:${username}`);
     this.get(vmid).passwords[username] = password;

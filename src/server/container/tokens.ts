@@ -11,4 +11,5 @@ export const TOKENS = {
   VirtualizationProvider: Symbol('VirtualizationProvider'),
   SecretBox: Symbol('SecretBox'),
   PaymentGateway: Symbol('PaymentGateway'),
+  Realtime: Symbol('Realtime'),
 } as const;

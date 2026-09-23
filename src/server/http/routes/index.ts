@@ -2,7 +2,7 @@ import { Router } from 'express';
 import type { DependencyContainer } from 'tsyringe';
 import { changeRoleSchema, intIdParamSchema, sshKeySchema, userSearchSchema, uuidParamSchema } from '../../../shared/schemas/account.ts';
 import { changePasswordSchema, loginSchema, registerSchema } from '../../../shared/schemas/auth.ts';
-import { createVpsSchema, payInvoiceSchema } from '../../../shared/schemas/vps.ts';
+import { createVpsSchema, payInvoiceSchema, resizeVpsSchema, vpsActionParamsSchema } from '../../../shared/schemas/vps.ts';
 import type { Env } from '../../config/env.ts';
 import { TOKENS } from '../../container/tokens.ts';
 import { AccountController } from '../../controllers/AccountController.ts';
@@ -93,7 +93,7 @@ export function createApiRouter(di: DependencyContainer) {
   router.get('/plans', catalog.plans);
   router.get('/os-templates', catalog.osTemplates);
 
-  // ── VPS (Fase 5: pedido; as ações entram nas fases 6 e 7) ──
+  // ── VPS ──
   router.get('/vps', A, P('vps:read:own'), vps.list);
   router.get('/vps/:id', A, P('vps:read:own'), validate({ params: uuidParamSchema }), vps.get);
   router.post(
@@ -106,6 +106,12 @@ export function createApiRouter(di: DependencyContainer) {
     validate({ body: createVpsSchema }),
     vps.create,
   );
+  router.get('/vps/:id/events', A, P('vps:read:own'), validate({ params: uuidParamSchema }), vps.events);
+  const manage = P('vps:manage:own');
+  const vpsOps = limiter(env, { windowMinutes: 5, limit: 30 });
+  router.post('/vps/:id/actions/:action', O, vpsOps, C, A, manage, validate({ params: vpsActionParamsSchema }), vps.action);
+  router.post('/vps/:id/resize', O, vpsOps, C, A, manage, validate({ params: uuidParamSchema, body: resizeVpsSchema }), vps.resize);
+  router.delete('/vps/:id', O, vpsOps, C, A, P('vps:delete:own'), validate({ params: uuidParamSchema }), vps.remove);
 
   // ── Faturas e pagamento simulado ──
   router.get('/invoices', A, P('billing:read:own'), invoices.list);

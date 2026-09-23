@@ -282,7 +282,7 @@ export class QemuCloudInitProvider implements VirtualizationProvider {
   }
 
   /** Executa um comando FIXO pelo agente e espera terminar. Nunca recebe texto do usuário no comando (§10.6). */
-  private async exec(vmid: number, command: readonly string[], inputData?: string, timeoutMs = 30_000) {
+  private async exec(vmid: number, command: readonly string[], inputData?: string, timeoutMs = 30_000, okCodes: readonly number[] = [0]) {
     const { pid } = await this.pve.post(this.vm(vmid, '/agent/exec'), z.object({ pid: num }), {
       command,
       ...(inputData === undefined ? {} : { 'input-data': inputData }),
@@ -291,13 +291,27 @@ export class QemuCloudInitProvider implements VirtualizationProvider {
     for (;;) {
       const s = await this.pve.get(this.vm(vmid, '/agent/exec-status'), execStatusSchema, { pid });
       if (s.exited) {
-        if (s.exitcode !== 0)
+        if (!okCodes.includes(s.exitcode ?? -1))
           throw new Error(`comando no convidado falhou (código ${s.exitcode}): ${(s['err-data'] ?? '').trim().slice(0, 300)}`);
         return s['out-data'] ?? '';
       }
       if (Date.now() - started > timeoutMs) throw new Error('comando no convidado não terminou a tempo');
       await new Promise((r) => setTimeout(r, 500));
     }
+  }
+
+  /**
+   * O guest agent sobe ANTES de o cloud-init terminar de criar o usuário e gravar as chaves (medido no lab: a VPS chegou
+   * a RUNNING com o authorized_keys ainda sendo escrito). `cloud-init status --wait` sai com 0 (ok), 2 (concluído com
+   * avisos, como o `user:` deprecated, CLAUDE.md C8) ou 1 (erro).
+   */
+  async waitForCloudInit(vmid: number, timeoutMs = 180_000) {
+    await this.exec(vmid, ['cloud-init', 'status', '--wait'], undefined, timeoutMs, [0, 2]);
+  }
+
+  async allowKeyLogin(vmid: number, family: string, username: string) {
+    const command = imageProfile(family).unlockForKeyLogin;
+    if (command) await this.exec(vmid, [...command, username]);
   }
 
   async setSshPasswordAuth(vmid: number, family: string, enabled: boolean) {

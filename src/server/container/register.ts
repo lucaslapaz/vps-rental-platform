@@ -6,6 +6,7 @@ import { ProxmoxClient } from '../integrations/proxmox/ProxmoxClient.ts';
 import { QemuCloudInitProvider } from '../integrations/proxmox/QemuCloudInitProvider.ts';
 import { TaskWaiter } from '../integrations/proxmox/TaskWaiter.ts';
 import type { VirtualizationProvider } from '../integrations/virtualization/VirtualizationProvider.ts';
+import { RealtimeHub } from '../realtime/RealtimeEmitter.ts';
 import { type Clock, systemClock } from '../utils/clock.ts';
 import type { Logger } from '../utils/logger.ts';
 import { SecretBox } from '../utils/secretBox.ts';
@@ -33,6 +34,7 @@ export function registerDependencies(
   target.registerInstance(TOKENS.Prisma, prisma);
   target.registerInstance(TOKENS.Clock, clock);
   target.registerInstance(TOKENS.SecretBox, new SecretBox(env.JOB_SECRET_KEY));
+  target.registerInstance(TOKENS.Realtime, new RealtimeHub());
   // Pagamento SIMULADO (plano §12): um gateway real seria outra implementação da mesma interface.
   target.register(TOKENS.PaymentGateway, { useClass: FakePaymentGateway }, { lifecycle: Lifecycle.ContainerScoped });
   if (virtualization) {

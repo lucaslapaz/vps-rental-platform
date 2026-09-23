@@ -58,6 +58,20 @@ const schema = z.object({
   /** Latência artificial do gateway simulado (0 nos testes). */
   PAYMENT_LATENCY_MS: z.coerce.number().int().min(0).max(10_000).optional(),
 
+  // ── Worker de jobs (plano §11.2) ──
+  /** false: o processo só atende HTTP (útil para depurar sem mexer no Proxmox). */
+  WORKER_ENABLED: z.stringbool().default(true),
+  WORKER_CONCURRENCY: z.coerce.number().int().min(1).max(8).default(2),
+  WORKER_POLL_MS: z.coerce.number().int().min(100).default(1000),
+  /** Prefixo do `lockedBy` dos jobs; na subida, os jobs RUNNING com este prefixo voltam para a fila. */
+  WORKER_ID: z
+    .string()
+    .regex(/^[\w.-]{1,40}$/)
+    .optional(),
+  RECONCILE_INTERVAL_SECONDS: z.coerce.number().int().min(10).default(60),
+  /** Depois do guest agent, espera a porta 22 abrir antes de marcar RUNNING (o servidor alcança a rede das VPS). */
+  VPS_WAIT_SSH: z.stringbool().default(true),
+
   /** Chave AES-256-GCM (32 bytes em base64) que cifra as senhas no payload dos jobs (plano §10.6). */
   JOB_SECRET_KEY: z
     .string()

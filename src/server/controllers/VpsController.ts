@@ -1,10 +1,11 @@
 import type { Request, Response } from 'express';
 import { inject, injectable } from 'tsyringe';
 import { uuidParamSchema } from '../../shared/schemas/account.ts';
-import { createVpsSchema } from '../../shared/schemas/vps.ts';
+import { createVpsSchema, resizeVpsSchema, vpsActionParamsSchema } from '../../shared/schemas/vps.ts';
 import { valid } from '../http/middlewares/validate.ts';
 import { toVpsDTO, VpsRepository } from '../repositories/VpsRepository.ts';
 import { OrderService } from '../services/OrderService.ts';
+import { VpsService } from '../services/VpsService.ts';
 import { AppError } from '../utils/errors.ts';
 
 const currentUser = (req: Request) => req.user as NonNullable<Request['user']>;
@@ -14,6 +15,7 @@ export class VpsController {
   constructor(
     @inject(VpsRepository) private readonly vps: VpsRepository,
     @inject(OrderService) private readonly orders: OrderService,
+    @inject(VpsService) private readonly service: VpsService,
   ) {}
 
   /** GET /api/vps */
@@ -32,5 +34,30 @@ export class VpsController {
   create = async (req: Request, res: Response) => {
     const result = await this.orders.create(currentUser(req).id, valid(res, 'body', createVpsSchema), req.ip ?? null);
     res.status(201).json(result);
+  };
+
+  /** POST /api/vps/:id/actions/:action — 202: o resultado chega por vps:status. */
+  action = async (req: Request, res: Response) => {
+    const { id, action } = valid(res, 'params', vpsActionParamsSchema);
+    res.status(202).json({ vps: await this.service.powerAction(currentUser(req).id, id, action, req.ip ?? null) });
+  };
+
+  /** POST /api/vps/:id/resize */
+  resize = async (req: Request, res: Response) => {
+    const { id } = valid(res, 'params', uuidParamSchema);
+    const { plan } = valid(res, 'body', resizeVpsSchema);
+    res.status(202).json({ vps: await this.service.resize(currentUser(req).id, id, plan, req.ip ?? null) });
+  };
+
+  /** DELETE /api/vps/:id */
+  remove = async (req: Request, res: Response) => {
+    const { id } = valid(res, 'params', uuidParamSchema);
+    res.status(202).json({ vps: await this.service.remove(currentUser(req).id, id, req.ip ?? null) });
+  };
+
+  /** GET /api/vps/:id/events */
+  events = async (req: Request, res: Response) => {
+    const { id } = valid(res, 'params', uuidParamSchema);
+    res.json({ events: await this.service.events(currentUser(req).id, id) });
   };
 }

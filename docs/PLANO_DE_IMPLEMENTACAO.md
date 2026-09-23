@@ -15,6 +15,7 @@
 | 5 | 2026-09-23 | Respostas da revisão 5 (§0.5): **marca Favo aprovada**; **imagem Alpine Desktop (XFCE)** entra no catálogo (template 9003, plano Medium de 1 GB); **`CLAUDE.md` criado** na raiz com o contexto e as lições aprendidas. Nenhuma decisão pendente (§20) |
 | 6 | 2026-09-23 | Commits: o Claude passa a **commitar ao fim de cada fase** (substitui a decisão do §0.2). Ajustados o §1, o §17 e o `CLAUDE.md` |
 | 12 | 2026-09-23 | **Fase 5 concluída** (§17): catálogo, capacidade, pedido, pagamento simulado com trava da fatura (`FOR UPDATE`), telas de criação/checkout/faturas e moeda de exibição. Mudança no schema: `vps.provisionSecrets` (senhas cifradas entre o pedido e o pagamento, §12) |
+| 13 | 2026-09-23 | **Fase 6 concluída** (§17): fila de jobs no MySQL + worker no processo, handlers de provisionamento/ações/troca de plano/exclusão/reconciliação/limpeza, IPAM atômico, máquina de estados com lock otimista e Socket.IO autenticado. Descobertas no laboratório (§10.6, §11.3): o guest agent responde **antes** de o cloud-init terminar (o pós-boot agora espera `cloud-init status --wait`) e, no Alpine (sshd **sem PAM**), uma conta criada só com chave nasce bloqueada e o SSH recusa até a chave (o `ImageProfile` troca `!` por `*`). `Vps.lastError` guarda só códigos traduzíveis |
 | 11 | 2026-09-23 | **Fase 4 concluída** (§17): cliente do Proxmox, provider real, agente, CLI `npm run pve` e suíte `@lab` 30/30 nas quatro imagens. Mudanças: drop-in do sshd **`01-favo.conf`** (§10.6) e formato do ticket do `vncproxy` (§10.5) |
 | 10 | 2026-09-23 | **Fase 3 concluída** (§17): sessão, CSRF assinado, RBAC, conta, chaves SSH e administração de usuários. Detalhes da implementação em §9.8 (origem aceita, pré-sessão, validação real das chaves SSH, textos em namespaces) |
 | 9 | 2026-09-23 | **Fase 2 concluída** (§17): Prisma 7.10.0 + adapter MariaDB, migration `init`, seeds idempotentes. Ajustes: tabelas com `@@map` em snake_case (MySQL do Windows com `lower_case_table_names=1`), `IpAddress.macAddress` (MAC derivado do IP), pool `.200–.228`, plano **Medium** no seed, proteção do Prisma contra agentes de IA em comandos destrutivos (§19) |
@@ -1626,6 +1627,11 @@ reiniciar a VM**:
   dela. Exemplos: recarregar o sshd é `rc-service sshd reload` no Alpine e `systemctl reload ssh` no Debian e no Ubuntu.
   Conferir no build do template se o `sshd_config` de cada imagem faz o `Include` de `sshd_config.d/*.conf`; se não fizer,
   o template já sai com essa linha.
+- **Conta só com chave no Alpine (rev. 13):** sem senha de usuário, o cloud-init deixa a conta com `!` no `/etc/shadow`
+  (bloqueada). O OpenSSH só checa conta bloqueada quando **não** usa PAM (`auth.c`: `!options.use_pam && platform_locked_account`;
+  no Linux, bloqueada = hash começando com `!`, `configure.ac`). O sshd do Alpine é compilado sem PAM, então recusava **até a
+  chave** ("User ana not allowed because account is locked"). O `ImageProfile` do Alpine tem `unlockForKeyLogin`: troca `!` por
+  `*` (nenhuma senha válida, mas não bloqueada) só se a conta estiver bloqueada. Debian e Ubuntu usam PAM e não precisam.
 - **O `agent/exec` nunca fica exposto ao cliente.** Só o backend chama, com comandos fixos do `ImageProfile`.
 - **Senhas nunca ficam em texto puro no banco.** Entre o pedido e a execução do job, a senha fica no payload do job
   **cifrada com AES-256-GCM** (chave `JOB_SECRET_KEY` do `.env`), e o campo é apagado assim que é usado. Ela trafega até
@@ -1677,6 +1683,28 @@ Por que no MySQL: evita outra dependência no PC, é persistente (sobrevive a re
 6. Confirma `running`. O IP vira `ASSIGNED`, a VPS vira `RUNNING` e um `VpsEvent` é registrado.
 7. Socket.IO emite `vps:status` para a sala `user:<id>`, e a UI atualiza sem refresh.
 8. Em falha definitiva: tenta `DELETE` da VM parcial, libera o IP, marca `ERROR` com `lastError`.
+
+**Implementação (rev. 13)** — `src/server/jobs/`:
+- `JobQueue` (enqueue na transação do chamador, `claim` com `FOR UPDATE SKIP LOCKED`, `checkpoint`, backoff `2^tentativas s`,
+  `releaseStale` na subida) e `JobWorker` (poll de 1 s, concorrência 2, agenda o `reconcile` a cada 60 s e `expire_pending`/limpeza a
+  cada 15 min; no encerramento espera 5 s e devolve à fila o que não terminou). `lockedBy` = `<WORKER_ID ou hostname>#<pid>`.
+- Checkpoints do `provision_vps` no payload: `vmid`, `cloneStarted` (gravado **antes** do clone: numa falha só apagamos uma VM que
+  nós criamos, e com o nome esperado), `configured`, `accessApplied`. O VMID é reservado no banco (índice único em `pveVmid`) antes do
+  clone, então dois jobs nunca usam o mesmo.
+- **O guest agent sobe antes de o cloud-init terminar** (medido: a VPS chegava a RUNNING com o `authorized_keys` ainda sendo
+  gravado). Depois do `agent/ping`, o job roda `cloud-init status --wait` pelo agente (saída 0 = ok, 2 = concluído com avisos, como
+  o `user:` deprecated). Depois do pós-boot, espera a porta 22 abrir (`VPS_WAIT_SSH`; o servidor alcança a rede das VPS).
+- Etapas gravadas como `VpsEvent` (`action=provision`, `status=progress`, etapa em `message`) e emitidas em `vps:progress`: a linha
+  do tempo sobrevive a um refresh (`GET /api/vps/:id/events`).
+- `Vps.lastError` guarda só **códigos** (`PROVISION_FAILED`, `ACTION_FAILED`, `RESIZE_FAILED`, `DELETE_FAILED`, `VM_MISSING`), que o
+  cliente traduz; o texto técnico (que pode ter nomes internos do Proxmox) fica no `Job.lastError` e no log.
+- Troca de plano: o valor é a diferença de preço proporcional aos dias que faltam no período de 30 dias contado do primeiro
+  pagamento; a fatura (simulada) é criada quando o job termina. Não diminui o disco (`DISK_SHRINK_NOT_SUPPORTED`).
+- Exclusão de VPS aguardando pagamento é imediata (nada existe no Proxmox); nos outros estados, `DELETING` + job.
+- Limpeza: sessões expiradas/revogadas há mais de 1 dia, jobs periódicos concluídos há mais de 1 hora (o reconcile gera ~1.440 por
+  dia) e os demais concluídos há mais de 7 dias.
+- Sessão revogada (logout de outra aba, troca de senha, troca de role): o servidor emite `session:revoked` e fecha os sockets
+  daquela sessão (o handshake só autentica uma vez).
 
 ### 11.4 Outras operações
 
@@ -2173,15 +2201,25 @@ nova tentativa; `…4242` aprovado → VPS "Criando" e job `provision_vps` no ba
 → **409 INVOICE_NOT_PAYABLE**. 72 testes (catálogo, validações do pedido, limites, capacidade, Proxmox fora, pagamento
 recusado/aprovado, 3 pagamentos simultâneos → 1 aprovação, cartão inválido, fatura de outro cliente → 404, Luhn, moeda).
 
-### Fase 6: Provisionamento e ciclo de vida
-- [ ] `JobQueue` + `Worker` (SKIP LOCKED, retry, locks órfãos), handlers §11.
-- [ ] IPAM atômico, máquina de estados com lock otimista.
-- [ ] `vps_action`, `resize`, `delete`, `reconcile`, `expire_pending`, limpeza de sessões.
-- [ ] Socket.IO base (handshake autenticado, salas `user:*`, `destroyUpgrade: false`) + eventos `vps:status` e `vps:progress`.
+### Fase 6: Provisionamento e ciclo de vida — ✅ concluída em 2026-09-23
+- [x] `JobQueue` + `Worker` (SKIP LOCKED, retry, locks órfãos), handlers §11.
+- [x] IPAM atômico, máquina de estados com lock otimista.
+- [x] `vps_action`, `resize`, `delete`, `reconcile`, `expire_pending`, limpeza de sessões.
+- [x] Socket.IO base (handshake autenticado, salas `user:*`, `destroyUpgrade: false`) + eventos `vps:status` e `vps:progress`.
 
 **Aceite:** do pagamento até `RUNNING` sem refresh na tela, e `ssh <usuário>@<ip>` funciona a partir do Windows. Matar o servidor
 no meio do provisionamento e subir de novo → o job retoma e termina sem duplicar a VM. Desligar a VM pela interface web do Proxmox
 → em até 60 s a plataforma mostra `STOPPED`.
+
+**Resultado (rev. 13):** no laboratório, com a Ana: pedido Alpine Nano pela tela → pagamento → lista com a etapa atual e barra de
+progresso → `RUNNING` **34 s** depois do pagamento, sem refresh, com toast; `ssh ana@192.168.56.201` do Windows funcionou **no instante**
+em que a VPS ficou `RUNNING` (conta só com chave, depois da correção do Alpine). Servidor morto à força (`Stop-Process -Force`) na
+etapa `booting` → na subida, "jobs interrompidos voltaram para a fila", a tentativa 2 pulou clone/configuração/start e terminou na
+**mesma VM** (mesmo VMID e mesmo processo `kvm`), sem duplicar. `qm shutdown` pelo Proxmox → `STOPPED` em **52 s**. Na tela,
+medido com `MutationObserver`: "Desligando" em 0,4 s e "Desligada" em 4,4 s; exclusão: "Excluindo" em 0,5 s e a linha some em 1,8 s
+(VM apagada, IP de volta a FREE). Descobertas: agente antes do cloud-init e conta bloqueada no Alpine (§10.6, §11.3). 87 testes
+(fila, retomada, falha definitiva, espera do cloud-init, desbloqueio só sem senha, ações, 409 `VPS_BUSY`, troca de plano, exclusão,
+reconcile, faturas vencidas, Socket.IO com sessão, origem e revogação).
 
 ### Fase 7: Página da VPS e console
 - [ ] Lista, página da VPS com as abas de §14.5, ações com confirmação (`alert-dialog`), badges de status, toasts.

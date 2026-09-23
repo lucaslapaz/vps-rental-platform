@@ -27,6 +27,16 @@ export class CapacityService {
       });
     }
 
+    await this.assertResources(plan);
+  }
+
+  /** Troca de plano: só o ACRÉSCIMO de RAM e disco precisa caber (plano §11.4). */
+  async assertCanGrow(delta: { memoryMb: number; diskGb: number }) {
+    const grow = { memoryMb: Math.max(0, delta.memoryMb), diskGb: Math.max(0, delta.diskGb) };
+    if (grow.memoryMb || grow.diskGb) await this.assertResources(grow);
+  }
+
+  private async assertResources(plan: { memoryMb: number; diskGb: number }) {
     const allocated = await this.vps.allocated();
     if (
       allocated.memoryMb + plan.memoryMb > this.env.CAPACITY_MAX_MEMORY_MB ||

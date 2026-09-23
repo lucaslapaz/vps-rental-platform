@@ -8,9 +8,10 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useCan } from '@/features/auth/useAuth';
+import { ProvisionProgress, VpsErrorReason } from './ProvisionProgress';
 import { formatMemory, useMyVps } from './queries';
 
-/** Lista de VPS (§14.1). A página de cada VPS (abas, console, ações) chega na Fase 7. */
+/** Lista de VPS (§14.1), atualizada em tempo real. A página de cada VPS (abas, console, ações) chega na Fase 7. */
 export function VpsListPage() {
   const { t, i18n } = useTranslation(['vps', 'common']);
   const vps = useMyVps();
@@ -70,6 +71,8 @@ export function VpsListPage() {
                     </TableCell>
                     <TableCell>
                       <VpsStatusBadge status={v.status} />
+                      <ProvisionProgress vps={v} />
+                      <VpsErrorReason vps={v} />
                     </TableCell>
                     <TableCell>
                       {v.status === 'PENDING_PAYMENT' && v.pendingInvoiceId ? (

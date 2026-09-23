@@ -87,5 +87,27 @@
       "submitting": "Creando pedido…",
       "choose": "Elige la imagen y el plan"
     }
+  },
+  "progress": {
+    "step": "Paso {{current}} de {{total}}",
+    "payment": "Pago confirmado",
+    "ip": "Reservando la IP",
+    "cloning": "Copiando la imagen",
+    "configuring": "Configurando CPU, memoria y red",
+    "starting": "Encendiendo",
+    "booting": "Iniciando el sistema",
+    "access": "Aplicando contraseñas y SSH",
+    "ready": "Lista"
+  },
+  "lastError": {
+    "PROVISION_FAILED": "La creación falló. No se conservó nada en el servidor; puedes eliminarla e intentarlo de nuevo.",
+    "ACTION_FAILED": "La última acción falló y no se pudo confirmar el estado de la VM.",
+    "RESIZE_FAILED": "El cambio de plan falló.",
+    "DELETE_FAILED": "La eliminación falló. Inténtalo de nuevo.",
+    "VM_MISSING": "No se encontró la máquina virtual en el servidor."
+  },
+  "toast": {
+    "ready": "{{hostname}} está en línea en {{ip}}.",
+    "failed": "No se pudo completar la operación en {{hostname}}."
   }
 }

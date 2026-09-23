@@ -87,5 +87,27 @@
       "submitting": "Creating order…",
       "choose": "Pick the image and the plan"
     }
+  },
+  "progress": {
+    "step": "Step {{current}} of {{total}}",
+    "payment": "Payment confirmed",
+    "ip": "Reserving the IP",
+    "cloning": "Copying the image",
+    "configuring": "Configuring CPU, memory and network",
+    "starting": "Powering on",
+    "booting": "Booting the system",
+    "access": "Applying passwords and SSH",
+    "ready": "Ready"
+  },
+  "lastError": {
+    "PROVISION_FAILED": "Creation failed. Nothing was kept on the server; you can delete it and try again.",
+    "ACTION_FAILED": "The last action failed and the VM state could not be confirmed.",
+    "RESIZE_FAILED": "The plan change failed.",
+    "DELETE_FAILED": "Deletion failed. Try again.",
+    "VM_MISSING": "The virtual machine was not found on the server."
+  },
+  "toast": {
+    "ready": "{{hostname}} is up at {{ip}}.",
+    "failed": "The operation on {{hostname}} could not be completed."
   }
 }

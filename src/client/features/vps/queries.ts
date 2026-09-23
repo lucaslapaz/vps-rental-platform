@@ -1,5 +1,6 @@
+import { BUSY_STATUSES } from '@shared/constants/vps';
 import type { SshKeyDTO } from '@shared/types/auth';
-import type { InvoiceDTO, OsTemplateDTO, PlanDTO, VpsDTO } from '@shared/types/catalog';
+import type { InvoiceDTO, OsTemplateDTO, PlanDTO, VpsDTO, VpsEventDTO } from '@shared/types/catalog';
 import { useQuery } from '@tanstack/react-query';
 import { apiGet } from '@/lib/api';
 
@@ -8,6 +9,7 @@ export const queryKeys = {
   plans: ['catalog', 'plans'] as const,
   osTemplates: ['catalog', 'os-templates'] as const,
   vpsList: ['vps'] as const,
+  vpsEvents: (id: string) => ['vps', id, 'events'] as const,
   invoices: ['invoices'] as const,
   invoice: (id: string) => ['invoices', id] as const,
   sshKeys: ['account', 'ssh-keys'] as const,
@@ -31,8 +33,17 @@ export const useMyVps = () =>
   useQuery({
     queryKey: queryKeys.vpsList,
     queryFn: async () => (await apiGet<{ vps: VpsDTO[] }>('/vps')).vps,
-    // Enquanto alguma VPS está sendo criada, atualiza sozinho (o tempo real via Socket.IO chega na Fase 6).
-    refetchInterval: (q) => (q.state.data?.some((v) => v.status === 'PROVISIONING') ? 5000 : false),
+    // O normal é o Socket.IO avisar (vps:status). Enquanto há operação em andamento, uma consulta lenta cobre o caso
+    // de o socket ter caído.
+    refetchInterval: (q) => (q.state.data?.some((v) => BUSY_STATUSES.includes(v.status)) ? 20_000 : false),
+  });
+
+/** Histórico da VPS (inclui as etapas da criação). O socket invalida esta query a cada vps:progress. */
+export const useVpsEvents = (id: string, enabled = true) =>
+  useQuery({
+    queryKey: queryKeys.vpsEvents(id),
+    queryFn: async () => (await apiGet<{ events: VpsEventDTO[] }>(`/vps/${id}/events`)).events,
+    enabled,
   });
 
 export const useInvoices = () =>

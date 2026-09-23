@@ -9,6 +9,8 @@ import { registerDependencies } from './container/register.ts';
 import { createPrismaClient } from './db/prisma.ts';
 import { errorHandler } from './http/middlewares/errorHandler.ts';
 import { spaHandler } from './http/spa.ts';
+import { JobWorker } from './jobs/JobWorker.ts';
+import { attachSocketIo } from './realtime/socket.ts';
 import { createLogger } from './utils/logger.ts';
 
 const env = loadEnv();
@@ -19,6 +21,8 @@ const di = registerDependencies({ env, logger, prisma });
 
 const app = createApp(di);
 const httpServer = http.createServer(app);
+// Socket.IO no mesmo servidor, antes do Vite: os dois tratam "upgrade" e nenhum destrói o do outro (CLAUDE.md N7).
+const io = attachSocketIo(httpServer, di);
 let vite: ViteDevServer | undefined;
 
 if (env.NODE_ENV === 'development') {
@@ -46,12 +50,14 @@ if (env.NODE_ENV === 'development') {
 }
 app.use(errorHandler);
 
+const worker = env.WORKER_ENABLED ? di.resolve(JobWorker) : undefined;
 httpServer.listen(env.PORT, env.HOST, () => {
   logger.info(`Favo rodando em ${env.APP_ORIGIN} (${env.NODE_ENV})`);
+  worker?.start().catch((err) => logger.error({ err }, 'não foi possível iniciar o worker de jobs'));
 });
 
-// Encerramento gracioso: para de aceitar conexões → fecha o Vite → devolve o pool do banco (plano §8.2).
-// Nas próximas fases entram o worker de jobs e o Socket.IO, antes do banco.
+// Encerramento gracioso (plano §8.2): worker para de pegar jobs (os em andamento voltam para a fila e retomam do
+// checkpoint na próxima subida) → sockets → HTTP → Vite → pool do banco.
 let closing = false;
 async function shutdown(signal: string) {
   if (closing) return;
@@ -59,6 +65,8 @@ async function shutdown(signal: string) {
   logger.info(`${signal} recebido, encerrando…`);
   const forceExit = setTimeout(() => process.exit(1), 10_000);
   forceExit.unref();
+  await worker?.stop();
+  io.disconnectSockets(true);
   const serverClosed = new Promise<void>((resolve) => httpServer.close(() => resolve()));
   httpServer.closeAllConnections();
   await serverClosed;

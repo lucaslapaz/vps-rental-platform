@@ -3,6 +3,7 @@ import type { Permission } from '../../shared/constants/permissions.ts';
 import type { Env } from '../config/env.ts';
 import { TOKENS } from '../container/tokens.ts';
 import { AuthenticatedUser } from '../models/AuthenticatedUser.ts';
+import type { RealtimeHub } from '../realtime/RealtimeEmitter.ts';
 import { SessionRepository } from '../repositories/SessionRepository.ts';
 import type { Clock } from '../utils/clock.ts';
 import { randomToken, sha256Hex } from '../utils/crypto.ts';
@@ -16,6 +17,7 @@ export class SessionService {
     @inject(TOKENS.Env) private readonly env: Env,
     @inject(TOKENS.Clock) private readonly clock: Clock,
     @inject(SessionRepository) private readonly sessions: SessionRepository,
+    @inject(TOKENS.Realtime) private readonly realtime: RealtimeHub,
   ) {}
 
   private idleMs() {
@@ -61,12 +63,19 @@ export class SessionService {
     return { user: new AuthenticatedUser(user.id, user.email, user.name, user.role.key, permissions, found.id), expiresAt, renewed };
   }
 
-  revoke(sessionId: string, userId: string) {
-    return this.sessions.revoke(sessionId, userId, this.clock.now());
+  /** Revoga e derruba os sockets abertos com esta sessão (o cliente recebe session:revoked e volta ao login). */
+  async revoke(sessionId: string, userId: string) {
+    const revoked = await this.sessions.revoke(sessionId, userId, this.clock.now());
+    if (revoked) this.realtime.endSession(sessionId);
+    return revoked;
   }
 
-  revokeAllForUser(userId: string, exceptSessionId?: string) {
-    return this.sessions.revokeAllForUser(userId, this.clock.now(), exceptSessionId);
+  async revokeAllForUser(userId: string, exceptSessionId?: string) {
+    const now = this.clock.now();
+    const active = await this.sessions.listActive(userId, now);
+    const count = await this.sessions.revokeAllForUser(userId, now, exceptSessionId);
+    for (const s of active) if (s.id !== exceptSessionId) this.realtime.endSession(s.id);
+    return count;
   }
 
   listActive(userId: string) {

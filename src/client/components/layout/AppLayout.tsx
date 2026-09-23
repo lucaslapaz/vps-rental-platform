@@ -2,6 +2,7 @@ import { useTranslation } from 'react-i18next';
 import { Link, NavLink, Outlet } from 'react-router';
 import { Logo } from '@/components/brand/Logo';
 import { useCan } from '@/features/auth/useAuth';
+import { useRealtime } from '@/features/realtime/useRealtime';
 import { cn } from '@/lib/utils';
 import { CurrencyMenu } from './CurrencyMenu';
 import { LanguageMenu } from './LanguageMenu';
@@ -30,6 +31,7 @@ export function AppLayout() {
   const canVps = useCan('vps:read:own');
   const canAdmin = useCan('admin:users:read');
   const canBilling = useCan('billing:read:own');
+  useRealtime();
 
   return (
     <div className="flex min-h-svh flex-col">

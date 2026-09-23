@@ -87,5 +87,27 @@
       "submitting": "Criando pedido…",
       "choose": "Escolha a imagem e o plano"
     }
+  },
+  "progress": {
+    "step": "Etapa {{current}} de {{total}}",
+    "payment": "Pagamento confirmado",
+    "ip": "Reservando o IP",
+    "cloning": "Copiando a imagem",
+    "configuring": "Configurando CPU, memória e rede",
+    "starting": "Ligando",
+    "booting": "Inicializando o sistema",
+    "access": "Aplicando senhas e SSH",
+    "ready": "Pronta"
+  },
+  "lastError": {
+    "PROVISION_FAILED": "A criação falhou. Nada foi mantido no servidor; você pode excluir e tentar de novo.",
+    "ACTION_FAILED": "A última ação falhou e o estado da VM não pôde ser confirmado.",
+    "RESIZE_FAILED": "A troca de plano falhou.",
+    "DELETE_FAILED": "A exclusão falhou. Tente de novo.",
+    "VM_MISSING": "A máquina virtual não foi encontrada no servidor."
+  },
+  "toast": {
+    "ready": "{{hostname}} está no ar em {{ip}}.",
+    "failed": "Não foi possível concluir a operação em {{hostname}}."
   }
 }

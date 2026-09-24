@@ -2,6 +2,7 @@ import type { Request, Response } from 'express';
 import { inject, injectable } from 'tsyringe';
 import { uuidParamSchema } from '../../shared/schemas/account.ts';
 import {
+  consoleRequestSchema,
   createVpsSchema,
   metricsQuerySchema,
   renameVpsSchema,
@@ -100,7 +101,8 @@ export class VpsController {
   console = async (req: Request, res: Response) => {
     const { id } = valid(res, 'params', uuidParamSchema);
     const user = currentUser(req);
-    res.status(201).json(await this.consoles.open({ id: user.id, sessionId: user.sessionId }, id, req.ip ?? null));
+    const { type } = valid(res, 'body', consoleRequestSchema);
+    res.status(201).json(await this.consoles.open({ id: user.id, sessionId: user.sessionId }, id, req.ip ?? null, type));
   };
 
   /** GET /api/vps/:id/live */

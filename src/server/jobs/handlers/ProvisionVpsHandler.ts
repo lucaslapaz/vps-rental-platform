@@ -124,6 +124,8 @@ export class ProvisionVpsHandler implements JobHandler {
         },
         { tags: ['vpsplatform'] },
       );
+      // Anti-spoofing: a VPS só sai com o próprio IP e MAC (Fase 10).
+      await this.vms.applyNetworkFirewall(vmid, ip.address);
       // O clone herda o disco do template; só aumenta (diminuir não é suportado, CLAUDE.md A8).
       if (current.diskMaxBytes < vps.diskGb * GB) await this.vms.resizeDisk(vmid, vps.diskGb);
       await ctx.save({ configured: true });

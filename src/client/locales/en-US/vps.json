@@ -203,7 +203,10 @@
       "ctrlAltDel": "Ctrl+Alt+Del",
       "notRunning": "Power on the VPS to use the console.",
       "hint": "Click the screen to type. Server images show the text login; the Desktop image shows the graphical login.",
-      "failed": "Could not connect to the console."
+      "failed": "Could not connect to the console.",
+      "modeVnc": "Graphical (VNC)",
+      "modeSerial": "Text (serial)",
+      "serialHint": "Terminal on the VM serial port: select to copy and paste as usual. If the login prompt does not show up, press Enter."
     },
     "metrics": {
       "cpu": "CPU (%)",

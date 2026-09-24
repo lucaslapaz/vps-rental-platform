@@ -4,6 +4,7 @@ import { changeRoleSchema, intIdParamSchema, sshKeySchema, userSearchSchema, uui
 import { changePasswordSchema, loginSchema, registerSchema } from '../../../shared/schemas/auth.ts';
 import { messagesQuerySchema, openConversationSchema, sendBodySchema } from '../../../shared/schemas/support.ts';
 import {
+  consoleRequestSchema,
   createVpsSchema,
   metricsQuerySchema,
   payInvoiceSchema,
@@ -167,7 +168,7 @@ export function createApiRouter(di: DependencyContainer) {
     C,
     A,
     P('vps:console:own'),
-    validate({ params: uuidParamSchema }),
+    validate({ params: uuidParamSchema, body: consoleRequestSchema }),
     vps.console,
   );
 

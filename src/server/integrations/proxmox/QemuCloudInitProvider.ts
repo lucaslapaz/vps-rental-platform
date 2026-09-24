@@ -10,6 +10,7 @@ import type {
   NodeCapacity,
   PendingChange,
   PowerAction,
+  TerminalTicket,
   VirtualizationProvider,
   VmSpec,
   VmStatus,
@@ -71,7 +72,8 @@ export class QemuCloudInitProvider implements VirtualizationProvider {
   }
 
   private net0(macAddress: string, bandwidthMbps: number) {
-    return `virtio=${macAddress},bridge=${this.env.PVE_BRIDGE},rate=${mbpsToRate(bandwidthMbps)}`;
+    // firewall=1: a placa passa pela bridge de firewall do Proxmox (ipfilter/macfilter da VM, Fase 10).
+    return `virtio=${macAddress},bridge=${this.env.PVE_BRIDGE},firewall=1,rate=${mbpsToRate(bandwidthMbps)}`;
   }
 
   async ping() {
@@ -134,6 +136,28 @@ export class QemuCloudInitProvider implements VirtualizationProvider {
       ciupgrade: false, // o template já sai atualizado; o upgrade no 1º boot levava minutos (CLAUDE.md C1)
       onboot: true,
       tags: extra.tags?.join(';'),
+    });
+  }
+
+  /**
+   * Firewall da VM só como anti-spoofing (doc "Proxmox VE Firewall"): o IPSet ipfilter-net0 recebe o IP da VPS (para VMs,
+   * o `ipfilter: 1` sozinho só inclui os endereços link-local), `macfilter` prende o MAC da placa, e as políticas ficam
+   * ACCEPT. Só vale com o firewall do datacenter ligado (scripts/pve/firewall.sh). Idempotente.
+   */
+  async applyNetworkFirewall(vmid: number, ip: string) {
+    const ipset = this.vm(vmid, '/firewall/ipset/ipfilter-net0');
+    const sets = await this.pve.get(this.vm(vmid, '/firewall/ipset'), z.array(z.object({ name: z.string() })));
+    if (!sets.some((s) => s.name === 'ipfilter-net0')) {
+      await this.pve.post(this.vm(vmid, '/firewall/ipset'), nothing, { name: 'ipfilter-net0', comment: 'Favo: IP da VPS' });
+    }
+    const entries = await this.pve.get(ipset, z.array(z.object({ cidr: z.string() })));
+    if (!entries.some((e) => e.cidr === ip || e.cidr === `${ip}/32`)) await this.pve.post(ipset, nothing, { cidr: ip });
+    await this.pve.put(this.vm(vmid, '/firewall/options'), nothing, {
+      enable: true,
+      ipfilter: true,
+      macfilter: true,
+      policy_in: 'ACCEPT',
+      policy_out: 'ACCEPT',
     });
   }
 
@@ -374,7 +398,18 @@ export class QemuCloudInitProvider implements VirtualizationProvider {
     return { port: r.port, ticket: r.ticket, password: r.password };
   }
 
-  connectConsole(vmid: number, ticket: ConsoleTicket) {
+  /**
+   * Terminal de texto (Fase 10): termproxy na serial0. Conferido no pve-xtermjs do nó: a 1ª mensagem do WebSocket é
+   * "<user>:<ticket>\n", o Proxmox responde "OK"; depois, dados "0:<bytes>:<texto>", redimensionar "1:<cols>:<rows>:" e ping "2".
+   */
+  async openTerminal(vmid: number): Promise<TerminalTicket> {
+    const r = await this.pve.post(this.vm(vmid, '/termproxy'), z.object({ port: num, ticket: z.string(), user: z.string() }), {
+      serial: 'serial0',
+    });
+    return { port: r.port, ticket: r.ticket, user: r.user };
+  }
+
+  connectConsole(vmid: number, ticket: { port: number; ticket: string }) {
     // Mesmos parâmetros que o noVNC do próprio Proxmox usa (app.js do novnc-pve): port + vncticket.
     return this.pve.openWebSocket(this.vm(vmid, '/vncwebsocket'), { port: ticket.port, vncticket: ticket.ticket });
   }

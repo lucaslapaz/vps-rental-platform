@@ -117,3 +117,8 @@ export const renameVpsSchema = z.object({ hostname: hostnameSchema });
 
 export const METRICS_TIMEFRAMES = ['hour', 'day', 'week'] as const;
 export const metricsQuerySchema = z.object({ timeframe: z.enum(METRICS_TIMEFRAMES).default('hour') });
+
+/** POST /api/vps/:id/console: gráfico (noVNC, padrão) ou texto na serial (xterm.js). Corpo opcional. */
+export const CONSOLE_TYPES = ['vnc', 'serial'] as const;
+export type ConsoleType = (typeof CONSOLE_TYPES)[number];
+export const consoleRequestSchema = z.preprocess((v) => v ?? {}, z.object({ type: z.enum(CONSOLE_TYPES).default('vnc') }));

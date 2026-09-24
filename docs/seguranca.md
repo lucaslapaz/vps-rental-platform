@@ -13,6 +13,8 @@ verificada: código ou teste. A revisão encontrou dois problemas, corrigidos ne
 | Console: `consoleId` de uso único, 30 s, preso à **sessão** que o pediu; limite de 2 por usuário | `ConsoleService`, `consoleProxy.ts` | `vps-page.test.ts` (reutilizado, outro usuário, sem sessão) |
 | **Corrigido:** revogar a sessão fecha também o console aberto por ela (antes, só o Socket.IO caía) | `RealtimeHub.onSessionEnded` | `vps-page.test.ts` (código 4001) |
 | Token do Proxmox restrito aos pools `vps-platform`/`vps-templates` e a uma role mínima | `scripts/pve/bootstrap.sh` | `@lab`: `DELETE` do template com o token → 403 |
+| Uma VPS não consegue usar o IP ou o MAC de outra (anti-spoofing: `ipfilter` + `macfilter` do firewall do Proxmox) | `QemuCloudInitProvider.applyNetworkFirewall`, `scripts/pve/firewall.sh` | `@lab`: IP falso dentro da VM é bloqueado; contraprova sem `ipfilter` passa |
+| Console de texto com a mesma sessão de uso único do gráfico; o ticket do `termproxy` fica no servidor | `consoleProxy.ts` | `vps-page.test.ts` (serial) |
 
 ## A02 · Falhas de criptografia
 

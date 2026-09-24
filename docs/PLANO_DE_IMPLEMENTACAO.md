@@ -18,7 +18,8 @@
 | 13 | 2026-09-23 | **Fase 6 concluída** (§17): fila de jobs no MySQL + worker no processo, handlers de provisionamento/ações/troca de plano/exclusão/reconciliação/limpeza, IPAM atômico, máquina de estados com lock otimista e Socket.IO autenticado. Descobertas no laboratório (§10.6, §11.3): o guest agent responde **antes** de o cloud-init terminar (o pós-boot agora espera `cloud-init status --wait`) e, no Alpine (sshd **sem PAM**), uma conta criada só com chave nasce bloqueada e o SSH recusa até a chave (o `ImageProfile` troca `!` por `*`). `Vps.lastError` guarda só códigos traduzíveis |
 | 14 | 2026-09-23 | **Fase 7 concluída** (§17): página da VPS com abas, console noVNC por proxy `ws`, acesso pelo guest agent, métricas e histórico. Decisões e descobertas no laboratório: **o cloud-init é congelado no fim do provisionamento** (§10.6; renomear mudava o `instance-id` e regenerava as chaves de host), renomear e aumentar o disco passam a ser feitos pelo agente (§10.4, §11.4), `reboot` cai para `stop`+`start` quando o ACPI é ignorado, Ubuntu 24.04 precisa do `/run/sshd` antes do `sshd -t`, e a capacidade usa a memória **disponível** do nó (não a livre). Rotas de acesso síncronas (`200`) |
 | 15 | 2026-09-23 | **Fase 8 concluída** (§17): suporte com fila ao vivo, claim atômico, limite por técnico, devolver/encerrar e chat por Socket.IO com ack. Ajustes de implementação (§13.2): eventos vão para as salas `user:<id>` dos participantes (em vez de `conversation:<id>`, que exigiria entrar e sair de salas a cada claim), mensagens do sistema gravadas como **código** e traduzidas na tela, abrir conversa trava a linha do cliente (`FOR UPDATE`) e há envio por REST quando o socket está fora |
-| 16 | 2026-09-24 | **Fase 9 concluída** (§17): E2E com Playwright contra o app com o provider falso (`e2e/server.ts`), cobertura (`npm run test:coverage`), verificação de traduções, README de portfólio com GIF, `docs/arquitetura.md` e `docs/seguranca.md` (OWASP Top 10). A revisão corrigiu 2 pontos: o chat pelo socket sem limite de mensagens e o console que continuava aberto depois de revogar a sessão |
+| 16 | 2026-09-23 | **Fase 9 concluída** (§17): E2E com Playwright contra o app com o provider falso (`e2e/server.ts`), cobertura (`npm run test:coverage`), verificação de traduções, README de portfólio com GIF, `docs/arquitetura.md` e `docs/seguranca.md` (OWASP Top 10). A revisão corrigiu 2 pontos: o chat pelo socket sem limite de mensagens e o console que continuava aberto depois de revogar a sessão |
+| 17 | 2026-09-23 | **Fase 10, extras 1 e 2** (§17): console de texto (xterm.js no `termproxy` da serial0, pelo mesmo proxy do noVNC) e firewall anti-spoofing por VPS (`ipfilter`/`macfilter`), com o firewall do datacenter ligado por `scripts/pve/firewall.sh` e a zona de conntrack do NAT (§3.3) |
 | 11 | 2026-09-23 | **Fase 4 concluída** (§17): cliente do Proxmox, provider real, agente, CLI `npm run pve` e suíte `@lab` 30/30 nas quatro imagens. Mudanças: drop-in do sshd **`01-favo.conf`** (§10.6) e formato do ticket do `vncproxy` (§10.5) |
 | 10 | 2026-09-23 | **Fase 3 concluída** (§17): sessão, CSRF assinado, RBAC, conta, chaves SSH e administração de usuários. Detalhes da implementação em §9.8 (origem aceita, pré-sessão, validação real das chaves SSH, textos em namespaces) |
 | 9 | 2026-09-23 | **Fase 2 concluída** (§17): Prisma 7.10.0 + adapter MariaDB, migration `init`, seeds idempotentes. Ajustes: tabelas com `@@map` em snake_case (MySQL do Windows com `lower_case_table_names=1`), `IpAddress.macAddress` (MAC derivado do IP), pool `.200–.228`, plano **Medium** no seed, proteção do Prisma contra agentes de IA em comandos destrutivos (§19) |
@@ -459,8 +460,10 @@ iface vmbr1 inet static
 - As mudanças são aplicadas com `ifreload -a` (ifupdown2, padrão desde o PVE 7). Faça isso **pelo console da janela do
   VirtualBox**, não por SSH ou pela web: o SSH usa a própria `nic1` e cai durante a troca. Antes, faça backup:
   `cp /etc/network/interfaces /root/interfaces.bak`.
-- Se o firewall do Proxmox for ativado nas VMs (Fase 10), a doc indica regras extras de
-  *conntrack zone* para o masquerading. Elas serão conferidas na doc no momento de ativar.
+- **Firewall ligado (Fase 10, rev. 17):** com o firewall do Proxmox ativo nas VMs, a saída pelo MASQUERADE quebrou (DNS e
+  HTTP falhavam dentro da VPS). A doc ("Masquerading (NAT) with iptables") manda usar uma *conntrack zone*, que resolveu
+  (testado): `post-up iptables -t raw -I PREROUTING -i fwbr+ -j CT --zone 1` e o `post-down` com `-D`, na estrofe da
+  `vmbr1`. O `scripts/pve/firewall.sh` grava as duas linhas (com backup) e aplica a regra na hora, sem `ifreload`.
 - **Alternativa**, caso a bridge na host-only dê problema: `vmbr1` interna (`10.10.10.0/24`, `bridge-ports none`)
   com NAT e uma rota persistente no Windows (`route -p add 10.10.10.0 mask 255.255.255.0 192.168.56.10`).
   Funciona sem modo promíscuo, mas exige a rota (admin) no Windows.
@@ -2269,7 +2272,7 @@ posição na fila, claim concorrente (exatamente 1 sucesso), limite por técnico
 não participante (404 no REST e `NOT_FOUND` no ack do socket), devolver/encerrar, chat com ack e "digitando…" entre 2 sockets,
 e recuperação por `?after=`.
 
-### Fase 9: Qualidade e apresentação — ✅ concluída em 2026-09-24
+### Fase 9: Qualidade e apresentação — ✅ concluída em 2026-09-23
 - [x] Traduções completas de en-US e es-ES (ou a lista final de §20) + verificação de chaves faltando.
 - [x] Cobertura dos services críticos, E2E dos fluxos principais (em pt-BR e em um segundo idioma).
 - [x] README de portfólio: arquitetura (diagramas), decisões (este plano resumido), como rodar, screenshots e GIF.
@@ -2299,10 +2302,21 @@ e recuperação por `?after=`.
 - 133 testes no `npm test`, 3 no E2E e 36 no `@lab`.
 
 ### Fase 10: Extras (opcionais, por prioridade sugerida)
-1. **Console em texto (xterm.js)** como alternativa ao noVNC: `termproxy` com `serial=serial0`, com o mesmo proxy de §10.5.
-   O protocolo do termproxy será conferido no código-fonte do `pve-xtermjs` antes de implementar.
-2. **Firewall por VPS:** `PUT …/qemu/{vmid}/firewall/options enable=1, ipfilter=1, macfilter=1` (impede o cliente de trocar o IP
-   dentro da VM para roubar outro). Exige ativar o firewall do datacenter com cuidado, e as regras de conntrack da doc para o NAT.
+1. ✅ **Console em texto (xterm.js)** como alternativa ao noVNC: `termproxy` com `serial=serial0`, com o mesmo proxy de §10.5.
+   **Feito (rev. 17):** protocolo conferido no `pve-xtermjs` do nó: a 1ª mensagem do WebSocket é `<user>:<ticket>\n`, o
+   Proxmox responde `OK`; depois, dados `0:<bytes>:<texto>`, redimensionar `1:<cols>:<rows>:` e ping `2`. O navegador pede
+   `POST /api/vps/:id/console {type: "serial"}` e recebe só o `consoleId`; o **proxy da Favo** faz a autenticação com o
+   ticket, espera o `OK` (senão fecha com 1011) e o retira do fluxo. Na aba Console, um seletor "Gráfico (VNC)" / "Texto
+   (serial)" (`SerialConsole.tsx`, xterm.js 6 com as cores da marca). Testado nas 4 imagens (`@lab`: handshake + `login:`
+   do getty) e no navegador com a VPS da Ana.
+2. ✅ **Firewall por VPS:** `PUT …/qemu/{vmid}/firewall/options enable=1, ipfilter=1, macfilter=1` (impede o cliente de trocar o IP
+   dentro da VM para roubar outro). **Feito (rev. 17):** o `net0` ganhou `firewall=1`, e o provisionamento cria o IPSet
+   `ipfilter-net0` só com o IP da VPS (para VMs, o `ipfilter` sozinho só libera os link-local), com `macfilter` e políticas
+   `ACCEPT` (é só anti-spoofing; o cliente continua livre para usar as portas que quiser). O token já tinha
+   `VM.Config.Network`, que é o que a API exige. O firewall do datacenter é ligado como root pelo
+   `scripts/pve/firewall.sh` (políticas `ACCEPT` no host, IPSet `management`, rollback automático de 3 min até
+   conferir SSH e 8006) junto com a zona de conntrack do NAT (§3.3). **Contraprova no laboratório:** com um IP falso na
+   interface, o ping sai sem `ipfilter` e é bloqueado com ele; o IP próprio, o DNS e a internet continuam funcionando.
 3. **Cobrança recorrente:** renovação mensal, suspensão (stop) por inadimplência, exclusão após carência, "relógio acelerado" de demonstração.
 4. **Painel admin ampliado:** todas as VPS (somente leitura), capacidade do nó, fila de jobs, e o **editor de roles**
    (criar roles e marcar permissões numa grade, `admin:roles:manage`).

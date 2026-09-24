@@ -203,7 +203,10 @@
       "ctrlAltDel": "Ctrl+Alt+Supr",
       "notRunning": "Enciende el VPS para usar la consola.",
       "hint": "Haz clic en la pantalla para escribir. Las imágenes de servidor muestran el inicio de sesión de texto; la Desktop, el gráfico.",
-      "failed": "No se pudo conectar a la consola."
+      "failed": "No se pudo conectar a la consola.",
+      "modeVnc": "Gráfico (VNC)",
+      "modeSerial": "Texto (serie)",
+      "serialHint": "Terminal en el puerto serie de la VM: selecciona para copiar y pega como siempre. Si no aparece el inicio de sesión, pulsa Enter."
     },
     "metrics": {
       "cpu": "CPU (%)",

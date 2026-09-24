@@ -24,7 +24,16 @@ const createdUsers: string[] = [];
 const server = http.createServer(app);
 const proxy = attachConsoleProxy(server, di);
 const vnc = new WebSocketServer({ port: 0, handleProtocols: () => 'binary' });
-vnc.on('connection', (ws) => ws.on('message', (data, binary) => ws.send(data, { binary })));
+// Imita o termproxy: a linha "<user>:<ticket>\n" recebe "OK" + o prompt; o resto volta como eco (VNC e terminal).
+const upstreamReceived: string[] = [];
+vnc.on('connection', (ws) =>
+  ws.on('message', (data, binary) => {
+    const text = Buffer.from(data as Buffer).toString();
+    upstreamReceived.push(text);
+    if (text === 'fake@pve!token:term-ticket\n') ws.send(Buffer.from('OKlogin: '), { binary: true });
+    else ws.send(data, { binary });
+  }),
+);
 let base = '';
 
 beforeAll(async () => {
@@ -98,7 +107,7 @@ describe('console (noVNC via proxy)', () => {
     const vps = await runningVps(c);
     const res = await c.send('post', `/api/vps/${vps.id}/console`);
     expect(res.status).toBe(201);
-    expect(res.body).toEqual({ consoleId: expect.any(String), password: 'fake-password' });
+    expect(res.body).toEqual({ consoleId: expect.any(String), type: 'vnc', password: 'fake-password' });
 
     const headers = { Origin: env.APP_ORIGIN, Cookie: cookieHeader(c) };
     const opened = await openConsole(res.body.consoleId, headers);
@@ -109,6 +118,25 @@ describe('console (noVNC via proxy)', () => {
     opened.ws?.close();
 
     expect((await openConsole(res.body.consoleId, headers)).status).toBe(403); // reutilizado
+  });
+
+  it('terminal de texto: o proxy autentica no termproxy (o navegador não vê o ticket) e tira o "OK"', async () => {
+    const c = await customer();
+    const vps = await runningVps(c);
+    const res = await c.send('post', `/api/vps/${vps.id}/console`, { type: 'serial' });
+    expect(res.status).toBe(201);
+    expect(res.body).toEqual({ consoleId: expect.any(String), type: 'serial' });
+
+    const opened = await openConsole(res.body.consoleId, { Origin: env.APP_ORIGIN, Cookie: cookieHeader(c) });
+    expect(opened.status).toBe(101);
+    const first = await new Promise<string>((resolve) => opened.ws?.once('message', (d) => resolve(Buffer.from(d as Buffer).toString())));
+    expect(first).toBe('login: ');
+    expect(upstreamReceived).toContain('fake@pve!token:term-ticket\n');
+    const echo = new Promise<string>((resolve) => opened.ws?.once('message', (d) => resolve(Buffer.from(d as Buffer).toString())));
+    opened.ws?.send('0:2:ls');
+    expect(await echo).toBe('0:2:ls');
+    opened.ws?.close();
+    expect((await c.send('post', `/api/vps/${vps.id}/console`, { type: 'telnet' })).status).toBe(400);
   });
 
   it('revogar a sessão (ex.: logout em outra aba) fecha o console aberto por ela', async () => {

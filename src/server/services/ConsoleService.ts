@@ -1,6 +1,7 @@
 import { inject, injectable } from 'tsyringe';
+import type { ConsoleType } from '../../shared/schemas/vps.ts';
 import { TOKENS } from '../container/tokens.ts';
-import type { ConsoleTicket, VirtualizationProvider } from '../integrations/virtualization/VirtualizationProvider.ts';
+import type { VirtualizationProvider } from '../integrations/virtualization/VirtualizationProvider.ts';
 import { AuditLogRepository } from '../repositories/AuditLogRepository.ts';
 import { VpsRepository } from '../repositories/VpsRepository.ts';
 import type { Clock } from '../utils/clock.ts';
@@ -19,7 +20,10 @@ export interface PendingConsole {
   vpsId: string;
   hostname: string;
   vmid: number;
-  ticket: ConsoleTicket;
+  type: ConsoleType;
+  ticket: { port: number; ticket: string };
+  /** Só no terminal: usuário do Proxmox da 1ª linha do protocolo (o proxy autentica; o navegador nunca vê o ticket). */
+  terminalUser?: string;
   expiresAt: number;
 }
 
@@ -54,8 +58,11 @@ export class ConsoleService {
     return (this.active.get(userId) ?? 0) + pendingForUser;
   }
 
-  /** POST /api/vps/:id/console → { consoleId, password }. A senha é a do protocolo VNC (vale só para este ticket). */
-  async open(user: { id: string; sessionId: string }, vpsId: string, ip: string | null) {
+  /**
+   * POST /api/vps/:id/console → { consoleId, type, password? }. No gráfico, a senha é a do protocolo VNC (vale só para
+   * este ticket); no terminal, não há senha para o navegador: o proxy faz o handshake com o ticket.
+   */
+  async open(user: { id: string; sessionId: string }, vpsId: string, ip: string | null, type: ConsoleType = 'vnc') {
     const vps = await this.vps.findOwned(vpsId, user.id);
     if (!vps || vps.status === 'DELETED') throw AppError.notFound('VPS não encontrada');
     if (vps.status !== 'RUNNING' || !vps.pveVmid) throw new AppError(409, 'VPS_NOT_RUNNING', 'Ligue a VPS para abrir o console');
@@ -64,20 +71,32 @@ export class ConsoleService {
         limit: MAX_CONSOLES_PER_USER,
       });
     }
-    const ticket = await this.vms.openConsole(vps.pveVmid);
     const id = randomToken(24);
-    this.pending.set(id, {
-      id,
-      userId: user.id,
-      sessionId: user.sessionId,
-      vpsId: vps.id,
-      hostname: vps.hostname,
-      vmid: vps.pveVmid,
-      ticket,
-      expiresAt: this.now() + CONSOLE_TTL_MS,
+    const base = { id, userId: user.id, sessionId: user.sessionId, vpsId: vps.id, hostname: vps.hostname, vmid: vps.pveVmid };
+    let password: string | undefined;
+    if (type === 'serial') {
+      const t = await this.vms.openTerminal(vps.pveVmid);
+      this.pending.set(id, {
+        ...base,
+        type,
+        ticket: { port: t.port, ticket: t.ticket },
+        terminalUser: t.user,
+        expiresAt: this.now() + CONSOLE_TTL_MS,
+      });
+    } else {
+      const t = await this.vms.openConsole(vps.pveVmid);
+      password = t.password;
+      this.pending.set(id, { ...base, type, ticket: { port: t.port, ticket: t.ticket }, expiresAt: this.now() + CONSOLE_TTL_MS });
+    }
+    await this.audit.record({
+      action: 'vps.console_requested',
+      actorId: user.id,
+      targetType: 'vps',
+      targetId: vps.id,
+      metadata: { type },
+      ip,
     });
-    await this.audit.record({ action: 'vps.console_requested', actorId: user.id, targetType: 'vps', targetId: vps.id, ip });
-    return { consoleId: id, password: ticket.password };
+    return { consoleId: id, type, ...(password ? { password } : {}) };
   }
 
   /**

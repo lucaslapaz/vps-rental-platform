@@ -91,6 +91,11 @@ describe('provision_vps', () => {
     expect(vm).toMatchObject({ status: 'running', diskGb: 2, sshPasswordAuth: true, passwords: { root: 'senha-do-root-123' } });
     expect(vm?.cloudInit).toMatchObject({ user: 'lucas', password: 'senha-da-vps-123', ip: vps.ipAddress?.address });
     expect(vm?.spec).toEqual({ cores: 1, memoryMb: 256, bandwidthMbps: 10 });
+    // Anti-spoofing (Fase 10): o firewall da VM recebe o IP dela antes de ligar.
+    expect(fake.calls).toContain(`applyNetworkFirewall:${vps.pveVmid}:${vps.ipAddress?.address}`);
+    expect(fake.calls.indexOf(`applyNetworkFirewall:${vps.pveVmid}:${vps.ipAddress?.address}`)).toBeLessThan(
+      fake.calls.indexOf(`power:${vps.pveVmid}:start`),
+    );
 
     const job = await provisionJob(id);
     expect(job.status).toBe('SUCCEEDED');

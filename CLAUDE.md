@@ -1,7 +1,7 @@
 # CLAUDE.md — Favo (VPS Rental Platform)
 
 Contexto para o Claude implementar este projeto em conversas novas. **O plano completo e as decisões estão em
-[docs/PLANO_DE_IMPLEMENTACAO.md](docs/PLANO_DE_IMPLEMENTACAO.md)** (revisão 16, 2026-09-24). Este arquivo resume o
+[docs/PLANO_DE_IMPLEMENTACAO.md](docs/PLANO_DE_IMPLEMENTACAO.md)** (revisão 17, 2026-09-23). Este arquivo resume o
 que não dá para deduzir do código: regras combinadas com o usuário, estado do ambiente, armadilhas já encontradas
 (com a solução) e comandos que já foram testados.
 
@@ -30,7 +30,8 @@ que não dá para deduzir do código: regras combinadas com o usuário, estado d
   (`VpsAccessService`), métricas/estado ao vivo (`VpsInsightsService`) e o roteiro `@lab` `tests/lab/lifecycle.lab.test.ts`.
   Fase 8: suporte (`/support` do cliente, `/agent` do técnico; `SupportService`, chat pelo Socket.IO com ack, fila na
   sala `agents`). Fase 9: E2E (`e2e/`, `npm run test:e2e`), cobertura, README, `docs/arquitetura.md` e
-  `docs/seguranca.md`. A próxima é a Fase 10 (extras opcionais). **O banco de dev tem a VPS de demonstração da Ana** (ver §4, linha VMs).
+  `docs/seguranca.md`. Fase 10 (extras, na ordem do plano): 1 console de texto (xterm.js + termproxy) e 2 firewall anti-spoofing por VPS
+  feitos; o próximo é o 3 (cobrança recorrente). **O banco de dev tem a VPS de demonstração da Ana** (ver §4, linha VMs).
 - **Proxmox no código:** `ProxmoxClient` (undici + CA + servername, token, zod), `TaskWaiter` (UPID), `QemuCloudInitProvider`
   (clone, cloud-init, resize, energia, status, pendências, métricas, console, guest agent) e `ImageProfile` (comandos fixos por
   família). Os testes comuns usam `tests/helpers/FakeVirtualizationProvider.ts`; só o `npm run test:lab` (LAB=1) toca o Proxmox.
@@ -105,12 +106,15 @@ que não dá para deduzir do código: regras combinadas com o usuário, estado d
 | VMs | VPS da plataforma a partir do VMID **2000** (pool `vps-platform`; hoje só a VPS de demonstração da Ana, `favo-demo`, Alpine Nano só com a chave do Windows, criada no fim da Fase 7). Templates **9000** `favo-tpl-alpine`, **9001** `favo-tpl-debian`, **9002** `favo-tpl-ubuntu`, **9003** `favo-tpl-alpine-desktop` (pool `vps-templates`). VMID **9199** = clone temporário do teste de aceite (IP `.229`) |
 | Identidade da plataforma | Pools `vps-platform` e `vps-templates`, role `VPSPlatformVM`, usuário `vpsplatform@pve`, token `vpsplatform@pve!backend` (`privsep=1`). Secret e demais `PVE_*` no `.env.development`; CA em `certs/pve-root-ca.pem` |
 | Imagens cloud (checksums conferidos) | `/var/lib/vz/import/`: `generic_alpine-3.24.1-x86_64-bios-cloudinit-r0.qcow2`, `debian-13-genericcloud-amd64.qcow2`, `ubuntu-24.04-minimal-cloudimg-amd64.img` |
-| Backup da rede | `/root/interfaces.bak-20260923020356` |
+| Backup da rede | `/root/interfaces.bak-20260923020356` (antes da `vmbr1`) e `/root/interfaces.bak-20260923215318` (antes da zona de conntrack) |
+| Firewall | **Ligado no datacenter** (`/etc/pve/firewall/cluster.fw`, políticas ACCEPT, IPSet `management`) só para o anti-spoofing das VPS; zona de conntrack do NAT na `vmbr1`. Ver `scripts/pve/firewall.sh` e P5 |
 | MySQL | Bancos `vps_platform_{dev,test,prod,shadow}` + usuário **`vps_app`** (só nesses bancos, `caching_sha2_password`). `DATABASE_URL` em `.env.development`/`.env.test`, e `SHADOW_DATABASE_URL` em `.env.development` |
 
 ### Scripts do laboratório (Fase 0, rodam no Git Bash a partir da raiz do repositório)
 - `scripts/pve/bootstrap.sh [--rotate-token]`: idempotente. Envia a si mesmo por SSH, copia a CA e grava os `PVE_*` no `.env.development`.
   O secret só aparece na criação do token: se o `.env` perdeu o secret, use `--rotate-token`.
+- `scripts/pve/firewall.sh`: idempotente. Liga o firewall do datacenter (políticas ACCEPT) com rollback automático de 3 min
+  até conferir SSH e 8006, e grava a zona de conntrack do NAT (Fase 10, extra 2).
 - `scripts/pve/build-template.sh <alpine|debian|ubuntu|alpine-desktop|all> [--force] [--no-test]`: se o template já existir,
   não faz nada (a menos que receba `--force`, que falha se houver clones vinculados). Depois do build, roda o teste.
 - `node scripts/pve/test-template.mjs <9000|9001|9002|9003> [--keep]`: aceite **só com o token** (clone → VPS de verdade →
@@ -142,6 +146,11 @@ que não dá para deduzir do código: regras combinadas com o usuário, estado d
   depois `systemd-run --unit=net-apply /bin/sh -c "sleep 2; ifreload -a"`. Se o acesso sobreviver: `systemctl stop net-rollback.timer`.
 - **P3.** No PVE 9, as placas se chamam `nic0`/`nic1` (com *altnames* `enx…`), e não `enp0s3`.
 - **P4.** `growpart`/`parted` **não vêm instalados** no Proxmox (para aumentar o disco: `apt install cloud-guest-utils`).
+- **P5. Firewall + NAT:** com o firewall ligado nas VMs, a saída pelo MASQUERADE quebra (dentro da VPS: `wget: bad address`).
+  Solução da doc ("Masquerading (NAT) with iptables"): `iptables -t raw -I PREROUTING -i fwbr+ -j CT --zone 1` (post-up/down da
+  `vmbr1`). O `pve-firewall localnet` detecta como rede local a `10.0.2.0/24` (NAT), não a host-only: por isso as políticas do
+  host ficam `ACCEPT` (com `DROP` o Windows perderia a GUI e o SSH). Mudar o `firewall=1` do `net0` com a VM ligada é
+  aplicado na hora (sem pendência).
 
 ### Proxmox: API e permissões
 - **A1.** Use **API token** (`Authorization: PVEAPIToken=user@realm!tokenid=uuid`): não precisa de `CSRFPreventionToken`
@@ -172,6 +181,13 @@ que não dá para deduzir do código: regras combinadas com o usuário, estado d
 - **A12. `reboot` é ACPI (desligar + ligar):** com o sistema ainda bootando (logo depois de ligar) o ACPI é ignorado e a task
   falha com `VM quit/powerdown failed - got timeout` (~63 s). O provider cai para `stop` + `start` (que também aplica as
   pendências). O `qmstart` como `root@pam` que aparece no log depois de um reboot é o próprio Proxmox religando a VM.
+- **A14. Console de texto (`termproxy`, Fase 10):** `POST …/qemu/{vmid}/termproxy {serial: "serial0"}` devolve `port, ticket, user`
+  (aceita token, `VM.Console`); o WebSocket é o mesmo `vncwebsocket?port&vncticket`. Protocolo (`pve-xtermjs` do nó): 1ª mensagem
+  `<user>:<ticket>\n`, resposta `OK`, depois dados `0:<bytes UTF-8>:<texto>`, redimensionar `1:<cols>:<rows>:` e ping `2`. A
+  serial não tem histórico: o cliente manda um Enter (`0:1:\r`) para o getty reimprimir o `login:`.
+- **A15. Firewall da VM por API:** `…/firewall/ipset` e `…/firewall/options` exigem `VM.Config.Network` (leitura:
+  `VM.Audit`); booleanos vão como `1`/`0`. Para VMs, o `ipfilter: 1` só libera os endereços do IPSet `ipfilter-net0` (e os
+  link-local): **sem o IPSet, a VPS fica sem rede IPv4**. Contraprova do anti-spoofing: `ip addr add <outro IP>` + `ping -I`.
 - **A13. noVNC do próprio Proxmox** (`/usr/share/novnc-pve/app.js`): `password = data.password ?? data.ticket`,
   `vncwebsocket?port=…&vncticket=…`, subprotocolo `binary`. O proxy da Favo faz o mesmo. `get-fsinfo` do agente devolve
   `result[].mountpoint/used-bytes/total-bytes` (aceita token, `VM.GuestAgent.Audit`). Pendência de memória aparece em
@@ -206,6 +222,8 @@ que não dá para deduzir do código: regras combinadas com o usuário, estado d
   `https://gitlab.alpinelinux.org/alpine/alpine-conf/-/raw/master/<script>.in`.
 - **C13.** Usuários padrão: `alpine` (usa `doas`), `debian` e `ubuntu` (usam `sudo`, sem senha). Por padrão, o root fica
   bloqueado (`L`) no Debian.
+- **C27. Alpine com conta só de chave fica travada** (`Permission denied (publickey…)`) se a VM for criada à mão sem
+  `--cipassword`: a plataforma resolve com o `unlockForKeyLogin` do `ImageProfile`; em VMs de teste manuais, passe uma senha.
 - **C14. Qualquer `ciuser` funciona** (testado com `favo`): no Debian/Ubuntu o `default_user` tem `sudo: ALL=(ALL) NOPASSWD:ALL`;
   no Alpine o cloud-init grava `permit nopass <usuário>` no `/etc/doas.conf`, e a imagem já tem `/etc/doas.d/wheel.conf`
   (`permit nopass :wheel`), com o usuário no grupo `wheel`. O Alpine tem `ssh_pwauth: false` no `cloud.cfg` (SSH por senha

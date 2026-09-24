@@ -72,6 +72,13 @@ export interface NodeCapacity {
   pveVersion: string;
 }
 
+export interface TerminalTicket {
+  port: number;
+  ticket: string;
+  /** Usuário do Proxmox dono do ticket (com o token: "usuario@realm!token"). */
+  user: string;
+}
+
 export interface ConsoleTicket {
   port: number;
   ticket: string;
@@ -87,6 +94,8 @@ export interface VirtualizationProvider {
   exists(vmid: number): Promise<boolean>;
   cloneFromTemplate(input: { templateVmid: number; vmid: number; name: string; description: string }): Promise<void>;
   configure(vmid: number, spec: VmSpec, cloudInit: CloudInitSpec, extra?: { tags?: string[] }): Promise<void>;
+  /** Anti-spoofing (Fase 10): a VM só sai com o próprio IP e o próprio MAC. A entrada fica por conta do cliente. */
+  applyNetworkFirewall(vmid: number, ip: string): Promise<void>;
   /** Aplica CPU/RAM/banda (troca de plano); com a VM ligada, fica pendente até reiniciar. */
   updateResources(vmid: number, spec: VmSpec, macAddress: string): Promise<void>;
   rename(vmid: number, name: string): Promise<void>;
@@ -119,6 +128,8 @@ export interface VirtualizationProvider {
   guestDiskUsage(vmid: number): Promise<{ usedBytes: number; totalBytes: number } | null>;
 
   openConsole(vmid: number): Promise<ConsoleTicket>;
-  /** Abre o WebSocket VNC da VM com o ticket do openConsole (o backend faz a ponte com o navegador). */
-  connectConsole(vmid: number, ticket: ConsoleTicket): WebSocket;
+  /** Terminal de texto na serial0 (termproxy). O `user` + `ticket` autenticam a 1ª linha do WebSocket (§10.5). */
+  openTerminal(vmid: number): Promise<TerminalTicket>;
+  /** Abre o WebSocket (vncwebsocket) com o port/ticket do openConsole ou do openTerminal; o backend faz a ponte. */
+  connectConsole(vmid: number, ticket: { port: number; ticket: string }): WebSocket;
 }

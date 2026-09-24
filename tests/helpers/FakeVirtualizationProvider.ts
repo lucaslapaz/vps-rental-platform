@@ -6,6 +6,7 @@ import type {
   NodeCapacity,
   PendingChange,
   PowerAction,
+  TerminalTicket,
   VirtualizationProvider,
   VmSpec,
   VmStatus,
@@ -78,6 +79,9 @@ export class FakeVirtualizationProvider implements VirtualizationProvider {
   async configure(vmid: number, spec: VmSpec, cloudInit: CloudInitSpec) {
     this.track('configure', String(vmid));
     Object.assign(this.get(vmid), { spec, cloudInit, authorizedKeys: [...cloudInit.sshKeys] });
+  }
+  async applyNetworkFirewall(vmid: number, ip: string) {
+    this.track('applyNetworkFirewall', `${vmid}:${ip}`);
   }
   async updateResources(vmid: number, spec: VmSpec) {
     this.track('updateResources', String(vmid));
@@ -183,7 +187,11 @@ export class FakeVirtualizationProvider implements VirtualizationProvider {
     const vm = this.vms.get(vmid);
     return vm?.status === 'running' ? { usedBytes: 150 * 1024 ** 2, totalBytes: (vm.rootFsGb ?? vm.diskGb) * 1024 ** 3 } : null;
   }
-  connectConsole(vmid: number, ticket: ConsoleTicket) {
+  async openTerminal(vmid: number): Promise<TerminalTicket> {
+    this.track('openTerminal', String(vmid));
+    return { port: 5901, ticket: 'term-ticket', user: 'fake@pve!token' };
+  }
+  connectConsole(vmid: number, ticket: { port: number; ticket: string }) {
     this.track('connectConsole', `${vmid}:${ticket.port}`);
     return new WebSocket(this.consoleUrl, ['binary']);
   }

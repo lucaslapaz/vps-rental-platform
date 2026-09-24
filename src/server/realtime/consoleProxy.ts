@@ -104,16 +104,39 @@ export function attachConsoleProxy(httpServer: http.Server, di: DependencyContai
           });
         };
 
+        // Terminal (termproxy): o PROXY autentica com "<user>:<ticket>\n" e espera o "OK" antes de liberar o tráfego;
+        // o ticket nunca vai para o navegador. No VNC, a autenticação é a do próprio protocolo (senha dada ao noVNC).
+        let ready = session.type !== 'serial';
+        const flush = () => {
+          for (const m of queue.splice(0)) upstream.send(m.data, { binary: m.binary });
+        };
         client.on('message', (data, binary) => {
           lastActivity = Date.now();
-          if (upstream.readyState === WebSocket.OPEN) upstream.send(data, { binary });
+          if (ready && upstream.readyState === WebSocket.OPEN) upstream.send(data, { binary });
           else if (queue.length < MAX_BUFFERED) queue.push({ data, binary });
         });
         upstream.on('open', () => {
-          for (const m of queue.splice(0)) upstream.send(m.data, { binary: m.binary });
+          if (session.type === 'serial')
+            upstream.send(`${session.terminalUser}:${session.ticket.ticket}
+`);
+          else flush();
         });
         upstream.on('message', (data, binary) => {
           lastActivity = Date.now();
+          if (!ready) {
+            const bytes = Array.isArray(data) ? Buffer.concat(data) : Buffer.from(data as ArrayBuffer);
+            if (bytes[0] !== 0x4f || bytes[1] !== 0x4b) {
+              // Sem "OK": ticket recusado pelo Proxmox.
+              logger.warn({ vpsId: session.vpsId }, 'console: o termproxy recusou o ticket');
+              client.close(1011, 'terminal auth');
+              return finish();
+            }
+            ready = true;
+            flush();
+            const rest = bytes.subarray(2);
+            if (rest.length && client.readyState === WebSocket.OPEN) client.send(rest, { binary: true });
+            return;
+          }
           if (client.readyState === WebSocket.OPEN) client.send(data, { binary });
         });
         upstream.on('error', (err) => {

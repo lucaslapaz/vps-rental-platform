@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { api } from '@/lib/api';
 import { errorMessage } from '@/lib/errors';
 import { cn } from '@/lib/utils';
+import { SerialConsole } from './SerialConsole';
 
 type State = 'idle' | 'connecting' | 'connected' | 'disconnected' | 'error';
 
@@ -23,7 +24,7 @@ const DOT: Record<State, string> = {
  * (POST /api/vps/:id/console → consoleId + senha VNC) e abre o WebSocket /ws/console/:consoleId na própria Favo, que faz
  * a ponte. Conecta ao abrir a aba e desconecta ao sair dela.
  */
-export function ConsoleTab({ vps }: { vps: VpsDTO }) {
+function VncConsole({ vps }: { vps: VpsDTO }) {
   const { t } = useTranslation('vps');
   const screen = useRef<HTMLDivElement>(null);
   const frame = useRef<HTMLDivElement>(null);
@@ -137,6 +138,36 @@ export function ConsoleTab({ vps }: { vps: VpsDTO }) {
       {error ? <p className="text-sm text-destructive">{error}</p> : null}
       <div ref={screen} className="h-[70vh] min-h-80 w-full overflow-hidden rounded-lg border bg-console" />
       <p className="text-xs text-muted-foreground">{t('detail.console.hint')}</p>
+    </div>
+  );
+}
+
+/**
+ * Aba Console: gráfico (noVNC, a tela da VM, inclusive o login gráfico da Desktop) ou texto (xterm.js na serial0, com
+ * copiar/colar de terminal). Os dois passam pelo mesmo proxy de uso único (plano §10.5).
+ */
+export function ConsoleTab({ vps }: { vps: VpsDTO }) {
+  const { t } = useTranslation('vps');
+  const [mode, setMode] = useState<'vnc' | 'serial'>('vnc');
+  if (vps.status !== 'RUNNING') return <p className="text-muted-foreground">{t('detail.console.notRunning')}</p>;
+  return (
+    <div className="flex flex-col gap-3">
+      <fieldset className="inline-flex w-fit rounded-lg border-0 bg-muted p-[3px]">
+        <legend className="sr-only">{t('detail.tabs.console')}</legend>
+        {(['vnc', 'serial'] as const).map((m) => (
+          <Button
+            key={m}
+            size="sm"
+            variant={mode === m ? 'outline' : 'ghost'}
+            aria-pressed={mode === m}
+            onClick={() => setMode(m)}
+            data-testid={`console-mode-${m}`}
+          >
+            {m === 'vnc' ? t('detail.console.modeVnc') : t('detail.console.modeSerial')}
+          </Button>
+        ))}
+      </fieldset>
+      {mode === 'vnc' ? <VncConsole vps={vps} /> : <SerialConsole vps={vps} />}
     </div>
   );
 }

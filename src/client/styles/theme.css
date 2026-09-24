@@ -32,6 +32,7 @@
   --status-suspended: #6d4ac9;
   /* Fundo da tela do console (noVNC): escuro nos dois temas, como um monitor. */
   --console: #111214;
+  --console-foreground: #e8e6e1;
 
   --chart-1: #f2a516;
   --chart-2: #1f9d55;
@@ -76,6 +77,7 @@
   --status-error: #f06a5f;
   --status-suspended: #a08bf0;
   --console: #0b0c0e;
+  --console-foreground: #edeae3;
 
   --chart-1: #f5b83d;
   --chart-2: #3dc47a;

@@ -77,6 +77,7 @@ describe.each(IMAGES)('@lab ciclo de vida: template $template ($family)', (img) 
       },
       { tags: ['favo', 'lab'] },
     );
+    await provider.applyNetworkFirewall(vmid, LAB_IP); // anti-spoofing, como no provisionamento (Fase 10)
     await provider.resizeDisk(vmid, img.diskGb);
     await provider.power(vmid, 'start');
     await provider.waitForAgent(vmid);
@@ -138,6 +139,50 @@ describe.each(IMAGES)('@lab ciclo de vida: template $template ($family)', (img) 
     expect(consoleTicket.password).toHaveLength(8);
     expect(consoleTicket.ticket.startsWith(`${consoleTicket.password}:PVEVNC:`)).toBe(true);
   }, 60_000);
+
+  it('console de texto (termproxy na serial0): "OK" no handshake e o getty mostra o login (Fase 10)', async () => {
+    const term = await provider.openTerminal(vmid);
+    const ws = provider.connectConsole(vmid, term);
+    const received: Buffer[] = [];
+    const text = () => Buffer.concat(received).toString();
+    await new Promise<void>((resolve, reject) => {
+      ws.once('open', () => resolve());
+      ws.once('error', reject);
+    });
+    ws.on('message', (d) => received.push(Buffer.from(d as Buffer)));
+    ws.send(`${term.user}:${term.ticket}\n`);
+    const deadline = Date.now() + 20_000;
+    while (!text().startsWith('OK') && Date.now() < deadline) await new Promise((r) => setTimeout(r, 200));
+    expect(text().startsWith('OK')).toBe(true);
+    ws.send('0:1:\r'); // Enter: o getty reimprime o prompt
+    while (!/login:/.test(text()) && Date.now() < deadline) await new Promise((r) => setTimeout(r, 300));
+    ws.close();
+    expect(text()).toMatch(/login:/);
+  }, 60_000);
+
+  // Exige o firewall do datacenter ligado (scripts/pve/firewall.sh). Só no Alpine: o busybox tem ip e ping -I.
+  it.runIf(img.template === 9000)(
+    'anti-spoofing (Fase 10): com um IP que não é dela a VM não fala com a rede; com o dela, fala e sai para a internet',
+    async () => {
+      const spoofed = '192.168.56.228';
+      sshKey(USER, `doas ip addr add ${spoofed}/24 dev eth0`);
+      try {
+        const spoof = sshKey(
+          USER,
+          `ping -c 2 -W 2 -I ${spoofed} 192.168.56.10 >/dev/null 2>&1 && echo SPOOF_PASSOU || echo SPOOF_BLOQUEADO`,
+        );
+        expect(spoof.out).toContain('SPOOF_BLOQUEADO');
+      } finally {
+        sshKey(USER, `doas ip addr del ${spoofed}/24 dev eth0`);
+      }
+      expect(sshKey(USER, 'ping -c 2 -W 2 192.168.56.10 >/dev/null && echo PROPRIO_OK').out).toContain('PROPRIO_OK');
+      // DNS + saída pelo NAT do nó (MASQUERADE em vmbr0) continuam funcionando com o firewall ligado.
+      expect(sshKey(USER, 'wget -q -T 10 -O /dev/null http://dl-cdn.alpinelinux.org/alpine/ && echo INTERNET_OK').out).toContain(
+        'INTERNET_OK',
+      );
+    },
+    60_000,
+  );
 
   it('desliga (ACPI) e exclui; excluir de novo não falha (idempotente)', async () => {
     await provider.power(vmid, 'shutdown');

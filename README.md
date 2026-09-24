@@ -1,5 +1,7 @@
 # Favo — plataforma de aluguel de VPS
 
+[![CI](https://github.com/lucaslapaz/vps-rental-platform/actions/workflows/ci.yml/badge.svg)](https://github.com/lucaslapaz/vps-rental-platform/actions/workflows/ci.yml)
+
 > **In English:** Favo is a project that simulates a VPS hosting provider end to end: sign-up, simulated
 > billing, and **real KVM virtual machines** provisioned on a Proxmox VE lab (cloud-init, guest agent), with live status
 > over Socket.IO, an in-browser noVNC console proxied through the backend, and a support chat with a live queue.
@@ -121,6 +123,9 @@ de reconciliação entre o Proxmox e o banco. No Claude Code: `claude mcp add fa
 | `npm run test:e2e` | Playwright: fluxos principais em pt-BR e en-US (com troca para es-ES) e o chat com três navegadores |
 | `npm run test:lab` | Contra o Proxmox real: as quatro imagens e o roteiro completo da VPS (criar, ligar, desligar, reiniciar, trocar plano, renomear, console, cobrança, reinstalar, excluir) |
 | `npm run lint` · `npm run typecheck` | Biome e TypeScript |
+
+No GitHub, o CI (`.github/workflows/ci.yml`) roda lint, typecheck, `npm test` e o E2E a cada push na `main` e em pull
+requests, com um MySQL 8.4 em container; os testes `@lab` ficam de fora porque precisam do laboratório.
 
 ## Estrutura
 

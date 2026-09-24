@@ -1,7 +1,7 @@
 # CLAUDE.md — Favo (VPS Rental Platform)
 
 Contexto para o Claude implementar este projeto em conversas novas. **O plano completo e as decisões estão em
-[docs/PLANO_DE_IMPLEMENTACAO.md](docs/PLANO_DE_IMPLEMENTACAO.md)** (revisão 21, 2026-09-24). Este arquivo resume o
+[docs/PLANO_DE_IMPLEMENTACAO.md](docs/PLANO_DE_IMPLEMENTACAO.md)** (revisão 22, 2026-09-24). Este arquivo resume o
 que não dá para deduzir do código: regras combinadas com o usuário, estado do ambiente, armadilhas já encontradas
 (com a solução) e comandos que já foram testados.
 
@@ -17,7 +17,7 @@ que não dá para deduzir do código: regras combinadas com o usuário, estado d
   proxy do console e o React 19 (Vite 8, Tailwind 4, shadcn). TypeScript 7, tsyringe, Prisma 7 + MySQL 8.4, Biome.
 - Fases (§17 do plano): 0 laboratório → 1 fundação → 2 banco → 3 auth/CSRF/RBAC → 4 Proxmox → 5 catálogo/pagamento →
   6 provisionamento → 7 página da VPS + console → 8 suporte → 9 qualidade → 10 extras.
-- **Situação atual:** Fases 0 a 9 concluídas. Fase 0: laboratório (plano §2.7), scripts em `scripts/pve/`. Fase 1:
+- **Situação atual:** Fases 0 a 10 concluídas (o plano inteiro). Fase 0: laboratório (plano §2.7), scripts em `scripts/pve/`. Fase 1:
   fundação (servidor único Express+Vite, React com marca Favo, i18n, tema, Vitest, Biome). Fase 2: Prisma 7 + MySQL
   (schema, migration `init`, seeds idempotentes). Fase 3: sessão, CSRF, RBAC, conta, chaves SSH e administração de
   usuários. Fase 4: integração com o Proxmox (`src/server/integrations/proxmox/`, provider atrás da interface
@@ -32,8 +32,8 @@ que não dá para deduzir do código: regras combinadas com o usuário, estado d
   sala `agents`). Fase 9: E2E (`e2e/`, `npm run test:e2e`), cobertura, README, `docs/arquitetura.md` e
   `docs/seguranca.md`. Fase 10 (extras, na ordem do plano): 1 console de texto (xterm.js + termproxy), 2 firewall anti-spoofing por VPS e
   3 cobrança recorrente (`billing_cycle`, `Vps.paidUntil`, relógio acelerado `BILLING_TIME_SCALE`) e 4 painel admin
-  (`src/client/features/admin/`: `/admin`, `/admin/vps`, `/admin/users`, `/admin/roles`; `AdminService`) e 5 reinstalar (`reinstall_vps`, `/vps/:id/reinstall`) e 6 MCP somente leitura (`npm run mcp`, `scripts/mcp/`) feitos; o
-  próximo é o 7 (Docker Compose e CI no GitHub Actions). **O banco de dev tem a VPS de demonstração da Ana** (ver §4, linha VMs).
+  (`src/client/features/admin/`: `/admin`, `/admin/vps`, `/admin/users`, `/admin/roles`; `AdminService`) e 5 reinstalar (`reinstall_vps`, `/vps/:id/reinstall`), 6 MCP somente leitura (`npm run mcp`, `scripts/mcp/`) e 7 CI no
+  GitHub Actions (`.github/workflows/ci.yml`). Docker Compose ficou fora por decisão do usuário. **O banco de dev tem a VPS de demonstração da Ana** (ver §4, linha VMs).
 - **Proxmox no código:** `ProxmoxClient` (undici + CA + servername, token, zod), `TaskWaiter` (UPID), `QemuCloudInitProvider`
   (clone, cloud-init, resize, energia, status, pendências, métricas, console, guest agent) e `ImageProfile` (comandos fixos por
   família). Os testes comuns usam `tests/helpers/FakeVirtualizationProvider.ts`; só o `npm run test:lab` (LAB=1) toca o Proxmox.
@@ -426,6 +426,10 @@ que não dá para deduzir do código: regras combinadas com o usuário, estado d
 - **N43. MCP por stdio:** a saída padrão é só do protocolo. O `scripts/mcp/server.ts` cria o logger com `LOG_LEVEL: 'silent'` e
   `NODE_ENV: 'production'` (sem o worker do pino-pretty) e nada ali usa `console.log`; rode com `npm run --silent mcp` (o npm
   também escreveria no stdout). O SDK 1.30.1 aceita o zod 4 (peer `^3.25 || ^4.0`) e o `registerTool` recebe um *raw shape*.
+- **N44. CI (GitHub Actions):** o `.env.test` do CI é gerado por `scripts/ci/write-env-test.mjs` (que se recusa a sobrescrever
+  um existente). Para simular localmente, guarde o seu `.env.test`, gere o do CI com `DATABASE_URL=<banco *_test>` e mantenha a
+  sua `SEED_DEFAULT_PASSWORD`: o banco de teste local já tem os usuários de demonstração com a senha antiga (o seed não troca a
+  senha de quem já existe), e os testes de login falhariam só por isso. No CI o banco nasce vazio.
 - **N17.** `execFileSync('npm', …, { shell: true })` gera o aviso `DEP0190` no Node 24; os scripts de `scripts/deps/` usam
   `execSync` com o nome do pacote validado por regex.
 

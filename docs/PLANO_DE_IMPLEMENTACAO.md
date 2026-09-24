@@ -24,6 +24,7 @@
 | 19 | 2026-09-24 | **Console:** gerenciamento das conexões (`GET/DELETE /api/consoles`, painel na aba Console) e a vaga liberada quando a conexão falha no navegador (o erro relatado vinha de uma extensão que interceptava WebSockets). **Fase 10, extra 4:** painel admin ampliado (visão geral com capacidade do nó e fila de jobs, todas as VPS somente leitura e o editor de roles, com as roles do sistema travadas) |
 | 20 | 2026-09-24 | **Fase 10, extra 5:** reinstalar a VPS (apaga a VM e reaproveita o provisionamento com o mesmo IP, MAC, VMID e hostname; imagem e acesso escolhidos de novo). Correção: o reboot com CPU/RAM pendentes gravava `STOPPED` numa VM que o Proxmox estava religando |
 | 21 | 2026-09-24 | **Fase 10, extra 6:** MCP próprio somente leitura (`npm run mcp`, `@modelcontextprotocol/sdk` 1.30.1, stdio) com as 5 ferramentas previstas no §16.3; as consultas saíram do CLI para `scripts/pve/inspect.ts` e são as mesmas nos dois |
+| 22 | 2026-09-24 | **Fase 10 concluída.** Extra 7: CI no GitHub Actions (lint, typecheck, testes e E2E com MySQL 8.4 em container de serviço, sem os `@lab`). O Docker Compose saiu do escopo por decisão do usuário (o Docker Desktop também exigiria WSL2/Hyper-V, que quebram o laboratório, V2) |
 | 11 | 2026-09-23 | **Fase 4 concluída** (§17): cliente do Proxmox, provider real, agente, CLI `npm run pve` e suíte `@lab` 30/30 nas quatro imagens. Mudanças: drop-in do sshd **`01-favo.conf`** (§10.6) e formato do ticket do `vncproxy` (§10.5) |
 | 10 | 2026-09-23 | **Fase 3 concluída** (§17): sessão, CSRF assinado, RBAC, conta, chaves SSH e administração de usuários. Detalhes da implementação em §9.8 (origem aceita, pré-sessão, validação real das chaves SSH, textos em namespaces) |
 | 9 | 2026-09-23 | **Fase 2 concluída** (§17): Prisma 7.10.0 + adapter MariaDB, migration `init`, seeds idempotentes. Ajustes: tabelas com `@@map` em snake_case (MySQL do Windows com `lower_case_table_names=1`), `IpAddress.macAddress` (MAC derivado do IP), pool `.200–.228`, plano **Medium** no seed, proteção do Prisma contra agentes de IA em comandos destrutivos (§19) |
@@ -2327,7 +2328,7 @@ e recuperação por `?after=`.
   `npm audit` no Prisma 7, enumeração de e-mail no cadastro).
 - 133 testes no `npm test`, 3 no E2E e 36 no `@lab`.
 
-### Fase 10: Extras (opcionais, por prioridade sugerida)
+### Fase 10: Extras (opcionais, por prioridade sugerida) — ✅ concluída em 2026-09-24
 1. ✅ **Console em texto (xterm.js)** como alternativa ao noVNC: `termproxy` com `serial=serial0`, com o mesmo proxy de §10.5.
    **Feito (rev. 17):** protocolo conferido no `pve-xtermjs` do nó: a 1ª mensagem do WebSocket é `<user>:<ticket>\n`, o
    Proxmox responde `OK`; depois, dados `0:<bytes>:<texto>`, redimensionar `1:<cols>:<rows>:` e ping `2`. O navegador pede
@@ -2373,7 +2374,13 @@ e recuperação por `?after=`.
    Proxmox (VMID numa faixa, UPID pelo formato). As consultas ficam em `scripts/pve/inspect.ts` (`PlatformInspector`), usado
    também pelo CLI `npm run pve`. Testado com cliente e servidor em memória (`tests/server/mcp.test.ts`) e por stdio de
    verdade contra o laboratório. Para usar no Claude Code: `claude mcp add favo-pve -- npm run --silent mcp`.
-7. Docker Compose (app + MySQL) e CI com GitHub Actions (lint, typecheck, testes sem `@lab`).
+7. ✅ ~~Docker Compose (app + MySQL)~~ e CI com GitHub Actions (lint, typecheck, testes sem `@lab`).
+   **Feito (rev. 22):** `.github/workflows/ci.yml` (em push na `main` e em pull requests): MySQL 8.4.11 como container de
+   serviço, Node 24.21.0, `npm ci`, `.env.test` gerado por `scripts/ci/write-env-test.mjs` (segredos aleatórios e um
+   Proxmox fictício; o script nunca sobrescreve um `.env.test` existente), lint, typecheck, `prisma migrate deploy`,
+   `npm test` e o E2E com o Chromium do Playwright (resultados como artefato se falhar). Simulado localmente com o
+   `.env.test` gerado pelo script: 159 testes e E2E 3/3. **Docker Compose: fora do escopo** (decisão do usuário em
+   2026-09-24; além disso, o Docker Desktop precisa de WSL2/Hyper-V, que derrubam a virtualização aninhada do laboratório).
 
 ---
 

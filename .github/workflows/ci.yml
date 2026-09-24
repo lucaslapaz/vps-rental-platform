@@ -1,0 +1,73 @@
+# CI da Favo (plano §17, Fase 10): lint, typecheck, testes de unidade/integração e E2E, com o provider falso do Proxmox.
+# Os testes @lab (contra o Proxmox de verdade) ficam fora: só rodam com LAB=1 (npm run test:lab) na máquina do laboratório.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    services:
+      mysql:
+        image: mysql:8.4.11
+        env:
+          MYSQL_ROOT_PASSWORD: root-ci
+          MYSQL_DATABASE: vps_platform_test
+          MYSQL_USER: vps_app
+          MYSQL_PASSWORD: vps-app-ci
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd "mysqladmin ping -h 127.0.0.1 -uroot -proot-ci"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 30
+    env:
+      DATABASE_URL: mysql://vps_app:vps-app-ci@127.0.0.1:3306/vps_platform_test
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24.21.0
+          cache: npm
+
+      # postinstall roda o prisma generate
+      - run: npm ci
+
+      - name: Gera o .env.test do CI
+        run: node scripts/ci/write-env-test.mjs
+
+      - run: npm run lint
+      - run: npm run typecheck
+
+      - name: Migrations no banco de teste
+        run: npx cross-env NODE_ENV=test prisma migrate deploy
+
+      - name: Testes de unidade e integração
+        run: npm test
+
+      - name: Navegador do Playwright
+        run: npx playwright install --with-deps chromium
+
+      - name: E2E (build + Playwright)
+        run: npm run test:e2e
+
+      - name: Relatório do Playwright (se falhar)
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: playwright-results
+          path: test-results/e2e/
+          retention-days: 7

@@ -4,6 +4,7 @@ import type { Env } from '../config/env.ts';
 import { TOKENS } from '../container/tokens.ts';
 import type { InputJsonValue } from '../generated/prisma/internal/prismaNamespace.ts';
 import type { Logger } from '../utils/logger.ts';
+import { BillingCycleHandler, SuspendVpsHandler } from './handlers/BillingHandlers.ts';
 import { DeleteVpsHandler } from './handlers/DeleteVpsHandler.ts';
 import { CleanupHandler, ExpirePendingHandler } from './handlers/MaintenanceHandlers.ts';
 import { ProvisionVpsHandler } from './handlers/ProvisionVpsHandler.ts';
@@ -15,6 +16,8 @@ import { type ClaimedJob, JobQueue, type JobType } from './JobQueue.ts';
 
 /** Jobs periódicos: tipo → intervalo. Só é enfileirado se não houver outro do mesmo tipo pendente. */
 const MAINTENANCE_INTERVAL_MS = 15 * 60 * 1000;
+/** Cobrança recorrente: 1 min basta até com o relógio acelerado (1 dia = 1 min). */
+const BILLING_INTERVAL_MS = 60 * 1000;
 
 /** Tira as chaves `undefined` (o JSON do payload não as representa). */
 const clean = (payload: Record<string, unknown>) =>
@@ -22,7 +25,7 @@ const clean = (payload: Record<string, unknown>) =>
 
 /**
  * Worker no próprio processo (plano §11.2): a cada WORKER_POLL_MS reivindica jobs (até WORKER_CONCURRENCY em paralelo)
- * e agenda os periódicos (reconcile a cada 60 s; expirar faturas e limpeza a cada 15 min).
+ * e agenda os periódicos (reconcile e cobrança recorrente a cada 60 s; expirar faturas e limpeza a cada 15 min).
  */
 @injectable()
 export class JobWorker {
@@ -45,6 +48,8 @@ export class JobWorker {
     @inject(ReconcileHandler) reconcile: ReconcileHandler,
     @inject(ExpirePendingHandler) expire: ExpirePendingHandler,
     @inject(CleanupHandler) cleanup: CleanupHandler,
+    @inject(BillingCycleHandler) billing: BillingCycleHandler,
+    @inject(SuspendVpsHandler) suspend: SuspendVpsHandler,
   ) {
     this.workerId = `${env.WORKER_ID ?? os.hostname()}#${process.pid}`;
     this.handlers = {
@@ -55,6 +60,8 @@ export class JobWorker {
       reconcile,
       expire_pending: expire,
       cleanup_sessions: cleanup,
+      billing_cycle: billing,
+      suspend_vps: suspend,
     };
   }
 
@@ -109,6 +116,7 @@ export class JobWorker {
       ['reconcile', this.env.RECONCILE_INTERVAL_SECONDS * 1000],
       ['expire_pending', MAINTENANCE_INTERVAL_MS],
       ['cleanup_sessions', MAINTENANCE_INTERVAL_MS],
+      ['billing_cycle', BILLING_INTERVAL_MS],
     ];
     for (const [type, interval] of due) {
       if (now - (this.lastScheduled.get(type) ?? 0) < interval) continue;

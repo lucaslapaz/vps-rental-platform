@@ -1,5 +1,5 @@
 import { inject, injectable } from 'tsyringe';
-import type { VpsDTO, VpsStatusDTO } from '../../shared/types/catalog.ts';
+import type { InvoiceKindDTO, VpsDTO, VpsStatusDTO } from '../../shared/types/catalog.ts';
 import { TOKENS } from '../container/tokens.ts';
 import type { Database } from '../db/prisma.ts';
 
@@ -7,7 +7,12 @@ export const vpsInclude = {
   plan: { select: { slug: true, name: true } },
   osTemplate: { select: { slug: true, name: true, family: true, sudoCommand: true, hasGui: true, pveTemplateVmid: true } },
   ipAddress: { select: { address: true, prefix: true, gateway: true, macAddress: true } },
-  invoices: { where: { status: 'PENDING' as const }, select: { id: true }, orderBy: { createdAt: 'desc' as const }, take: 1 },
+  invoices: {
+    where: { status: 'PENDING' as const },
+    select: { id: true, kind: true, amountCents: true, dueAt: true },
+    orderBy: { createdAt: 'desc' as const },
+    take: 1,
+  },
 } as const;
 
 type VpsRow = NonNullable<Awaited<ReturnType<VpsRepository['findOwned']>>>;
@@ -35,7 +40,15 @@ export function toVpsDTO(v: VpsRow): VpsDTO {
     rootPasswordSet: v.rootPasswordSet,
     lastError: v.status === 'ERROR' ? v.lastError : null,
     createdAt: v.createdAt.toISOString(),
-    pendingInvoiceId: v.invoices[0]?.id ?? null,
+    paidUntil: v.paidUntil?.toISOString() ?? null,
+    pendingInvoice: v.invoices[0]
+      ? {
+          id: v.invoices[0].id,
+          kind: v.invoices[0].kind as InvoiceKindDTO,
+          amountCents: v.invoices[0].amountCents,
+          dueAt: v.invoices[0].dueAt.toISOString(),
+        }
+      : null,
   };
 }
 

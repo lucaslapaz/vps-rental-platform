@@ -1,7 +1,7 @@
 # CLAUDE.md — Favo (VPS Rental Platform)
 
 Contexto para o Claude implementar este projeto em conversas novas. **O plano completo e as decisões estão em
-[docs/PLANO_DE_IMPLEMENTACAO.md](docs/PLANO_DE_IMPLEMENTACAO.md)** (revisão 17, 2026-09-23). Este arquivo resume o
+[docs/PLANO_DE_IMPLEMENTACAO.md](docs/PLANO_DE_IMPLEMENTACAO.md)** (revisão 18, 2026-09-24). Este arquivo resume o
 que não dá para deduzir do código: regras combinadas com o usuário, estado do ambiente, armadilhas já encontradas
 (com a solução) e comandos que já foram testados.
 
@@ -30,8 +30,9 @@ que não dá para deduzir do código: regras combinadas com o usuário, estado d
   (`VpsAccessService`), métricas/estado ao vivo (`VpsInsightsService`) e o roteiro `@lab` `tests/lab/lifecycle.lab.test.ts`.
   Fase 8: suporte (`/support` do cliente, `/agent` do técnico; `SupportService`, chat pelo Socket.IO com ack, fila na
   sala `agents`). Fase 9: E2E (`e2e/`, `npm run test:e2e`), cobertura, README, `docs/arquitetura.md` e
-  `docs/seguranca.md`. Fase 10 (extras, na ordem do plano): 1 console de texto (xterm.js + termproxy) e 2 firewall anti-spoofing por VPS
-  feitos; o próximo é o 3 (cobrança recorrente). **O banco de dev tem a VPS de demonstração da Ana** (ver §4, linha VMs).
+  `docs/seguranca.md`. Fase 10 (extras, na ordem do plano): 1 console de texto (xterm.js + termproxy), 2 firewall anti-spoofing por VPS e
+  3 cobrança recorrente (`billing_cycle`, `Vps.paidUntil`, relógio acelerado `BILLING_TIME_SCALE`) feitos; o próximo é o 4
+  (painel admin ampliado). **O banco de dev tem a VPS de demonstração da Ana** (ver §4, linha VMs).
 - **Proxmox no código:** `ProxmoxClient` (undici + CA + servername, token, zod), `TaskWaiter` (UPID), `QemuCloudInitProvider`
   (clone, cloud-init, resize, energia, status, pendências, métricas, console, guest agent) e `ImageProfile` (comandos fixos por
   família). Os testes comuns usam `tests/helpers/FakeVirtualizationProvider.ts`; só o `npm run test:lab` (LAB=1) toca o Proxmox.
@@ -131,6 +132,10 @@ que não dá para deduzir do código: regras combinadas com o usuário, estado d
 - **V2. Não ativar WSL2, Docker Desktop, Hyper-V nem "Integridade de Memória"** no Windows: o VirtualBox cai para o modo
   NEM (tartaruga) e a virtualização aninhada **para de funcionar**. Hoje estão todos desativados (há um `com.docker.service`
   instalado, inativo). O log deve mostrar `HM: HMR3Init: VT-x w/ nested paging…` e `UseNEMInstead = 0`.
+  **Aconteceu em 2026-09-24:** o usuário ligou o Hyper-V para testar o WSL; o log passou a mostrar `Attempting fall back to
+  NEM: VT-x is not available`, o Proxmox ficou sem `/dev/kvm` (nenhuma VPS liga) e uma VM com `kvm: 0` (emulação) levou o nó
+  a carga 35 com *soft lockups*. Alternar sem desinstalar nada (PowerShell como administrador + reiniciar):
+  `bcdedit /set hypervisorlaunchtype off` (laboratório) / `auto` (WSL2). **Antes de qualquer teste `@lab`, confira o VBox.log.**
 - **V3. O modo "Placa em modo Bridge" não aparece no VirtualBox** porque o driver `VBoxNetLwf` não está vinculado a nenhuma
   placa. **Não é necessário:** a bridge das VPS é Linux, **dentro do Proxmox** (`vmbr1` sobre a host-only).
 - **V4. Pouca RAM no Windows:** por isso o Proxmox tem 3 GB, e não 4. Planos e capacidade foram dimensionados para isso.
@@ -387,6 +392,13 @@ que não dá para deduzir do código: regras combinadas com o usuário, estado d
   porta 3100 e o `dist/client` (o `test:e2e` faz o build antes). O `globalSetup` do Playwright precisa definir
   `process.env.NODE_ENV = 'test'` ANTES de importar o `env.ts` (ele lê o NODE_ENV na importação). Imports do `e2e/`
   com extensão `.ts` (o Playwright aceita). Os navegadores do Playwright já estão em `%LOCALAPPDATA%\ms-playwright`.
+- **N38. Cobrança recorrente nos testes:** para simular o tempo passando, mude o `paidUntil` da VPS no banco e enfileire um
+  `billing_cycle` (`queue.enqueue('billing_cycle', {})` + `worker.drain()`). Avançar o `Clock` injetado também expiraria a
+  sessão de login do cliente de teste. O pool de IPs de teste tem só 10 endereços: suítes que criam muitas VPS precisam
+  liberar os IPs antes (ver o `beforeAll` da cobrança em `jobs.test.ts`).
+- **N39. Consulta do Prisma é preguiçosa:** `db.x.create()` devolve uma *PrismaPromise* que só executa no `then`. Um
+  `void audit.record(...)` sem `await` **nunca gravava** (o console aberto/fechado não aparecia na auditoria desde a Fase 7).
+  O `AuditLogRepository.record` agora é `async` (executa na hora); em código novo, sempre `await` ou `.catch()`.
 - **N17.** `execFileSync('npm', …, { shell: true })` gera o aviso `DEP0190` no Node 24; os scripts de `scripts/deps/` usam
   `execSync` com o nome do pacote validado por regex.
 

@@ -55,6 +55,14 @@ const schema = z.object({
   MAX_VPS_PER_USER: z.coerce.number().int().min(1).default(2),
   /** Prazo para pagar a fatura de criação; depois ela é cancelada (job expire_pending). */
   INVOICE_DUE_HOURS: z.coerce.number().int().min(1).default(24),
+  // ── Cobrança recorrente (plano §12, Fase 10) ──
+  BILLING_PERIOD_DAYS: z.coerce.number().int().min(1).default(30),
+  /** A fatura de renovação é gerada esta quantidade de dias antes do fim do período pago. */
+  BILLING_RENEWAL_NOTICE_DAYS: z.coerce.number().int().min(0).default(7),
+  /** Fim do período sem pagamento → VPS suspensa (desligada); depois desta carência, excluída. */
+  BILLING_GRACE_DAYS: z.coerce.number().int().min(0).default(3),
+  /** "Relógio acelerado" de demonstração: divide os três prazos acima (1440 → 1 dia vira 1 minuto; o mês, 30 min). */
+  BILLING_TIME_SCALE: z.coerce.number().int().min(1).max(86_400).default(1),
   /** Latência artificial do gateway simulado (0 nos testes). */
   PAYMENT_LATENCY_MS: z.coerce.number().int().min(0).max(10_000).optional(),
 

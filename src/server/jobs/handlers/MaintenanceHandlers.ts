@@ -62,7 +62,10 @@ export class CleanupHandler implements JobHandler {
       where: {
         status: 'SUCCEEDED',
         OR: [
-          { type: { in: ['reconcile', 'expire_pending', 'cleanup_sessions'] }, updatedAt: { lt: new Date(now - 3_600_000) } },
+          {
+            type: { in: ['reconcile', 'expire_pending', 'cleanup_sessions', 'billing_cycle'] },
+            updatedAt: { lt: new Date(now - 3_600_000) },
+          },
           { updatedAt: { lt: new Date(now - 7 * DAY) } },
         ],
       },

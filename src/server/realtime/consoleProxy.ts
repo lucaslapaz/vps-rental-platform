@@ -72,13 +72,15 @@ export function attachConsoleProxy(httpServer: http.Server, di: DependencyContai
         const queue: { data: RawData; binary: boolean }[] = [];
         consoles.opened(user.id);
         open.set(client, user.sessionId);
-        void audit.record({
-          action: 'vps.console_opened',
-          actorId: user.id,
-          targetType: 'vps',
-          targetId: session.vpsId,
-          ip: req.socket.remoteAddress ?? null,
-        });
+        audit
+          .record({
+            action: 'vps.console_opened',
+            actorId: user.id,
+            targetType: 'vps',
+            targetId: session.vpsId,
+            ip: req.socket.remoteAddress ?? null,
+          })
+          .catch((err) => logger.warn({ err: err instanceof Error ? err.message : String(err) }, 'console: falha ao gravar a auditoria'));
 
         const idle = setInterval(() => {
           if (Date.now() - lastActivity > IDLE_MS) client.close(4000, 'idle');
@@ -94,14 +96,16 @@ export function attachConsoleProxy(httpServer: http.Server, di: DependencyContai
           consoles.closed(user.id);
           if (upstream.readyState === WebSocket.OPEN || upstream.readyState === WebSocket.CONNECTING) upstream.terminate();
           if (client.readyState === WebSocket.OPEN) client.close(1000);
-          void audit.record({
-            action: 'vps.console_closed',
-            actorId: user.id,
-            targetType: 'vps',
-            targetId: session.vpsId,
-            metadata: { seconds: Math.round((Date.now() - started) / 1000) },
-            ip: req.socket.remoteAddress ?? null,
-          });
+          audit
+            .record({
+              action: 'vps.console_closed',
+              actorId: user.id,
+              targetType: 'vps',
+              targetId: session.vpsId,
+              metadata: { seconds: Math.round((Date.now() - started) / 1000) },
+              ip: req.socket.remoteAddress ?? null,
+            })
+            .catch((err) => logger.warn({ err: err instanceof Error ? err.message : String(err) }, 'console: falha ao gravar a auditoria'));
         };
 
         // Terminal (termproxy): o PROXY autentica com "<user>:<ticket>\n" e espera o "OK" antes de liberar o tráfego;
@@ -116,9 +120,7 @@ export function attachConsoleProxy(httpServer: http.Server, di: DependencyContai
           else if (queue.length < MAX_BUFFERED) queue.push({ data, binary });
         });
         upstream.on('open', () => {
-          if (session.type === 'serial')
-            upstream.send(`${session.terminalUser}:${session.ticket.ticket}
-`);
+          if (session.type === 'serial') upstream.send(`${session.terminalUser}:${session.ticket.ticket}\n`);
           else flush();
         });
         upstream.on('message', (data, binary) => {

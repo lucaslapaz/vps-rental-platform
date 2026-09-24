@@ -15,7 +15,7 @@ export const VPS_TRANSITIONS = {
   reboot: { from: ['RUNNING'], via: 'REBOOTING' },
   reset: { from: ['RUNNING'], via: 'REBOOTING' },
   resize: { from: ['RUNNING', 'STOPPED'], via: 'UPDATING' },
-  delete: { from: ['RUNNING', 'STOPPED', 'ERROR'], via: 'DELETING' },
+  delete: { from: ['RUNNING', 'STOPPED', 'SUSPENDED', 'ERROR'], via: 'DELETING' },
 } as const satisfies Record<string, { from: readonly VpsStatusDTO[]; via: VpsStatusDTO }>;
 export type VpsOperation = keyof typeof VPS_TRANSITIONS;
 

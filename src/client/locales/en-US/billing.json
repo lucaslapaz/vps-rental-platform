@@ -8,7 +8,8 @@
     "status": "Status",
     "due": "Due",
     "pay": "Pay",
-    "empty": "No invoices yet."
+    "empty": "No invoices yet.",
+    "period": "Period: {{start}} to {{end}}"
   },
   "checkout": {
     "title": "Payment",
@@ -45,5 +46,10 @@
     "goToVps": "See my VPS",
     "goToBilling": "See invoices",
     "demo": "Demo environment: the card number and CVC are never stored; only the brand and the last 4 digits."
+  },
+  "kind": {
+    "CREATION": "New VPS",
+    "RENEWAL": "Renewal",
+    "UPGRADE": "Plan change"
   }
 }

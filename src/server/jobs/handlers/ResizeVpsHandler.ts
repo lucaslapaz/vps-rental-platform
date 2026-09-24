@@ -90,6 +90,7 @@ export class ResizeVpsHandler implements JobHandler {
           data: {
             userId: vps.userId,
             vpsId: vps.id,
+            kind: 'UPGRADE',
             description: p.description,
             amountCents: p.amountCents,
             dueAt: new Date(now.getTime() + this.env.INVOICE_DUE_HOURS * 3_600_000),

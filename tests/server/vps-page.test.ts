@@ -118,6 +118,11 @@ describe('console (noVNC via proxy)', () => {
     opened.ws?.close();
 
     expect((await openConsole(res.body.consoleId, headers)).status).toBe(403); // reutilizado
+    // Auditoria: aberto e fechado (antes, a consulta preguiçosa do Prisma num `void` nunca executava).
+    const audited = async () =>
+      (await db.auditLog.findMany({ where: { targetId: vps.id, action: { startsWith: 'vps.console_' } } })).map((a) => a.action).sort();
+    for (let i = 0; i < 20 && (await audited()).length < 3; i++) await new Promise((r) => setTimeout(r, 50));
+    expect(await audited()).toEqual(['vps.console_closed', 'vps.console_opened', 'vps.console_requested']);
   });
 
   it('terminal de texto: o proxy autentica no termproxy (o navegador não vê o ticket) e tira o "OK"', async () => {

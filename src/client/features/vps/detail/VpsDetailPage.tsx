@@ -14,6 +14,7 @@ import { errorMessage } from '@/lib/errors';
 import { VpsErrorReason } from '../ProvisionProgress';
 import { useVps } from '../queries';
 import { AccessTab } from './AccessTab';
+import { BillingNotice } from './BillingNotice';
 import { CopyButton } from './CopyButton';
 import { HistoryTab } from './HistoryTab';
 import { OverviewTab } from './OverviewTab';
@@ -102,14 +103,16 @@ export function VpsDetailPage() {
         <Card>
           <CardContent className="flex flex-wrap items-center justify-between gap-3">
             <p>{t('detail.payPending')}</p>
-            {v.pendingInvoiceId ? (
+            {v.pendingInvoice ? (
               <Button asChild>
-                <Link to={`/checkout/${v.pendingInvoiceId}`}>{t('detail.payNow')}</Link>
+                <Link to={`/checkout/${v.pendingInvoice.id}`}>{t('detail.payNow')}</Link>
               </Button>
             ) : null}
           </CardContent>
         </Card>
       ) : null}
+
+      <BillingNotice vps={v} />
 
       {v.status === 'PROVISIONING' ? <ProvisionTimeline vps={v} /> : null}
 

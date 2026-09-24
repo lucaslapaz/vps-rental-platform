@@ -18,6 +18,9 @@ laboratório Proxmox, acessível por SSH e pelo console no navegador. Tudo em pt
   servidor.
 - **Pagar** com cartões de teste (aprovado, recusado, saldo insuficiente). O valor é sempre cobrado em BRL; USD e EUR
   aparecem só como referência.
+- **Mensalidade recorrente** (simulada): a renovação sai 7 dias antes do vencimento; sem pagamento, a VPS é suspensa
+  (desligada) e, depois da carência, excluída. Pagar a renovação religa a VPS. Um "relógio acelerado" encurta os prazos
+  para demonstração (`BILLING_TIME_SCALE=1440`: um mês em 30 minutos).
 - **Acompanhar a criação ao vivo**: IP, cópia da imagem, configuração, boot, acesso e pronta, sem recarregar a página.
 - **Gerenciar**: ligar, desligar, reiniciar (com confirmação), trocar de plano (o disco cresce com a VM ligada),
   renomear, redefinir senhas, ligar/desligar SSH por senha, adicionar chaves e excluir (digitando o hostname).

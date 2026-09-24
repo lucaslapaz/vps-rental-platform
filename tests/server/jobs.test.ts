@@ -4,6 +4,7 @@ import { PermanentJobError } from '../../src/server/jobs/handlers/types.ts';
 import { JobQueue } from '../../src/server/jobs/JobQueue.ts';
 import { JobWorker } from '../../src/server/jobs/JobWorker.ts';
 import type { RealtimeHub } from '../../src/server/realtime/RealtimeEmitter.ts';
+import { billingDurations } from '../../src/server/services/billingPeriods.ts';
 import { closeTestPrisma, createTestApp, testPrisma } from '../helpers/app.ts';
 import { generateSshPublicKey, TestClient, uniqueEmail } from '../helpers/client.ts';
 
@@ -218,6 +219,7 @@ describe('ações, troca de plano e exclusão', () => {
     expect(vps).toMatchObject({ status: 'RUNNING', memoryMb: 512, diskGb: 4, bandwidthMbps: 25 });
     expect(fake.vms.get(vps.pveVmid as number)).toMatchObject({ diskGb: 4, spec: { cores: 1, memoryMb: 512, bandwidthMbps: 25 } });
     const invoice = await db.invoice.findFirstOrThrow({ where: { vpsId: id, status: 'PENDING' } });
+    expect(invoice.kind).toBe('UPGRADE');
     expect(invoice.amountCents).toBeGreaterThan(990);
     expect(invoice.amountCents).toBeLessThanOrEqual(1000);
 
@@ -295,5 +297,127 @@ describe('jobs periódicos', () => {
       status: 'DELETED',
       provisionSecrets: null,
     });
+  });
+});
+
+describe('cobrança recorrente (Fase 10)', () => {
+  const DAY = 86_400_000;
+  const runBilling = async () => {
+    await queue.enqueue('billing_cycle', {}, { maxAttempts: 1 });
+    await worker.drain();
+  };
+  /** Simula o tempo passando: o fim do período pago fica a `days` dias de agora (negativo = já venceu). */
+  const setPaidUntil = (id: string, days: number) =>
+    db.vps.update({ where: { id }, data: { paidUntil: new Date(Date.now() + days * DAY) } }).then((v) => v.paidUntil as Date);
+
+  // O pool de IPs de teste tem só 10 endereços e os testes acima deixam VPS ligadas: libera antes de começar.
+  beforeAll(async () => {
+    const old = await db.vps.findMany({
+      where: { userId: { in: createdUsers }, deletedAt: null },
+      select: { id: true, ipAddressId: true },
+    });
+    await db.vps.updateMany({
+      where: { id: { in: old.map((v) => v.id) } },
+      data: { status: 'DELETED', deletedAt: new Date(), ipAddressId: null, pveVmid: null },
+    });
+    const ips = old.map((v) => v.ipAddressId).filter((id): id is number => id !== null);
+    await db.ipAddress.updateMany({ where: { id: { in: ips } }, data: { status: 'FREE' } });
+  });
+
+  it('a criação paga abre 30 dias; a renovação sai 7 dias antes do fim, uma vez só, e aparece na VPS', async () => {
+    const c = await customer();
+    const id = await paidVps(c);
+    await worker.drain();
+    expect(Math.abs(((await vpsRow(id)).paidUntil as Date).getTime() - (Date.now() + 30 * DAY))).toBeLessThan(60_000);
+    await runBilling();
+    expect(await db.invoice.count({ where: { vpsId: id, kind: 'RENEWAL' } })).toBe(0);
+
+    const paidUntil = await setPaidUntil(id, 5);
+    await runBilling();
+    await runBilling();
+    const renewals = await db.invoice.findMany({ where: { vpsId: id, kind: 'RENEWAL' } });
+    expect(renewals).toHaveLength(1);
+    expect(renewals[0]).toMatchObject({
+      status: 'PENDING',
+      amountCents: 990,
+      periodStart: paidUntil,
+      periodEnd: new Date(paidUntil.getTime() + 30 * DAY),
+      dueAt: new Date(paidUntil.getTime() + 3 * DAY),
+    });
+    const res = await c.get(`/api/vps/${id}`);
+    expect(res.body.vps.pendingInvoice).toMatchObject({ id: renewals[0]?.id, kind: 'RENEWAL', amountCents: 990 });
+    expect(res.body.vps.status).toBe('RUNNING');
+  });
+
+  it('sem pagamento: suspensa (VM desligada) no fim do período; pagar a renovação estende o período e liga de novo', async () => {
+    const c = await customer();
+    const id = await paidVps(c);
+    await worker.drain();
+    const vmid = (await vpsRow(id)).pveVmid as number;
+    await setPaidUntil(id, 1);
+    await runBilling(); // gera a renovação
+    const oldEnd = await setPaidUntil(id, -0.01); // venceu há ~15 min
+    await runBilling();
+    expect((await vpsRow(id)).status).toBe('SUSPENDED');
+    expect(fake.vms.get(vmid)?.status).toBe('stopped');
+    // Suspensa: o cliente não liga pelo painel (só pagando), mas pode excluir.
+    expect((await c.send('post', `/api/vps/${id}/actions/start`)).status).toBe(409);
+    // O reconcile não "corrige" a suspensa para STOPPED.
+    await queue.enqueue('reconcile', {}, { maxAttempts: 1 });
+    await worker.drain();
+    expect((await vpsRow(id)).status).toBe('SUSPENDED');
+
+    const renewal = await db.invoice.findFirstOrThrow({ where: { vpsId: id, kind: 'RENEWAL', status: 'PENDING' } });
+    const paid = await c.send('post', `/api/invoices/${renewal.id}/pay`, card);
+    expect(paid.status).toBe(200);
+    expect((await vpsRow(id)).status).toBe('STARTING');
+    await worker.drain();
+    const after = await vpsRow(id);
+    expect(after.status).toBe('RUNNING');
+    expect(after.paidUntil).toEqual(renewal.periodEnd);
+    expect((after.paidUntil as Date).getTime() - oldEnd.getTime()).toBeGreaterThan(29 * DAY);
+    expect(fake.vms.get(vmid)?.status).toBe('running');
+    const actions = (await db.vpsEvent.findMany({ where: { vpsId: id }, orderBy: { id: 'asc' } })).map((e) => e.action);
+    expect(actions).toEqual(expect.arrayContaining(['renewal_invoice', 'suspend', 'renewal', 'start']));
+  });
+
+  it('depois da carência, a suspensa é excluída: VM apagada, IP de volta e a renovação cancelada', async () => {
+    const c = await customer();
+    const id = await paidVps(c);
+    await worker.drain();
+    const before = await vpsRow(id);
+    await setPaidUntil(id, 1);
+    await runBilling();
+    await setPaidUntil(id, -1);
+    await runBilling();
+    expect((await vpsRow(id)).status).toBe('SUSPENDED');
+    await setPaidUntil(id, -4); // carência de 3 dias vencida
+    await runBilling();
+    const gone = await vpsRow(id);
+    expect(gone.status).toBe('DELETED');
+    expect(fake.vms.has(before.pveVmid as number)).toBe(false);
+    expect((await db.ipAddress.findUniqueOrThrow({ where: { id: before.ipAddressId as number } })).status).toBe('FREE');
+    expect((await db.invoice.findFirstOrThrow({ where: { vpsId: id, kind: 'RENEWAL' } })).status).toBe('CANCELED');
+  });
+
+  it('relógio acelerado: com BILLING_TIME_SCALE=1440, cada dia vira um minuto', () => {
+    const env = { BILLING_PERIOD_DAYS: 30, BILLING_RENEWAL_NOTICE_DAYS: 7, BILLING_GRACE_DAYS: 3 };
+    expect(billingDurations({ ...env, BILLING_TIME_SCALE: 1440 })).toEqual({
+      periodMs: 30 * 60_000,
+      noticeMs: 7 * 60_000,
+      graceMs: 3 * 60_000,
+    });
+    expect(billingDurations({ ...env, BILLING_TIME_SCALE: 1 }).periodMs).toBe(30 * DAY);
+  });
+
+  it('troca de plano cobra só o que falta do período pago', async () => {
+    const c = await customer();
+    const id = await paidVps(c);
+    await worker.drain();
+    await setPaidUntil(id, 15); // metade do período
+    await c.send('post', `/api/vps/${id}/resize`, { plan: 'micro' });
+    await worker.drain();
+    const upgrade = await db.invoice.findFirstOrThrow({ where: { vpsId: id, kind: 'UPGRADE' } });
+    expect(upgrade.amountCents).toBe(500); // (1990 - 990) / 2
   });
 });

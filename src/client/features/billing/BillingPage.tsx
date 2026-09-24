@@ -1,3 +1,4 @@
+import type { InvoiceKindDTO } from '@shared/types/catalog';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
 import { InvoiceStatusBadge } from '@/components/StatusBadge';
@@ -15,6 +16,11 @@ export function BillingPage() {
   const { currency } = useCurrency();
   const invoices = useInvoices();
   const dateFmt = new Intl.DateTimeFormat(locale, { dateStyle: 'short' });
+  const kindLabel: Record<InvoiceKindDTO, string> = {
+    CREATION: t('billing:kind.CREATION'),
+    RENEWAL: t('billing:kind.RENEWAL'),
+    UPGRADE: t('billing:kind.UPGRADE'),
+  };
 
   return (
     <div className="flex flex-col gap-6">
@@ -49,8 +55,16 @@ export function BillingPage() {
                 {invoices.data?.map((inv) => (
                   <TableRow key={inv.id}>
                     <TableCell className="font-mono">{inv.number}</TableCell>
-                    <TableCell className="max-w-xs truncate" title={inv.description}>
-                      {inv.description}
+                    <TableCell className="max-w-xs">
+                      <span className="block truncate" title={inv.description}>
+                        {inv.description}
+                      </span>
+                      <span className="block text-xs text-muted-foreground" data-testid="invoice-kind">
+                        {kindLabel[inv.kind]}
+                        {inv.periodStart && inv.periodEnd
+                          ? ` · ${t('billing:list.period', { start: dateFmt.format(new Date(inv.periodStart)), end: dateFmt.format(new Date(inv.periodEnd)) })}`
+                          : null}
+                      </span>
                     </TableCell>
                     <TableCell className="text-right">
                       <span className="font-medium">{formatBrl(inv.amountCents, locale)}</span>

@@ -79,9 +79,9 @@ export function VpsListPage() {
                       <VpsErrorReason vps={v} />
                     </TableCell>
                     <TableCell>
-                      {v.status === 'PENDING_PAYMENT' && v.pendingInvoiceId ? (
+                      {v.status === 'PENDING_PAYMENT' && v.pendingInvoice ? (
                         <Button asChild size="sm">
-                          <Link to={`/checkout/${v.pendingInvoiceId}`}>{t('vps:list.pay')}</Link>
+                          <Link to={`/checkout/${v.pendingInvoice.id}`}>{t('vps:list.pay')}</Link>
                         </Button>
                       ) : null}
                     </TableCell>

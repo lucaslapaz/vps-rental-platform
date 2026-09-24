@@ -185,7 +185,8 @@
       "specs": "Resources",
       "vcpu_one": "{{count}} vCPU",
       "vcpu_other": "{{count}} vCPUs",
-      "bandwidth": "{{value}} Mbps"
+      "bandwidth": "{{value}} Mbps",
+      "paidUntil": "Paid until"
     },
     "timeline": {
       "title": "Creating your VPS",
@@ -300,6 +301,11 @@
         "progress": "in progress"
       },
       "pendingReboot": "applies on next reboot"
+    },
+    "billing": {
+      "renewal": "The renewal invoice ({{amount}}) is open. Pay by {{date}} to keep the VPS from being suspended.",
+      "upgrade": "The plan change difference ({{amount}}) is open until {{date}}.",
+      "suspended": "This VPS was suspended for non-payment and its machine was shut down. Pay the renewal by {{date}} to reactivate it; after that, it will be deleted."
     }
   }
 }

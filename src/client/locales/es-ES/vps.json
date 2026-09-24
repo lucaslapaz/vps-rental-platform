@@ -185,7 +185,8 @@
       "specs": "Recursos",
       "vcpu_one": "{{count}} vCPU",
       "vcpu_other": "{{count}} vCPU",
-      "bandwidth": "{{value}} Mbps"
+      "bandwidth": "{{value}} Mbps",
+      "paidUntil": "Pagado hasta"
     },
     "timeline": {
       "title": "Creando tu VPS",
@@ -300,6 +301,11 @@
         "progress": "en curso"
       },
       "pendingReboot": "vale en el próximo reinicio"
+    },
+    "billing": {
+      "renewal": "La factura de renovación ({{amount}}) está pendiente. Págala antes del {{date}} para que el VPS no se suspenda.",
+      "upgrade": "La diferencia del cambio de plan ({{amount}}) está pendiente hasta el {{date}}.",
+      "suspended": "VPS suspendido por falta de pago: la máquina se apagó. Paga la renovación antes del {{date}} para reactivarlo; después, se eliminará."
     }
   }
 }

@@ -8,7 +8,8 @@
     "status": "Estado",
     "due": "Vencimiento",
     "pay": "Pagar",
-    "empty": "Todavía no hay facturas."
+    "empty": "Todavía no hay facturas.",
+    "period": "Período: del {{start}} al {{end}}"
   },
   "checkout": {
     "title": "Pago",
@@ -45,5 +46,10 @@
     "goToVps": "Ver mis VPS",
     "goToBilling": "Ver facturas",
     "demo": "Entorno de demostración: el número de la tarjeta y el CVC nunca se guardan; solo la marca y los 4 últimos dígitos."
+  },
+  "kind": {
+    "CREATION": "Nuevo VPS",
+    "RENEWAL": "Renovación",
+    "UPGRADE": "Cambio de plan"
   }
 }

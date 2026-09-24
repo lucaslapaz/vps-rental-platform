@@ -1,6 +1,7 @@
 import { inject, injectable } from 'tsyringe';
 import { BUSY_STATUSES, type PowerActionName, VPS_TRANSITIONS, type VpsOperation } from '../../shared/constants/vps.ts';
 import type { VpsDTO, VpsEventDTO, VpsStatusDTO } from '../../shared/types/catalog.ts';
+import type { Env } from '../config/env.ts';
 import { TOKENS } from '../container/tokens.ts';
 import type { Database } from '../db/prisma.ts';
 import type { InputJsonValue } from '../generated/prisma/internal/prismaNamespace.ts';
@@ -10,10 +11,9 @@ import { CatalogRepository } from '../repositories/CatalogRepository.ts';
 import { toVpsDTO, VpsRepository } from '../repositories/VpsRepository.ts';
 import type { Clock } from '../utils/clock.ts';
 import { AppError } from '../utils/errors.ts';
+import { billingDurations } from './billingPeriods.ts';
 import { CapacityService } from './CapacityService.ts';
 import { VpsNotifier } from './VpsNotifier.ts';
-
-const PERIOD_MS = 30 * 86_400_000;
 
 /**
  * Operações sobre uma VPS existente (plano §11.1 e §11.4). Cada uma faz a transição de estado com `updateMany`
@@ -31,6 +31,7 @@ export class VpsService {
     @inject(CapacityService) private readonly capacity: CapacityService,
     @inject(VpsNotifier) private readonly notify: VpsNotifier,
     @inject(AuditLogRepository) private readonly audit: AuditLogRepository,
+    @inject(TOKENS.Env) private readonly env: Env,
   ) {}
 
   private async owned(userId: string, vpsId: string) {
@@ -104,7 +105,7 @@ export class VpsService {
       this.notify.status({ id: vpsId, userId }, 'DELETED', null);
       await this.audit.record({ action: 'vps.delete', actorId: userId, targetType: 'vps', targetId: vpsId, ip });
       // Já tem deletedAt (o findOwned não a devolve mais).
-      return { ...toVpsDTO(current), status: 'DELETED' as const, pendingInvoiceId: null };
+      return { ...toVpsDTO(current), status: 'DELETED' as const, pendingInvoice: null };
     } else {
       await this.transition(userId, vpsId, 'delete', { type: 'delete_vps', payload: { vpsId, actorId: userId } });
     }
@@ -134,14 +135,10 @@ export class VpsService {
     await this.capacity.assertCanGrow({ memoryMb: plan.memoryMb - current.memoryMb, diskGb: plan.diskGb - current.diskGb });
 
     const oldPlan = await this.db.plan.findUniqueOrThrow({ where: { id: current.planId } });
-    // Períodos de 30 dias contados do primeiro pagamento (o da criação); cobra só os dias que faltam no período atual.
-    const firstPaid = await this.db.invoice.findFirst({
-      where: { vpsId, status: 'PAID' },
-      orderBy: { paidAt: 'asc' },
-      select: { paidAt: true },
-    });
-    const elapsed = firstPaid?.paidAt ? (this.clock.now().getTime() - firstPaid.paidAt.getTime()) % PERIOD_MS : 0;
-    const remaining = Math.min(1, Math.max(0, (PERIOD_MS - elapsed) / PERIOD_MS));
+    // Cobra só o que falta do período já pago (até o paidUntil, Fase 10); a renovação seguinte já sai no preço novo.
+    const { periodMs } = billingDurations(this.env);
+    const left = current.paidUntil ? current.paidUntil.getTime() - this.clock.now().getTime() : periodMs;
+    const remaining = Math.min(1, Math.max(0, left / periodMs));
     const amountCents = Math.max(0, Math.round((plan.priceCents - oldPlan.priceCents) * remaining));
 
     await this.transition(userId, vpsId, 'resize', {

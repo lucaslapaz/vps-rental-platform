@@ -116,7 +116,7 @@ describe('pedido (POST /api/vps)', () => {
     expect(res.status).toBe(201);
     expect(res.body.vps).toMatchObject({ status: 'PENDING_PAYMENT', hostname: 'minha-vps', rootPasswordSet: true });
     expect(res.body.invoice).toMatchObject({ status: 'PENDING', amountCents: 990, currency: 'BRL' });
-    expect(res.body.vps.pendingInvoiceId).toBe(res.body.invoice.id);
+    expect(res.body.vps.pendingInvoice).toMatchObject({ id: res.body.invoice.id, kind: 'CREATION' });
 
     const row = await db.vps.findUniqueOrThrow({ where: { id: res.body.vps.id } });
     expect(row.provisionSecrets).toMatch(/^v1\./);

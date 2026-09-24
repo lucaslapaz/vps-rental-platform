@@ -34,6 +34,7 @@ const worker = di.resolve(JobWorker);
 const vms = di.resolve<VirtualizationProvider>(TOKENS.VirtualizationProvider);
 
 const client = new TestClient(app);
+const card = { cardNumber: '4242424242424242', holder: 'Lab', expMonth: 12, expYear: new Date().getFullYear() + 2, cvc: '123' };
 let userId = '';
 let vpsId = '';
 let vmid = 0;
@@ -111,7 +112,6 @@ describe('@lab roteiro E2E da VPS (Fase 7)', () => {
     });
     expect(created.status, JSON.stringify(created.body)).toBe(201);
     vpsId = created.body.vps.id;
-    const card = { cardNumber: '4242424242424242', holder: 'Lab', expMonth: 12, expYear: new Date().getFullYear() + 2, cvc: '123' };
     expect((await client.send('post', `/api/invoices/${created.body.invoice.id}/pay`, card)).status).toBe(200);
     await worker.drain();
     const v = await vps();
@@ -173,6 +173,27 @@ describe('@lab roteiro E2E da VPS (Fase 7)', () => {
     });
     expect(banner).toMatch(/^RFB 003\.00\d\n$/);
   }, 60_000);
+
+  it('cobrança (Fase 10): sem pagar, a VPS é suspensa e a VM desliga; pagar a renovação liga de novo', async () => {
+    const billing = async () => {
+      await db.job.create({ data: { type: 'billing_cycle', payload: {}, maxAttempts: 1 } });
+      await worker.drain();
+    };
+    // Simula o tempo passando: faltam 2 dias (sai a renovação) e depois o período vence.
+    await db.vps.update({ where: { id: vpsId }, data: { paidUntil: new Date(Date.now() + 2 * 86_400_000) } });
+    await billing();
+    await db.vps.update({ where: { id: vpsId }, data: { paidUntil: new Date(Date.now() - 60_000) } });
+    await billing();
+    expect((await vps()).status).toBe('SUSPENDED');
+    expect((await vms.status(vmid))?.status).toBe('stopped');
+
+    const renewal = await db.invoice.findFirstOrThrow({ where: { vpsId, kind: 'RENEWAL', status: 'PENDING' } });
+    expect((await client.send('post', `/api/invoices/${renewal.id}/pay`, card)).status).toBe(200);
+    await worker.drain();
+    expect((await vps()).status).toBe('RUNNING');
+    expect((await vms.status(vmid))?.status).toBe('running');
+    await sshReady();
+  }, 240_000);
 
   it('excluir → DELETED, VM apagada no Proxmox e IP de volta ao pool', async () => {
     await act('delete', `/api/vps/${vpsId}`);

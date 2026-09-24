@@ -4,7 +4,16 @@ import type { Database } from '../db/prisma.ts';
 import type { InputJsonValue } from '../generated/prisma/internal/prismaNamespace.ts';
 import type { Clock } from '../utils/clock.ts';
 
-export type JobType = 'provision_vps' | 'vps_action' | 'resize_vps' | 'delete_vps' | 'reconcile' | 'expire_pending' | 'cleanup_sessions';
+export type JobType =
+  | 'provision_vps'
+  | 'vps_action'
+  | 'resize_vps'
+  | 'delete_vps'
+  | 'reconcile'
+  | 'expire_pending'
+  | 'cleanup_sessions'
+  | 'billing_cycle'
+  | 'suspend_vps';
 
 export interface ClaimedJob {
   id: number;

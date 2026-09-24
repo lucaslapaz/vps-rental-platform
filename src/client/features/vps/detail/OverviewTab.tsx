@@ -109,6 +109,12 @@ export function OverviewTab({ vps }: { vps: VpsDTO }) {
             <dd>{vps.plan.name}</dd>
             <dt className="text-muted-foreground">{t('detail.overview.created')}</dt>
             <dd>{formatDateTime(vps.createdAt, locale)}</dd>
+            {vps.paidUntil ? (
+              <>
+                <dt className="text-muted-foreground">{t('detail.overview.paidUntil')}</dt>
+                <dd data-testid="paid-until">{formatDateTime(vps.paidUntil, locale)}</dd>
+              </>
+            ) : null}
           </dl>
         </CardContent>
       </Card>

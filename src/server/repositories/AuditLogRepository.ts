@@ -16,8 +16,12 @@ export interface AuditEntry {
 export class AuditLogRepository {
   constructor(@inject(TOKENS.Prisma) private readonly db: Database) {}
 
-  record(entry: AuditEntry) {
-    return this.db.auditLog.create({
+  /**
+   * `async` de propósito: a consulta do Prisma é preguiçosa (só roda no `then`), então quem chama com `void` sem `await`
+   * não gravava nada. Assim, a gravação começa na hora.
+   */
+  async record(entry: AuditEntry) {
+    return await this.db.auditLog.create({
       data: {
         action: entry.action,
         actorId: entry.actorId ?? null,

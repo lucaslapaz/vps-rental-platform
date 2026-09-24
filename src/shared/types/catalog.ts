@@ -90,11 +90,14 @@ export interface VpsDTO {
   rootPasswordSet: boolean;
   lastError: string | null;
   createdAt: string;
-  /** Fatura em aberto (ex.: a da criação, enquanto não for paga). */
-  pendingInvoiceId: string | null;
+  /** Fim do período pago (null até o pagamento da criação). */
+  paidUntil: string | null;
+  /** Fatura em aberto mais recente: a da criação (antes do pagamento), a de renovação ou a de uma troca de plano. */
+  pendingInvoice: { id: string; kind: InvoiceKindDTO; amountCents: number; dueAt: string } | null;
 }
 
 export type InvoiceStatusDTO = 'PENDING' | 'PAID' | 'FAILED' | 'CANCELED';
+export type InvoiceKindDTO = 'CREATION' | 'RENEWAL' | 'UPGRADE';
 
 export interface PaymentDTO {
   id: string;
@@ -108,9 +111,13 @@ export interface PaymentDTO {
 export interface InvoiceDTO {
   id: string;
   number: number;
+  kind: InvoiceKindDTO;
   description: string;
   amountCents: number;
   currency: 'BRL';
+  /** Período coberto (só nas renovações). */
+  periodStart: string | null;
+  periodEnd: string | null;
   status: InvoiceStatusDTO;
   dueAt: string;
   paidAt: string | null;

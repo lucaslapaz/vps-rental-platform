@@ -20,6 +20,7 @@
 | 15 | 2026-09-23 | **Fase 8 concluída** (§17): suporte com fila ao vivo, claim atômico, limite por técnico, devolver/encerrar e chat por Socket.IO com ack. Ajustes de implementação (§13.2): eventos vão para as salas `user:<id>` dos participantes (em vez de `conversation:<id>`, que exigiria entrar e sair de salas a cada claim), mensagens do sistema gravadas como **código** e traduzidas na tela, abrir conversa trava a linha do cliente (`FOR UPDATE`) e há envio por REST quando o socket está fora |
 | 16 | 2026-09-23 | **Fase 9 concluída** (§17): E2E com Playwright contra o app com o provider falso (`e2e/server.ts`), cobertura (`npm run test:coverage`), verificação de traduções, README de portfólio com GIF, `docs/arquitetura.md` e `docs/seguranca.md` (OWASP Top 10). A revisão corrigiu 2 pontos: o chat pelo socket sem limite de mensagens e o console que continuava aberto depois de revogar a sessão |
 | 17 | 2026-09-23 | **Fase 10, extras 1 e 2** (§17): console de texto (xterm.js no `termproxy` da serial0, pelo mesmo proxy do noVNC) e firewall anti-spoofing por VPS (`ipfilter`/`macfilter`), com o firewall do datacenter ligado por `scripts/pve/firewall.sh` e a zona de conntrack do NAT (§3.3) |
+| 18 | 2026-09-24 | **Fase 10, extra 3** (§12, §17): cobrança recorrente contada do `Vps.paidUntil`: renovação 7 dias antes do fim do período, suspensão (VM desligada) no vencimento, exclusão após 3 dias de carência e reativação ao pagar; "relógio acelerado" `BILLING_TIME_SCALE` para demonstração |
 | 11 | 2026-09-23 | **Fase 4 concluída** (§17): cliente do Proxmox, provider real, agente, CLI `npm run pve` e suíte `@lab` 30/30 nas quatro imagens. Mudanças: drop-in do sshd **`01-favo.conf`** (§10.6) e formato do ticket do `vncproxy` (§10.5) |
 | 10 | 2026-09-23 | **Fase 3 concluída** (§17): sessão, CSRF assinado, RBAC, conta, chaves SSH e administração de usuários. Detalhes da implementação em §9.8 (origem aceita, pré-sessão, validação real das chaves SSH, textos em namespaces) |
 | 9 | 2026-09-23 | **Fase 2 concluída** (§17): Prisma 7.10.0 + adapter MariaDB, migration `init`, seeds idempotentes. Ajustes: tabelas com `@@map` em snake_case (MySQL do Windows com `lower_case_table_names=1`), `IpAddress.macAddress` (MAC derivado do IP), pool `.200–.228`, plano **Medium** no seed, proteção do Prisma contra agentes de IA em comandos destrutivos (§19) |
@@ -1760,7 +1761,16 @@ Por que no MySQL: evita outra dependência no PC, é persistente (sobrevive a re
   → `POST /api/invoices/:id/pay` (idempotente: fatura já paga → `409`) → aprovado → `PAID` + job `provision_vps`
   na mesma transação.
 - Job `expire_pending`: faturas de criação não pagas em 24h → `CANCELED` e VPS `DELETED` (sem nada no Proxmox).
-- **Renovação mensal, suspensão por inadimplência e "relógio acelerado" para demonstração:** Fase 10.
+- **Cobrança recorrente (Fase 10, rev. 18):** tudo é contado do `Vps.paidUntil` (fim do período pago), que o pagamento da
+  criação define como agora + 30 dias. O job periódico `billing_cycle` (a cada 60 s) faz três passos idempotentes, com lock
+  otimista: (1) `paidUntil − 7 dias` → fatura `RENEWAL` do período seguinte (uma por período; vence no fim da carência);
+  (2) `paidUntil` vencido → VPS `SUSPENDED` e job `suspend_vps` (desliga a VM; o reconcile ignora suspensas); (3)
+  `paidUntil + 3 dias` → `delete_vps` (o mesmo da exclusão pelo cliente, que cancela a fatura em aberto). Pagar a renovação
+  estende o `paidUntil` até o fim do período e, se a VPS estava suspensa, a religa (`STARTING` + `vps_action start` na mesma
+  transação). A suspensa não liga pelo painel, mas pode ser excluída. A troca de plano cobra a diferença proporcional ao que
+  falta até o `paidUntil`. Faturas ganharam `kind` (`CREATION`, `RENEWAL`, `UPGRADE`) e mostram o período.
+  **Relógio acelerado:** `BILLING_TIME_SCALE` divide os prazos (`BILLING_PERIOD_DAYS`, `BILLING_RENEWAL_NOTICE_DAYS`,
+  `BILLING_GRACE_DAYS`); com 1440, um dia vira um minuto e o mês, 30 minutos.
 - A UI deixa claro, em vários pontos, que é **ambiente de demonstração, sem cobrança real**.
 - **Implementação (rev. 12):** as senhas escolhidas na criação ficam **cifradas** (AES-256-GCM) em `vps.provisionSecrets` entre o
   pedido e o pagamento; no pagamento aprovado vão para o payload do job `provision_vps` e a coluna é apagada. A fatura é travada com
@@ -2317,7 +2327,12 @@ e recuperação por `?after=`.
    `scripts/pve/firewall.sh` (políticas `ACCEPT` no host, IPSet `management`, rollback automático de 3 min até
    conferir SSH e 8006) junto com a zona de conntrack do NAT (§3.3). **Contraprova no laboratório:** com um IP falso na
    interface, o ping sai sem `ipfilter` e é bloqueado com ele; o IP próprio, o DNS e a internet continuam funcionando.
-3. **Cobrança recorrente:** renovação mensal, suspensão (stop) por inadimplência, exclusão após carência, "relógio acelerado" de demonstração.
+3. ✅ **Cobrança recorrente:** renovação mensal, suspensão (stop) por inadimplência, exclusão após carência, "relógio acelerado" de demonstração.
+   **Feito (rev. 18):** ver §12. Migration `billing_recurring` (`Vps.paidUntil`, `Invoice.kind`, com backfill das VPS já pagas).
+   Na tela: aviso na página da VPS (renovação em aberto, ou suspensa com o prazo antes da exclusão), "Pago até" na visão
+   geral e tipo/período na lista de faturas. Testado com o provider falso (renovação única, suspensão, reativação,
+   exclusão após a carência, proporcional da troca de plano, relógio acelerado) e no laboratório (`@lab`: sem pagar, a VM
+   real desliga; pagar a renovação a liga de novo e o SSH volta).
 4. **Painel admin ampliado:** todas as VPS (somente leitura), capacidade do nó, fila de jobs, e o **editor de roles**
    (criar roles e marcar permissões numa grade, `admin:roles:manage`).
 5. **Reinstalar VPS** (destroy + clone com o mesmo IP).

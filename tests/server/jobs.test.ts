@@ -79,6 +79,18 @@ const vpsRow = (id: string) => db.vps.findUniqueOrThrow({ where: { id }, include
 const provisionJob = (vpsId: string) =>
   db.job.findFirstOrThrow({ where: { type: 'provision_vps', payload: { path: '$.vpsId', equals: vpsId } } });
 
+describe('worker', () => {
+  it('job apagado da tabela no meio da execução (limpeza, reset do banco de teste) não derruba o worker', async () => {
+    await queue.enqueue('reconcile', {}, { maxAttempts: 1 });
+    await db.job.create({ data: { type: 'tipo_que_nao_existe', payload: {}, maxAttempts: 1 } });
+    const claimed = await queue.claim('teste#1', 2);
+    expect(claimed).toHaveLength(2);
+    await db.job.deleteMany({ where: { id: { in: claimed.map((j) => j.id) } } });
+    // Um sai pelo caminho de sucesso (complete) e o outro pelo de falha (fail): nenhum dos dois pode lançar erro.
+    for (const job of claimed) await expect(worker.execute(job)).resolves.toBeUndefined();
+  });
+});
+
 describe('provision_vps', () => {
   it('pagamento → RUNNING: IP ASSIGNED, VM configurada, senha root, política de SSH e segredos apagados', async () => {
     const c = await customer();

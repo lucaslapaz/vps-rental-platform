@@ -1,5 +1,4 @@
 import { z } from 'zod';
-import { ROLE_KEYS } from '../constants/permissions.ts';
 
 export const SSH_KEY_TYPES = ['ssh-ed25519', 'ecdsa-sha2-nistp256', 'ecdsa-sha2-nistp384', 'ecdsa-sha2-nistp521', 'ssh-rsa'] as const;
 
@@ -22,7 +21,8 @@ export const sshKeySchema = z.object({
 });
 export type SshKeyInput = z.input<typeof sshKeySchema>;
 
-export const changeRoleSchema = z.object({ role: z.enum(ROLE_KEYS, { error: 'role' }) });
+/** A role pode ser do sistema ou criada pelo admin (Fase 10); o service confere se existe. */
+export const changeRoleSchema = z.object({ role: z.string().regex(/^[a-z][a-z0-9_]{2,49}$/, { error: 'role' }) });
 export type ChangeRoleInput = z.input<typeof changeRoleSchema>;
 
 export const uuidParamSchema = z.object({ id: z.uuid({ error: 'id' }) });

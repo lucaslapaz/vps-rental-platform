@@ -30,7 +30,8 @@ laboratório Proxmox, acessível por SSH e pelo console no navegador. Tudo em pt
 - **Métricas** de CPU, memória e rede, e o histórico de eventos da VPS.
 - **Suporte**: o cliente abre um chat e entra na fila; os técnicos veem a fila ao vivo e assumem os atendimentos. O
   técnico não tem acesso a VPS nem a faturas.
-- **Administração** de usuários e roles (RBAC por permissão).
+- **Administração**: visão geral com a capacidade do servidor e a fila de jobs, todas as VPS (somente leitura),
+  usuários e um editor de roles com grade de permissões (RBAC por permissão).
 
 | | |
 |---|---|

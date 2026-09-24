@@ -65,6 +65,8 @@
     "cardExpired": "Card expired.",
     "cardCvc": "Invalid CVC.",
     "sshKeyChoice": "Choose a saved key or paste a new one (one of the two).",
-    "subjectTooShort": "Write a subject with at least 3 characters."
+    "subjectTooShort": "Write a subject with at least 3 characters.",
+    "roleKey": "Use 3 to 50 lowercase letters, digits or _, starting with a letter.",
+    "permission": "Unknown permission."
   }
 }

@@ -5,6 +5,7 @@ import { Link } from 'react-router';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { useAdminLinks } from '@/features/admin/AdminNav';
 import { useAuth, useCan } from '@/features/auth/useAuth';
 
 function Tile({ icon, title, description, to, cta }: { icon: ReactNode; title: string; description: string; to?: string; cta?: string }) {
@@ -31,7 +32,8 @@ export function DashboardPage() {
   const { t } = useTranslation();
   const { user } = useAuth();
   const canVps = useCan('vps:read:own');
-  const canAdmin = useCan('admin:users:read');
+  /** Primeira página de administração que o usuário pode ver (visão geral, VPS, usuários ou roles). */
+  const adminHome = useAdminLinks()[0]?.to;
   const canQueue = useCan('support:queue:read');
   if (!user) return null;
 
@@ -65,12 +67,12 @@ export function DashboardPage() {
             </CardFooter>
           </Card>
         ) : null}
-        {canAdmin ? (
+        {adminHome ? (
           <Tile
             icon={<ShieldCheck />}
             title={t('dashboard.admin.title')}
             description={t('dashboard.admin.description')}
-            to="/admin/users"
+            to={adminHome}
             cta={t('dashboard.admin.cta')}
           />
         ) : null}

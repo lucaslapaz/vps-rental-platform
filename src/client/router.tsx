@@ -1,7 +1,10 @@
 import { createBrowserRouter } from 'react-router';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { AccountPage } from '@/features/account/AccountPage';
+import { AdminOverviewPage } from '@/features/admin/AdminOverviewPage';
+import { AdminRolesPage } from '@/features/admin/AdminRolesPage';
 import { AdminUsersPage } from '@/features/admin/AdminUsersPage';
+import { AdminVpsPage } from '@/features/admin/AdminVpsPage';
 import { RequireAuth, RequireGuest, RequirePermission } from '@/features/auth/guards';
 import { LoginPage } from '@/features/auth/LoginPage';
 import { RegisterPage } from '@/features/auth/RegisterPage';
@@ -114,6 +117,36 @@ export const router = createBrowserRouter([
         element: (
           <RequireAuth>
             <AccountPage />
+          </RequireAuth>
+        ),
+      },
+      {
+        path: 'admin',
+        element: (
+          <RequireAuth>
+            <RequirePermission permission="admin:overview:read">
+              <AdminOverviewPage />
+            </RequirePermission>
+          </RequireAuth>
+        ),
+      },
+      {
+        path: 'admin/vps',
+        element: (
+          <RequireAuth>
+            <RequirePermission permission="admin:vps:read">
+              <AdminVpsPage />
+            </RequirePermission>
+          </RequireAuth>
+        ),
+      },
+      {
+        path: 'admin/roles',
+        element: (
+          <RequireAuth>
+            <RequirePermission permission="admin:users:read">
+              <AdminRolesPage />
+            </RequirePermission>
           </RequireAuth>
         ),
       },

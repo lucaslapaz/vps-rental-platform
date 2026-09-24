@@ -13,7 +13,8 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { useAuth, useCan } from '@/features/auth/useAuth';
+import { useAdminLinks } from '@/features/admin/AdminNav';
+import { useAuth } from '@/features/auth/useAuth';
 import { api } from '@/lib/api';
 import { errorMessage } from '@/lib/errors';
 
@@ -29,7 +30,8 @@ const initials = (name: string) =>
 export function UserMenu() {
   const { t } = useTranslation(['common', 'errors']);
   const { user, isPending } = useAuth();
-  const canAdmin = useCan('admin:users:read');
+  /** Primeira página de administração que o usuário pode ver (visão geral, VPS, usuários ou roles). */
+  const adminHome = useAdminLinks()[0]?.to;
   const queryClient = useQueryClient();
   const navigate = useNavigate();
 
@@ -79,9 +81,9 @@ export function UserMenu() {
             {t('nav.account')}
           </Link>
         </DropdownMenuItem>
-        {canAdmin ? (
+        {adminHome ? (
           <DropdownMenuItem asChild>
-            <Link to="/admin/users" data-testid="menu-admin">
+            <Link to={adminHome} data-testid="menu-admin">
               <ShieldCheck />
               {t('nav.admin')}
             </Link>

@@ -24,4 +24,8 @@ export async function resetTestData(db: Database, databaseUrl: string) {
   await db.session.deleteMany({ where: { userId: { in: ids } } });
   await db.auditLog.deleteMany({ where: { actorId: { in: ids } } });
   await db.user.deleteMany({ where: { id: { in: ids } } });
+  // Roles criadas pelos testes do editor de roles (admin-panel.test.ts), se uma execução parou no meio.
+  const roles = await db.role.findMany({ where: { isSystem: false, key: { startsWith: 'teste_' } }, select: { id: true } });
+  await db.rolePermission.deleteMany({ where: { roleId: { in: roles.map((r) => r.id) } } });
+  await db.role.deleteMany({ where: { id: { in: roles.map((r) => r.id) }, users: { none: {} } } });
 }

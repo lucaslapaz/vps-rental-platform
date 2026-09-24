@@ -76,12 +76,15 @@ export class JobQueue {
   }
 
   /** Grava o progresso no payload (idempotência: numa nova tentativa, o handler retoma daqui, plano §11.2). */
+  // updateMany (e não update): se o job sumiu da tabela no meio da execução (limpeza, intervenção manual, o reset do banco
+  // de teste), não há o que gravar, e um erro aqui não pode derrubar o processo.
+
   checkpoint(id: number, payload: InputJsonValue) {
-    return this.db.job.update({ where: { id }, data: { payload } });
+    return this.db.job.updateMany({ where: { id }, data: { payload } });
   }
 
   complete(id: number, payload?: InputJsonValue) {
-    return this.db.job.update({
+    return this.db.job.updateMany({
       where: { id },
       data: { status: 'SUCCEEDED', lockedAt: null, lockedBy: null, lastError: null, ...(payload === undefined ? {} : { payload }) },
     });
@@ -91,7 +94,7 @@ export class JobQueue {
   async fail(job: ClaimedJob, error: unknown, options: { permanent?: boolean; payload?: InputJsonValue } = {}) {
     const message = error instanceof Error ? error.message : String(error);
     const final = options.permanent || job.attempts >= job.maxAttempts;
-    await this.db.job.update({
+    await this.db.job.updateMany({
       where: { id: job.id },
       data: {
         status: final ? 'FAILED' : 'QUEUED',

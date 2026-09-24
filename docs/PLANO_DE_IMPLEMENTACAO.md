@@ -21,6 +21,7 @@
 | 16 | 2026-09-23 | **Fase 9 concluída** (§17): E2E com Playwright contra o app com o provider falso (`e2e/server.ts`), cobertura (`npm run test:coverage`), verificação de traduções, README de portfólio com GIF, `docs/arquitetura.md` e `docs/seguranca.md` (OWASP Top 10). A revisão corrigiu 2 pontos: o chat pelo socket sem limite de mensagens e o console que continuava aberto depois de revogar a sessão |
 | 17 | 2026-09-23 | **Fase 10, extras 1 e 2** (§17): console de texto (xterm.js no `termproxy` da serial0, pelo mesmo proxy do noVNC) e firewall anti-spoofing por VPS (`ipfilter`/`macfilter`), com o firewall do datacenter ligado por `scripts/pve/firewall.sh` e a zona de conntrack do NAT (§3.3) |
 | 18 | 2026-09-24 | **Fase 10, extra 3** (§12, §17): cobrança recorrente contada do `Vps.paidUntil`: renovação 7 dias antes do fim do período, suspensão (VM desligada) no vencimento, exclusão após 3 dias de carência e reativação ao pagar; "relógio acelerado" `BILLING_TIME_SCALE` para demonstração |
+| 19 | 2026-09-24 | **Console:** gerenciamento das conexões (`GET/DELETE /api/consoles`, painel na aba Console) e a vaga liberada quando a conexão falha no navegador (o erro relatado vinha de uma extensão que interceptava WebSockets). **Fase 10, extra 4:** painel admin ampliado (visão geral com capacidade do nó e fila de jobs, todas as VPS somente leitura e o editor de roles, com as roles do sistema travadas) |
 | 11 | 2026-09-23 | **Fase 4 concluída** (§17): cliente do Proxmox, provider real, agente, CLI `npm run pve` e suíte `@lab` 30/30 nas quatro imagens. Mudanças: drop-in do sshd **`01-favo.conf`** (§10.6) e formato do ticket do `vncproxy` (§10.5) |
 | 10 | 2026-09-23 | **Fase 3 concluída** (§17): sessão, CSRF assinado, RBAC, conta, chaves SSH e administração de usuários. Detalhes da implementação em §9.8 (origem aceita, pré-sessão, validação real das chaves SSH, textos em namespaces) |
 | 9 | 2026-09-23 | **Fase 2 concluída** (§17): Prisma 7.10.0 + adapter MariaDB, migration `init`, seeds idempotentes. Ajustes: tabelas com `@@map` em snake_case (MySQL do Windows com `lower_case_table_names=1`), `IpAddress.macAddress` (MAC derivado do IP), pool `.200–.228`, plano **Medium** no seed, proteção do Prisma contra agentes de IA em comandos destrutivos (§19) |
@@ -1457,6 +1458,12 @@ da revisão 1 **foi trocado por `User.roleId`**.
   `admin:users:assign-role`. Um admin não pode rebaixar a si mesmo, e trocar a role **revoga as sessões** do usuário
   afetado, para as novas permissões valerem na hora. Tudo vai para o `AuditLog`.
 - **Editor de roles** (criar roles e marcar permissões numa grade): extra da Fase 10, protegido por `admin:roles:manage`.
+  **Como ficou (rev. 19):** as três roles do **sistema aparecem travadas** na grade: a fonte da verdade delas é o código
+  (`SYSTEM_ROLES`, que o seed reaplica), e travá-las também impede um admin de tirar de si mesmo o acesso à
+  administração. As roles **criadas pelo admin** (chave `^[a-z][a-z0-9_]{2,49}$`, podem começar com as permissões de outra)
+  são editadas na grade e salvas uma a uma, e podem ser atribuídas a usuários na tela de Usuários. As permissões são lidas do
+  banco a cada requisição, então editar uma role vale na próxima ação de quem a tem, sem novo login. Tudo vai para o `AuditLog`
+  (`admin.role_created/updated/deleted`).
 
 ### 9.8 Como ficou na implementação (revisão 10)
 
@@ -2003,14 +2010,20 @@ Legenda de middlewares: **O** originCheck · **C** csrf · **A** authenticate ·
 | DELETE | `/api/account/sessions/:id` | O C A | Revoga uma sessão |
 | PUT | `/api/account/password` | O R C A | Troca a senha (revoga as outras sessões) |
 | GET/POST/DELETE | `/api/account/ssh-keys[/:id]` | (O C) A | Chaves SSH |
-| POST | `/api/vps/:id/console` | O C A P | Cria a sessão de console de uso único → `{ consoleId, password }` (§10.5) |
+| POST | `/api/vps/:id/console` | O C A P | Cria a sessão de console de uso único → `{ consoleId, connectionId, type, password? }` (§10.5). Um pedido novo da mesma sessão para a mesma VPS substitui o que ainda não conectou |
+| GET | `/api/consoles` | A P | Conexões de console do usuário (em abertura ou abertas, de qualquer aba ou dispositivo) + o limite (rev. 19) |
+| DELETE | `/api/consoles/:id` | O C A P | Encerra uma conexão do próprio usuário (o proxy fecha com 4002) e libera a vaga; de outro usuário → 404 (rev. 19) |
 | WS | `/ws/console/:consoleId` | Origin + A | Proxy noVNC ↔ Proxmox (upgrade de WebSocket) |
 | POST | `/api/vps/:id/access/password` | O C A P R | Redefine a senha do usuário ou do root (guest agent) → `200` com a VPS (síncrono, rev. 14) |
 | POST | `/api/vps/:id/access/ssh-password-auth` | O C A P R | Liga/desliga o login SSH por senha → `200` |
 | POST | `/api/vps/:id/access/ssh-keys` | O C A P R | Adiciona uma chave SSH (salva ou colada) na VPS → `200` |
 | GET | `/api/admin/users?query=` | A P | Lista usuários com a role (admin) |
 | PATCH | `/api/admin/users/:id/role` | O C A P | Troca a role (revoga as sessões do usuário afetado) |
-| GET | `/api/admin/roles` | A P | Roles e permissões (para a tela de administração) |
+| GET | `/api/admin/roles` | A P | Roles e permissões, com a quantidade de usuários de cada uma |
+| POST · PUT · DELETE | `/api/admin/roles` · `/api/admin/roles/:key` | O C A P | Editor de roles (`admin:roles:manage`): só as roles criadas pelo admin; as do sistema → 409 `SYSTEM_ROLE_READONLY`; role em uso não é apagada (409 `ROLE_IN_USE`) |
+| GET | `/api/admin/overview` | A P | Capacidade do nó (Proxmox com timeout de 3 s), alocação × tetos, IPs, usuários por role, VPS por situação, cobrança e jobs por situação |
+| GET | `/api/admin/jobs?status=&periodic=` | A P | Últimos 50 jobs (sem o payload); os periódicos só com `periodic=true` |
+| GET | `/api/admin/vps?query=&includeDeleted=` | A P | Todas as VPS com o dono (`admin:vps:read`, somente leitura) |
 | GET | `/api/plans` · `/api/os-templates` | — | Catálogo. As imagens trazem as capacidades e os mínimos que controlam a tela de criação |
 | GET | `/api/vps` | A P | Lista as minhas VPS |
 | POST | `/api/vps` | O C A P R | Cria o pedido (capacidade + fatura) |
@@ -2333,8 +2346,13 @@ e recuperação por `?after=`.
    geral e tipo/período na lista de faturas. Testado com o provider falso (renovação única, suspensão, reativação,
    exclusão após a carência, proporcional da troca de plano, relógio acelerado) e no laboratório (`@lab`: sem pagar, a VM
    real desliga; pagar a renovação a liga de novo e o SSH volta).
-4. **Painel admin ampliado:** todas as VPS (somente leitura), capacidade do nó, fila de jobs, e o **editor de roles**
+4. ✅ **Painel admin ampliado:** todas as VPS (somente leitura), capacidade do nó, fila de jobs, e o **editor de roles**
    (criar roles e marcar permissões numa grade, `admin:roles:manage`).
+   **Feito (rev. 19):** `/admin` (visão geral: memória e disco do nó, reservado pelas VPS × tetos, IPs livres, usuários por
+   role, VPS por situação, cobrança dos últimos 30 dias e a fila de jobs com filtro, sem os periódicos por padrão),
+   `/admin/vps` (busca por hostname, IP, nome ou e-mail do dono; somente leitura, o admin continua sem console e sem ações),
+   `/admin/users` e `/admin/roles` (§9.7), com navegação entre elas conforme as permissões. A limpeza periódica passou a
+   apagar também as **falhas** de jobs periódicos com mais de 1 dia (o `reconcile` com o Proxmox desligado gerava ~60 por hora).
 5. **Reinstalar VPS** (destroy + clone com o mesmo IP).
 6. **MCP próprio somente leitura** (§16.3).
 7. Docker Compose (app + MySQL) e CI com GitHub Actions (lint, typecheck, testes sem `@lab`).

@@ -100,7 +100,12 @@ export class JobWorker {
       const free = this.env.WORKER_CONCURRENCY - this.inflight.size;
       if (free <= 0) return;
       for (const job of await this.queue.claim(this.workerId, free)) {
-        const running = this.execute(job).finally(() => this.inflight.delete(running));
+        // Um erro ao gravar o resultado (banco fora do ar…) vira log; uma rejeição solta derrubaria o processo inteiro.
+        const running = this.execute(job)
+          .catch((err) =>
+            this.logger.error({ jobId: job.id, type: job.type, err: errorMessage(err) }, 'erro ao registrar o resultado do job'),
+          )
+          .finally(() => this.inflight.delete(running));
         this.inflight.add(running);
       }
     } catch (err) {

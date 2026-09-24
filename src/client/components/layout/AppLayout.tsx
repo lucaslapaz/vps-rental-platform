@@ -1,6 +1,7 @@
 import { useTranslation } from 'react-i18next';
 import { Link, NavLink, Outlet } from 'react-router';
 import { Logo } from '@/components/brand/Logo';
+import { useAdminLinks } from '@/features/admin/AdminNav';
 import { useCan } from '@/features/auth/useAuth';
 import { RealtimeProvider } from '@/features/realtime/RealtimeProvider';
 import { cn } from '@/lib/utils';
@@ -29,7 +30,8 @@ function NavItem({ to, children }: { to: string; children: string }) {
 export function AppLayout() {
   const { t } = useTranslation();
   const canVps = useCan('vps:read:own');
-  const canAdmin = useCan('admin:users:read');
+  /** Primeira página de administração que o usuário pode ver (visão geral, VPS, usuários ou roles). */
+  const adminHome = useAdminLinks()[0]?.to;
   const canBilling = useCan('billing:read:own');
   const canSupport = useCan('support:conversation:create');
   const canAgent = useCan('support:queue:read');
@@ -53,7 +55,7 @@ export function AppLayout() {
               {canBilling ? <NavItem to="/billing">{t('nav.billing')}</NavItem> : null}
               {canSupport ? <NavItem to="/support">{t('nav.support')}</NavItem> : null}
               {canAgent ? <NavItem to="/agent">{t('nav.agent')}</NavItem> : null}
-              {canAdmin ? <NavItem to="/admin/users">{t('nav.admin')}</NavItem> : null}
+              {adminHome ? <NavItem to={adminHome}>{t('nav.admin')}</NavItem> : null}
             </nav>
           </div>
           <div className="flex items-center gap-1">

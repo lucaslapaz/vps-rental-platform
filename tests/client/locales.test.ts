@@ -1,6 +1,8 @@
 import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
+import { permissionI18nKey } from '../../src/client/lib/permissionKeys.ts';
+import { PERMISSION_KEYS } from '../../src/shared/constants/permissions.ts';
 
 const ROOT = 'src/client/locales';
 const LANGUAGES = ['pt-BR', 'en-US', 'es-ES'];
@@ -52,5 +54,11 @@ describe('traduções', () => {
         }
       }
     }
+  });
+
+  it('toda permissão do código tem descrição traduzida (editor de roles)', () => {
+    const translated = (load('pt-BR', 'admin.json') as { permissions: Record<string, string> }).permissions;
+    for (const p of PERMISSION_KEYS) expect(translated[permissionI18nKey(p)], p).toBeTruthy();
+    expect(Object.keys(translated).length).toBe(PERMISSION_KEYS.length);
   });
 });

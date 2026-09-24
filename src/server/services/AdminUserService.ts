@@ -35,7 +35,56 @@ export class AdminUserService {
       description: r.description,
       isSystem: r.isSystem,
       permissions: r.permissions.map((rp) => rp.permission.key).sort(),
+      userCount: r._count.users,
     }));
+  }
+
+  /**
+   * Editor de roles (plano §9.7, Fase 10). As roles do SISTEMA ficam de fora: a fonte da verdade delas é o código
+   * (`SYSTEM_ROLES`, reaplicado pelo seed), e travá-las também impede um admin de tirar de si mesmo o acesso à
+   * administração. As permissões são lidas do banco a cada requisição, então a mudança vale na hora para quem tem a role.
+   */
+  async createRole(actorId: string, input: { key: string; name: string; description?: string; permissions: string[] }, ip: string | null) {
+    if (await this.roles.findByKey(input.key)) throw new AppError(409, 'ROLE_EXISTS', 'Já existe uma role com essa chave');
+    const role = await this.roles.create({ ...input, description: input.description || null });
+    await this.audit.record({
+      action: 'admin.role_created',
+      actorId,
+      targetType: 'role',
+      targetId: role.key,
+      metadata: { permissions: input.permissions },
+      ip,
+    });
+    return (await this.listRoles()).find((r) => r.key === role.key);
+  }
+
+  async updateRole(actorId: string, key: string, input: { name: string; description?: string; permissions: string[] }, ip: string | null) {
+    const role = await this.editableRole(key);
+    await this.roles.update(role.id, { ...input, description: input.description || null });
+    await this.audit.record({
+      action: 'admin.role_updated',
+      actorId,
+      targetType: 'role',
+      targetId: key,
+      metadata: { permissions: input.permissions },
+      ip,
+    });
+    return (await this.listRoles()).find((r) => r.key === key);
+  }
+
+  async deleteRole(actorId: string, key: string, ip: string | null) {
+    const role = await this.editableRole(key);
+    const users = await this.roles.countUsers(role.id);
+    if (users > 0) throw new AppError(409, 'ROLE_IN_USE', 'Há usuários com esta role', { users });
+    await this.roles.delete(role.id);
+    await this.audit.record({ action: 'admin.role_deleted', actorId, targetType: 'role', targetId: key, ip });
+  }
+
+  private async editableRole(key: string) {
+    const role = await this.roles.findByKey(key);
+    if (!role) throw AppError.notFound('Role não encontrada');
+    if (role.isSystem) throw new AppError(409, 'SYSTEM_ROLE_READONLY', 'As roles do sistema são definidas no código');
+    return role;
   }
 
   /**

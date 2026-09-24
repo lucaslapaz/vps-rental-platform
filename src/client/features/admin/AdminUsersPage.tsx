@@ -23,6 +23,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { useAuth, useCan } from '@/features/auth/useAuth';
 import { api, apiGet } from '@/lib/api';
 import { errorMessage, roleLabel } from '@/lib/errors';
+import { AdminNav } from './AdminNav';
 
 interface PendingChange {
   user: AdminUserDTO;
@@ -61,6 +62,7 @@ export function AdminUsersPage() {
 
   return (
     <div className="flex flex-col gap-6">
+      <AdminNav />
       <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <h1 className="text-3xl font-extrabold">{t('admin:users.title')}</h1>

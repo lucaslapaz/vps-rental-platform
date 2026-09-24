@@ -7,6 +7,9 @@ import type { JobContext, JobHandler } from './types.ts';
 
 const DAY = 86_400_000;
 
+/** Jobs que o worker agenda sozinho (JobWorker.schedulePeriodic). */
+export const PERIODIC_JOB_TYPES = ['reconcile', 'expire_pending', 'cleanup_sessions', 'billing_cycle'] as const;
+
 /**
  * Faturas vencidas e não pagas são canceladas (plano §12). Se era a fatura de criação, a VPS que aguardava pagamento
  * vira DELETED (nada foi criado no Proxmox) e as senhas cifradas do pedido são apagadas.
@@ -43,7 +46,7 @@ export class ExpirePendingHandler implements JobHandler {
 
 /**
  * Limpeza: sessões expiradas/revogadas há mais de 1 dia; jobs periódicos concluídos há mais de 1 hora (o reconcile
- * sozinho gera ~1.440 por dia) e os demais concluídos há mais de 7 dias.
+ * sozinho gera ~1.440 por dia) ou com falha há mais de 1 dia, e os demais concluídos há mais de 7 dias.
  */
 @injectable()
 export class CleanupHandler implements JobHandler {
@@ -60,13 +63,11 @@ export class CleanupHandler implements JobHandler {
     });
     const jobs = await this.db.job.deleteMany({
       where: {
-        status: 'SUCCEEDED',
         OR: [
-          {
-            type: { in: ['reconcile', 'expire_pending', 'cleanup_sessions', 'billing_cycle'] },
-            updatedAt: { lt: new Date(now - 3_600_000) },
-          },
-          { updatedAt: { lt: new Date(now - 7 * DAY) } },
+          { status: 'SUCCEEDED', type: { in: [...PERIODIC_JOB_TYPES] }, updatedAt: { lt: new Date(now - 3_600_000) } },
+          { status: 'SUCCEEDED', updatedAt: { lt: new Date(now - 7 * DAY) } },
+          // Periódico que falhou (ex.: Proxmox fora do ar) roda de novo no minuto seguinte; 1 dia basta para investigar.
+          { status: 'FAILED', type: { in: [...PERIODIC_JOB_TYPES] }, updatedAt: { lt: dayAgo } },
         ],
       },
     });

@@ -1,7 +1,7 @@
 # CLAUDE.md — Favo (VPS Rental Platform)
 
 Contexto para o Claude implementar este projeto em conversas novas. **O plano completo e as decisões estão em
-[docs/PLANO_DE_IMPLEMENTACAO.md](docs/PLANO_DE_IMPLEMENTACAO.md)** (revisão 18, 2026-09-24). Este arquivo resume o
+[docs/PLANO_DE_IMPLEMENTACAO.md](docs/PLANO_DE_IMPLEMENTACAO.md)** (revisão 19, 2026-09-24). Este arquivo resume o
 que não dá para deduzir do código: regras combinadas com o usuário, estado do ambiente, armadilhas já encontradas
 (com a solução) e comandos que já foram testados.
 
@@ -31,8 +31,9 @@ que não dá para deduzir do código: regras combinadas com o usuário, estado d
   Fase 8: suporte (`/support` do cliente, `/agent` do técnico; `SupportService`, chat pelo Socket.IO com ack, fila na
   sala `agents`). Fase 9: E2E (`e2e/`, `npm run test:e2e`), cobertura, README, `docs/arquitetura.md` e
   `docs/seguranca.md`. Fase 10 (extras, na ordem do plano): 1 console de texto (xterm.js + termproxy), 2 firewall anti-spoofing por VPS e
-  3 cobrança recorrente (`billing_cycle`, `Vps.paidUntil`, relógio acelerado `BILLING_TIME_SCALE`) feitos; o próximo é o 4
-  (painel admin ampliado). **O banco de dev tem a VPS de demonstração da Ana** (ver §4, linha VMs).
+  3 cobrança recorrente (`billing_cycle`, `Vps.paidUntil`, relógio acelerado `BILLING_TIME_SCALE`) e 4 painel admin
+  (`src/client/features/admin/`: `/admin`, `/admin/vps`, `/admin/users`, `/admin/roles`; `AdminService`) feitos; o próximo é o 5
+  (reinstalar VPS). **O banco de dev tem a VPS de demonstração da Ana** (ver §4, linha VMs).
 - **Proxmox no código:** `ProxmoxClient` (undici + CA + servername, token, zod), `TaskWaiter` (UPID), `QemuCloudInitProvider`
   (clone, cloud-init, resize, energia, status, pendências, métricas, console, guest agent) e `ImageProfile` (comandos fixos por
   família). Os testes comuns usam `tests/helpers/FakeVirtualizationProvider.ts`; só o `npm run test:lab` (LAB=1) toca o Proxmox.
@@ -408,6 +409,16 @@ que não dá para deduzir do código: regras combinadas com o usuário, estado d
   e já derruba o lado do Proxmox). Para diagnosticar: auditoria `vps.console_requested/opened/closed/terminated` (N39).
   Se o console falhar só no navegador de alguém, teste com o Edge instalado pelo Playwright (`chromium.launch({ channel:
   msedge })`, perfil limpo) antes de mexer no código.
+- **N41. Roles (Fase 10):** as roles do sistema são **só leitura** no editor (o seed reaplica `SYSTEM_ROLES` a cada execução;
+  editar no banco seria desfeito). Roles novas: chave `^[a-z][a-z0-9_]{2,49}$`, e a troca de role de usuário aceita qualquer
+  role existente. Traduções de permissão ficam em `admin:permissions.<chave com ":" e "-" trocados por "_">` (o `:` é o
+  separador de namespace do i18next; `src/client/lib/permissionKeys.ts`); um teste confere que toda permissão do código tem
+  texto. Os testes criam roles com o prefixo `teste_` (o `resetTestData` apaga as que sobrarem).
+- **N42. E2E "ERR_CONNECTION_REFUSED" intermitente = servidor do E2E derrubado pelo worker** (não era RAM): o worker já
+  processava um job da subida quando o `globalSetup` limpava a tabela `jobs`; o `JobQueue.fail/complete` usava `update`, o
+  Prisma lançava P2025 ("No record was found for an update") e a rejeição solta encerrava o processo (Node 24). Hoje
+  `checkpoint/complete/fail` usam `updateMany` e o `tick` do worker captura qualquer erro ao gravar o resultado.
+  Reproduzia rodando `npm test` e logo depois `npm run test:e2e`.
 - **N17.** `execFileSync('npm', …, { shell: true })` gera o aviso `DEP0190` no Node 24; os scripts de `scripts/deps/` usam
   `execSync` com o nome do pacote validado por regex.
 

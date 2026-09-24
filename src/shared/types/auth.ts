@@ -41,4 +41,6 @@ export interface RoleDTO {
   description: string | null;
   isSystem: boolean;
   permissions: string[];
+  /** Quantos usuários têm esta role (uma role em uso não pode ser apagada). */
+  userCount: number;
 }

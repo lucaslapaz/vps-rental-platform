@@ -1,5 +1,6 @@
 import { ApiError } from './api';
 import i18n from './i18n';
+import { permissionI18nKey } from './permissionKeys';
 
 // As chaves aqui são dinâmicas (vêm do servidor ou do zod), então não dá para usar o t() tipado; o defaultValue cobre
 // códigos sem tradução. Os componentes que chamam estes helpers já re-renderizam ao trocar de idioma (useTranslation).
@@ -25,4 +26,9 @@ export function translateKey(key: string, fallback: string, params: Record<strin
 /** Nome da role no idioma atual; roles criadas depois (sem tradução) mostram o nome cadastrado. */
 export function roleLabel(key: string, fallback?: string): string {
   return translate(`common:roles.${key}`, { defaultValue: fallback ?? key });
+}
+
+/** Descrição da permissão no idioma atual (a do código, em pt-BR, como reserva). */
+export function permissionLabel(permission: string, fallback?: string): string {
+  return translate(`admin:permissions.${permissionI18nKey(permission)}`, { defaultValue: fallback ?? permission });
 }

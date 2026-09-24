@@ -1,6 +1,13 @@
 import { Router } from 'express';
 import type { DependencyContainer } from 'tsyringe';
 import { changeRoleSchema, intIdParamSchema, sshKeySchema, userSearchSchema, uuidParamSchema } from '../../../shared/schemas/account.ts';
+import {
+  adminJobsQuerySchema,
+  adminVpsQuerySchema,
+  createRoleSchema,
+  roleKeyParamSchema,
+  updateRoleSchema,
+} from '../../../shared/schemas/admin.ts';
 import { changePasswordSchema, loginSchema, registerSchema } from '../../../shared/schemas/auth.ts';
 import { messagesQuerySchema, openConversationSchema, sendBodySchema } from '../../../shared/schemas/support.ts';
 import {
@@ -94,6 +101,20 @@ export function createApiRouter(di: DependencyContainer) {
   // ── Administração ──
   router.get('/admin/users', A, P('admin:users:read'), validate({ query: userSearchSchema }), admin.listUsers);
   router.get('/admin/roles', A, P('admin:users:read'), admin.listRoles);
+  router.post('/admin/roles', O, C, A, P('admin:roles:manage'), validate({ body: createRoleSchema }), admin.createRole);
+  router.put(
+    '/admin/roles/:key',
+    O,
+    C,
+    A,
+    P('admin:roles:manage'),
+    validate({ params: roleKeyParamSchema, body: updateRoleSchema }),
+    admin.updateRole,
+  );
+  router.delete('/admin/roles/:key', O, C, A, P('admin:roles:manage'), validate({ params: roleKeyParamSchema }), admin.deleteRole);
+  router.get('/admin/overview', A, P('admin:overview:read'), admin.overview);
+  router.get('/admin/jobs', A, P('admin:overview:read'), validate({ query: adminJobsQuerySchema }), admin.jobs);
+  router.get('/admin/vps', A, P('admin:vps:read'), validate({ query: adminVpsQuerySchema }), admin.listVps);
   router.patch(
     '/admin/users/:id/role',
     O,

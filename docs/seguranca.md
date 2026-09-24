@@ -12,6 +12,7 @@ verificada: código ou teste. A revisão encontrou dois problemas, corrigidos ne
 | Técnico de suporte sem acesso a VPS, faturas e console | permissões da role `support_agent` | `support.test.ts` (403 em `/api/vps` e `/api/invoices`), `vps-page.test.ts` |
 | Console: `consoleId` de uso único, 30 s, preso à **sessão** que o pediu; limite de 2 por usuário | `ConsoleService`, `consoleProxy.ts` | `vps-page.test.ts` (reutilizado, outro usuário, sem sessão) |
 | **Corrigido:** revogar a sessão fecha também o console aberto por ela (antes, só o Socket.IO caía) | `RealtimeHub.onSessionEnded` | `vps-page.test.ts` (código 4001) |
+| O usuário vê e encerra as próprias conexões de console (de qualquer aba ou dispositivo); de outro usuário → 404. Conexão que falha no navegador não fica ocupando vaga | `ConsoleService.list/terminate`, `GET/DELETE /api/consoles` | `vps-page.test.ts` (limite, 4002, 404 para outro usuário) |
 | Token do Proxmox restrito aos pools `vps-platform`/`vps-templates` e a uma role mínima | `scripts/pve/bootstrap.sh` | `@lab`: `DELETE` do template com o token → 403 |
 | Uma VPS não consegue usar o IP ou o MAC de outra (anti-spoofing: `ipfilter` + `macfilter` do firewall do Proxmox) | `QemuCloudInitProvider.applyNetworkFirewall`, `scripts/pve/firewall.sh` | `@lab`: IP falso dentro da VM é bloqueado; contraprova sem `ipfilter` passa |
 | Console de texto com a mesma sessão de uso único do gráfico; o ticket do `termproxy` fica no servidor | `consoleProxy.ts` | `vps-page.test.ts` (serial) |

@@ -107,7 +107,7 @@ describe('console (noVNC via proxy)', () => {
     const vps = await runningVps(c);
     const res = await c.send('post', `/api/vps/${vps.id}/console`);
     expect(res.status).toBe(201);
-    expect(res.body).toEqual({ consoleId: expect.any(String), type: 'vnc', password: 'fake-password' });
+    expect(res.body).toEqual({ consoleId: expect.any(String), connectionId: expect.any(String), type: 'vnc', password: 'fake-password' });
 
     const headers = { Origin: env.APP_ORIGIN, Cookie: cookieHeader(c) };
     const opened = await openConsole(res.body.consoleId, headers);
@@ -130,7 +130,7 @@ describe('console (noVNC via proxy)', () => {
     const vps = await runningVps(c);
     const res = await c.send('post', `/api/vps/${vps.id}/console`, { type: 'serial' });
     expect(res.status).toBe(201);
-    expect(res.body).toEqual({ consoleId: expect.any(String), type: 'serial' });
+    expect(res.body).toEqual({ consoleId: expect.any(String), connectionId: expect.any(String), type: 'serial' });
 
     const opened = await openConsole(res.body.consoleId, { Origin: env.APP_ORIGIN, Cookie: cookieHeader(c) });
     expect(opened.status).toBe(101);
@@ -177,14 +177,46 @@ describe('console (noVNC via proxy)', () => {
     expect((await tech.send('post', `/api/vps/${vps.id}/console`)).status).toBe(403);
   });
 
-  it('VPS desligada → 409 VPS_NOT_RUNNING; mais de 2 consoles → 429 CONSOLE_LIMIT', async () => {
+  it('tentar de novo não acumula; limite de 2 abertas; listar, encerrar pelo painel (4002) e a vaga volta na hora', async () => {
     const c = await customer();
     const vps = await runningVps(c);
-    for (let i = 0; i < 2; i++) expect((await c.send('post', `/api/vps/${vps.id}/console`)).status).toBe(201);
+    // O pedido novo da mesma sessão substitui o que ainda não conectou.
+    for (let i = 0; i < 4; i++) expect((await c.send('post', `/api/vps/${vps.id}/console`)).status).toBe(201);
+    const retried = await c.get('/api/consoles');
+    expect(retried.body.limit).toBe(2);
+    expect(retried.body.connections).toHaveLength(1);
+    expect(retried.body.connections[0]).toMatchObject({ vpsId: vps.id, type: 'vnc', state: 'connecting', sameSession: true });
+
+    const headers = { Origin: env.APP_ORIGIN, Cookie: cookieHeader(c) };
+    const sockets: WebSocket[] = [];
+    for (let i = 0; i < 2; i++) {
+      const res = await c.send('post', `/api/vps/${vps.id}/console`);
+      const opened = await openConsole(res.body.consoleId, headers);
+      expect(opened.status).toBe(101);
+      sockets.push(opened.ws as WebSocket);
+    }
     const third = await c.send('post', `/api/vps/${vps.id}/console`);
     expect(third.status).toBe(429);
     expect(third.body.error.code).toBe('CONSOLE_LIMIT');
 
+    const list = (await c.get('/api/consoles')).body.connections as { id: string; state: string }[];
+    expect(list.map((x) => x.state)).toEqual(['open', 'open']);
+    // Outro usuário não enxerga nem encerra a conexão (404, sem revelar que existe).
+    const intruder = await customer();
+    expect((await intruder.get('/api/consoles')).body.connections).toEqual([]);
+    expect((await intruder.send('delete', `/api/consoles/${list[0]?.id}`)).status).toBe(404);
+
+    const closed = new Promise<number>((resolve) => sockets[1]?.once('close', (code) => resolve(code)));
+    expect((await c.send('delete', `/api/consoles/${list[0]?.id}`)).status).toBe(204);
+    expect(await closed).toBe(4002);
+    expect((await c.get('/api/consoles')).body.connections).toHaveLength(1);
+    expect((await c.send('post', `/api/vps/${vps.id}/console`)).status).toBe(201);
+    expect((await c.send('delete', `/api/consoles/${list[0]?.id}`)).status).toBe(404); // já encerrada
+    expect(await db.auditLog.count({ where: { targetId: vps.id, action: 'vps.console_terminated' } })).toBe(1);
+    for (const ws of sockets) ws.close();
+  });
+
+  it('VPS desligada → 409 VPS_NOT_RUNNING', async () => {
     const other = await customer();
     const stopped = await runningVps(other, { hostname: 'desligada' });
     await other.send('post', `/api/vps/${stopped.id}/actions/stop`);

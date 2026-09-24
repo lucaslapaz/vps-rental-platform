@@ -399,6 +399,15 @@ que não dá para deduzir do código: regras combinadas com o usuário, estado d
 - **N39. Consulta do Prisma é preguiçosa:** `db.x.create()` devolve uma *PrismaPromise* que só executa no `then`. Um
   `void audit.record(...)` sem `await` **nunca gravava** (o console aberto/fechado não aparecia na auditoria desde a Fase 7).
   O `AuditLogRepository.record` agora é `async` (executa na hora); em código novo, sempre `await` ou `.catch()`.
+- **N40. Console: vagas presas e gerenciamento de conexões (2026-09-24).** No noVNC 1.7 o construtor do `RFB` já abre o
+  WebSocket; uma exceção logo depois (no caso real, uma **extensão do navegador do usuário que interceptava WebSockets**)
+  deixava um cliente órfão conectado, e o servidor contava a vaga até a aba fechar ("já tem 2 consoles abertos" sem nada
+  funcionando). Hoje o `VncConsole` cria o próprio `WebSocket` e o entrega ao noVNC (fecha no `catch`), mostra o erro real
+  na tela e no console do navegador, um pedido novo da mesma sessão para a mesma VPS substitui o que ainda não conectou, e o
+  usuário vê e encerra as conexões em `GET/DELETE /api/consoles` (painel na aba Console; o proxy fecha com o código **4002**
+  e já derruba o lado do Proxmox). Para diagnosticar: auditoria `vps.console_requested/opened/closed/terminated` (N39).
+  Se o console falhar só no navegador de alguém, teste com o Edge instalado pelo Playwright (`chromium.launch({ channel:
+  msedge })`, perfil limpo) antes de mexer no código.
 - **N17.** `execFileSync('npm', …, { shell: true })` gera o aviso `DEP0190` no Node 24; os scripts de `scripts/deps/` usam
   `execSync` com o nome do pacote validado por regex.
 

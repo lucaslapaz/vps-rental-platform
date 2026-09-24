@@ -125,3 +125,16 @@ export interface InvoiceDTO {
   vps: { id: string; hostname: string; status: VpsStatusDTO } | null;
   payments: PaymentDTO[];
 }
+
+/** GET /api/consoles: conexões de console do usuário (em abertura ou abertas), para ver e encerrar. */
+export interface ConsoleConnectionDTO {
+  id: string;
+  vpsId: string;
+  hostname: string;
+  type: 'vnc' | 'serial';
+  /** connecting: pedida e ainda sem WebSocket (vale 30 s); open: WebSocket aberto. */
+  state: 'connecting' | 'open';
+  since: string;
+  /** Aberta pela mesma sessão de login que está consultando. */
+  sameSession: boolean;
+}

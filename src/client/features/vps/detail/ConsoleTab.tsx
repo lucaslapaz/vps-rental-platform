@@ -1,13 +1,24 @@
 import RFB from '@novnc/novnc';
 import type { VpsDTO } from '@shared/types/catalog';
+import { useQueryClient } from '@tanstack/react-query';
 import { Expand, Keyboard, Maximize, RefreshCw } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
-import { api } from '@/lib/api';
+import { ApiError, api } from '@/lib/api';
 import { errorMessage } from '@/lib/errors';
 import { cn } from '@/lib/utils';
+import { queryKeys } from '../queries';
+import { ConsoleConnections } from './ConsoleConnections';
 import { SerialConsole } from './SerialConsole';
+
+export interface ConsoleProps {
+  vps: VpsDTO;
+  /** Id público da conexão desta aba (para o painel de conexões marcar "Esta aba"). */
+  onConnection: (connectionId: string | null) => void;
+  /** Incrementado quando o usuário encerra a conexão desta aba pelo painel. */
+  stopSignal: number;
+}
 
 type State = 'idle' | 'connecting' | 'connected' | 'disconnected' | 'error';
 
@@ -24,8 +35,9 @@ const DOT: Record<State, string> = {
  * (POST /api/vps/:id/console → consoleId + senha VNC) e abre o WebSocket /ws/console/:consoleId na própria Favo, que faz
  * a ponte. Conecta ao abrir a aba e desconecta ao sair dela.
  */
-function VncConsole({ vps }: { vps: VpsDTO }) {
+function VncConsole({ vps, onConnection, stopSignal }: ConsoleProps) {
   const { t } = useTranslation('vps');
+  const queryClient = useQueryClient();
   const screen = useRef<HTMLDivElement>(null);
   const frame = useRef<HTMLDivElement>(null);
   const rfb = useRef<RFB | null>(null);
@@ -41,6 +53,8 @@ function VncConsole({ vps }: { vps: VpsDTO }) {
     rfb.current?.disconnect();
     rfb.current = null;
   }, []);
+  /** A lista de conexões muda quando esta aba conecta ou desconecta. */
+  const refreshConnections = useCallback(() => void queryClient.invalidateQueries({ queryKey: queryKeys.consoles }), [queryClient]);
 
   const connect = useCallback(async () => {
     if (!screen.current) return;
@@ -48,36 +62,84 @@ function VncConsole({ vps }: { vps: VpsDTO }) {
     const mine = attempt.current;
     setError(null);
     setState('connecting');
+    // O WebSocket é criado aqui e entregue ao noVNC: se qualquer passo seguinte falhar, ele é fechado no catch. Antes, o
+    // noVNC abria a conexão dentro do construtor e uma exceção logo depois deixava um cliente órfão conectado, ocupando
+    // uma das vagas de console do usuário até fechar a aba.
+    let socket: WebSocket | null = null;
+    let client: RFB | null = null;
     try {
-      const { consoleId, password } = await api<{ consoleId: string; password: string }>('POST', `/vps/${vps.id}/console`);
+      const { consoleId, connectionId, password } = await api<{ consoleId: string; connectionId: string; password: string }>(
+        'POST',
+        `/vps/${vps.id}/console`,
+      );
+      refreshConnections();
       if (!screen.current || mine !== attempt.current) return; // o usuário saiu da aba ou reconectou nesse meio-tempo
+      onConnection(connectionId);
       const scheme = window.location.protocol === 'https:' ? 'wss' : 'ws';
-      const client = new RFB(screen.current, `${scheme}://${window.location.host}/ws/console/${consoleId}`, {
-        wsProtocols: ['binary'],
+      socket = new WebSocket(`${scheme}://${window.location.host}/ws/console/${consoleId}`, ['binary']);
+      socket.binaryType = 'arraybuffer';
+      // 4002: encerrada pelo painel de conexões (nesta ou em outra aba). Não é erro.
+      let terminated = false;
+      socket.addEventListener('close', (e) => {
+        terminated = e.code === 4002;
+      });
+      client = new RFB(screen.current, socket, {
         credentials: { password } as { username: string; password: string; target: string },
       });
+      rfb.current = client;
+      const current = client;
       client.scaleViewport = fit;
       client.background = 'var(--console)';
       client.focusOnClick = true;
-      client.addEventListener('connect', () => setState('connected'));
+      client.addEventListener('connect', () => {
+        setState('connected');
+        refreshConnections();
+      });
       client.addEventListener('disconnect', (e) => {
-        if (rfb.current !== client) return;
+        refreshConnections();
+        if (rfb.current !== current) return;
         rfb.current = null;
-        setState(e.detail.clean ? 'disconnected' : 'error');
-        if (!e.detail.clean) setError(t('detail.console.failed'));
+        const ok = e.detail.clean || terminated;
+        setState(ok ? 'disconnected' : 'error');
+        if (!ok) setError(t('detail.console.failed'));
       });
       // O Proxmox usa a senha VNC do ticket; se o servidor pedir de novo, reenvia a mesma.
-      client.addEventListener('credentialsrequired', () => client.sendCredentials({ password } as never));
-      client.addEventListener('securityfailure', () => {
+      client.addEventListener('credentialsrequired', () => current.sendCredentials({ password } as never));
+      client.addEventListener('securityfailure', (e) => {
+        console.error('[console] noVNC: falha de segurança', e.detail);
         setState('error');
         setError(t('detail.console.failed'));
       });
-      rfb.current = client;
     } catch (err) {
+      // Mostra no console do navegador o erro real (ajuda a diagnosticar navegadores e extensões) e libera a conexão.
+      console.error('[console] falha ao abrir o console gráfico', err);
+      if (client) {
+        if (rfb.current === client) rfb.current = null;
+        try {
+          client.disconnect();
+        } catch {
+          // o noVNC pode falhar ao desmontar um cliente que nem terminou de montar; o socket é fechado abaixo
+        }
+      }
+      if (socket && socket.readyState !== WebSocket.CLOSED) socket.close();
+      refreshConnections();
       setState('error');
-      setError(errorMessage(err));
+      setError(
+        err instanceof Error && !(err instanceof ApiError) ? t('detail.console.failedDetail', { detail: err.message }) : errorMessage(err),
+      );
     }
-  }, [vps.id, fit, disconnect, t]);
+  }, [vps.id, fit, disconnect, t, onConnection, refreshConnections]);
+
+  // Esta conexão foi encerrada pelo painel de conexões: desconecta sem mostrar erro. Compara com o valor da montagem
+  // (o sinal sobrevive à troca entre gráfico e texto).
+  const stopAtMount = useRef(stopSignal);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: reage só ao sinal
+  useEffect(() => {
+    if (stopSignal === stopAtMount.current) return;
+    disconnect();
+    setState('disconnected');
+    setError(null);
+  }, [stopSignal]);
 
   // Abre ao entrar na aba (com a VPS ligada) e fecha ao sair ou se a VPS parar.
   // biome-ignore lint/correctness/useExhaustiveDependencies: reconectar só quando a VPS liga/desliga, não a cada render
@@ -149,6 +211,9 @@ function VncConsole({ vps }: { vps: VpsDTO }) {
 export function ConsoleTab({ vps }: { vps: VpsDTO }) {
   const { t } = useTranslation('vps');
   const [mode, setMode] = useState<'vnc' | 'serial'>('vnc');
+  const [currentId, setCurrentId] = useState<string | null>(null);
+  const [stopSignal, setStopSignal] = useState(0);
+  const onConnection = useCallback((id: string | null) => setCurrentId(id), []);
   if (vps.status !== 'RUNNING') return <p className="text-muted-foreground">{t('detail.console.notRunning')}</p>;
   return (
     <div className="flex flex-col gap-3">
@@ -160,14 +225,22 @@ export function ConsoleTab({ vps }: { vps: VpsDTO }) {
             size="sm"
             variant={mode === m ? 'outline' : 'ghost'}
             aria-pressed={mode === m}
-            onClick={() => setMode(m)}
+            onClick={() => {
+              setMode(m);
+              setCurrentId(null);
+            }}
             data-testid={`console-mode-${m}`}
           >
             {m === 'vnc' ? t('detail.console.modeVnc') : t('detail.console.modeSerial')}
           </Button>
         ))}
       </fieldset>
-      {mode === 'vnc' ? <VncConsole vps={vps} /> : <SerialConsole vps={vps} />}
+      <ConsoleConnections currentId={currentId} onTerminateCurrent={() => setStopSignal((n) => n + 1)} />
+      {mode === 'vnc' ? (
+        <VncConsole vps={vps} onConnection={onConnection} stopSignal={stopSignal} />
+      ) : (
+        <SerialConsole vps={vps} onConnection={onConnection} stopSignal={stopSignal} />
+      )}
     </div>
   );
 }

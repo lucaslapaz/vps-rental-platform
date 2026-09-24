@@ -4,6 +4,7 @@ import { changeRoleSchema, intIdParamSchema, sshKeySchema, userSearchSchema, uui
 import { changePasswordSchema, loginSchema, registerSchema } from '../../../shared/schemas/auth.ts';
 import { messagesQuerySchema, openConversationSchema, sendBodySchema } from '../../../shared/schemas/support.ts';
 import {
+  consoleConnectionParamSchema,
   consoleRequestSchema,
   createVpsSchema,
   metricsQuerySchema,
@@ -171,6 +172,8 @@ export function createApiRouter(di: DependencyContainer) {
     validate({ params: uuidParamSchema, body: consoleRequestSchema }),
     vps.console,
   );
+  router.get('/consoles', A, P('vps:console:own'), vps.consoleConnections);
+  router.delete('/consoles/:id', O, C, A, P('vps:console:own'), validate({ params: consoleConnectionParamSchema }), vps.terminateConsole);
 
   // ── Faturas e pagamento simulado ──
   router.get('/invoices', A, P('billing:read:own'), invoices.list);

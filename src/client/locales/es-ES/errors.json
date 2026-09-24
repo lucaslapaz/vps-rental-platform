@@ -38,7 +38,7 @@
   "NO_IP_AVAILABLE": "No hay IP libres en este momento.",
   "SESSION_REVOKED": "Tu sesión se cerró. Inicia sesión de nuevo.",
   "VPS_NOT_RUNNING": "Enciende el VPS para hacer esto.",
-  "CONSOLE_LIMIT": "Ya tienes 2 consolas abiertas. Cierra una para abrir otra.",
+  "CONSOLE_LIMIT": "Ya tienes 2 consolas abiertas. Cierra una en la lista de conexiones para abrir otra.",
   "CONVERSATION_ALREADY_OPEN": "Ya tienes una conversación abierta con soporte.",
   "ALREADY_CLAIMED": "Otro técnico ya tomó esta conversación.",
   "AGENT_LIMIT": "Llegaste al límite de atenciones simultáneas.",

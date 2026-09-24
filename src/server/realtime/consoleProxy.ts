@@ -70,7 +70,12 @@ export function attachConsoleProxy(httpServer: http.Server, di: DependencyContai
         const started = Date.now();
         let lastActivity = started;
         const queue: { data: RawData; binary: boolean }[] = [];
-        consoles.opened(user.id);
+        // Encerrada pelo painel de conexões: fecha o navegador com o código recebido e já derruba o lado do Proxmox (não
+        // espera o navegador responder; uma aba travada não segura a vaga).
+        consoles.register(session, (code, reason) => {
+          if (client.readyState === WebSocket.OPEN) client.close(code, reason);
+          finish();
+        });
         open.set(client, user.sessionId);
         audit
           .record({
@@ -93,7 +98,7 @@ export function attachConsoleProxy(httpServer: http.Server, di: DependencyContai
           finished = true;
           clearInterval(idle);
           open.delete(client);
-          consoles.closed(user.id);
+          consoles.unregister(session.connectionId);
           if (upstream.readyState === WebSocket.OPEN || upstream.readyState === WebSocket.CONNECTING) upstream.terminate();
           if (client.readyState === WebSocket.OPEN) client.close(1000);
           audit

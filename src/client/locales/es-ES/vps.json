@@ -207,7 +207,21 @@
       "failed": "No se pudo conectar a la consola.",
       "modeVnc": "Gráfico (VNC)",
       "modeSerial": "Texto (serie)",
-      "serialHint": "Terminal en el puerto serie de la VM: selecciona para copiar y pega como siempre. Si no aparece el inicio de sesión, pulsa Enter."
+      "serialHint": "Terminal en el puerto serie de la VM: selecciona para copiar y pega como siempre. Si no aparece el inicio de sesión, pulsa Enter.",
+      "failedDetail": "No se pudo abrir la consola en este navegador ({{detail}}).",
+      "connections": {
+        "title": "Conexiones de consola",
+        "usage": "{{used}} de {{limit}} en uso",
+        "fullHint": "Límite alcanzado: cierra una conexión para abrir otra.",
+        "empty": "No hay conexiones abiertas.",
+        "open": "Abierta",
+        "connecting": "Conectando",
+        "thisTab": "Esta pestaña",
+        "otherDevice": "Otra sesión",
+        "since": "desde las {{time}}",
+        "terminate": "Cerrar",
+        "terminated": "Conexión con {{hostname}} cerrada."
+      }
     },
     "metrics": {
       "cpu": "CPU (%)",

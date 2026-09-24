@@ -122,3 +122,5 @@ export const metricsQuerySchema = z.object({ timeframe: z.enum(METRICS_TIMEFRAME
 export const CONSOLE_TYPES = ['vnc', 'serial'] as const;
 export type ConsoleType = (typeof CONSOLE_TYPES)[number];
 export const consoleRequestSchema = z.preprocess((v) => v ?? {}, z.object({ type: z.enum(CONSOLE_TYPES).default('vnc') }));
+/** DELETE /api/consoles/:id: o id público da conexão (não é o consoleId de uso único). */
+export const consoleConnectionParamSchema = z.object({ id: z.string().regex(/^[A-Za-z0-9_-]{8,64}$/) });

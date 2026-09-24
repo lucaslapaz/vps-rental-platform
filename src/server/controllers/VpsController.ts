@@ -2,6 +2,7 @@ import type { Request, Response } from 'express';
 import { inject, injectable } from 'tsyringe';
 import { uuidParamSchema } from '../../shared/schemas/account.ts';
 import {
+  consoleConnectionParamSchema,
   consoleRequestSchema,
   createVpsSchema,
   metricsQuerySchema,
@@ -14,7 +15,7 @@ import {
 } from '../../shared/schemas/vps.ts';
 import { valid } from '../http/middlewares/validate.ts';
 import { toVpsDTO, VpsRepository } from '../repositories/VpsRepository.ts';
-import { ConsoleService } from '../services/ConsoleService.ts';
+import { ConsoleService, MAX_CONSOLES_PER_USER } from '../services/ConsoleService.ts';
 import { OrderService } from '../services/OrderService.ts';
 import { VpsAccessService } from '../services/VpsAccessService.ts';
 import { VpsInsightsService } from '../services/VpsInsightsService.ts';
@@ -103,6 +104,19 @@ export class VpsController {
     const user = currentUser(req);
     const { type } = valid(res, 'body', consoleRequestSchema);
     res.status(201).json(await this.consoles.open({ id: user.id, sessionId: user.sessionId }, id, req.ip ?? null, type));
+  };
+
+  /** GET /api/consoles: conexões de console do usuário (em abertura ou abertas). */
+  consoleConnections = (req: Request, res: Response) => {
+    const user = currentUser(req);
+    res.json({ connections: this.consoles.list({ id: user.id, sessionId: user.sessionId }), limit: MAX_CONSOLES_PER_USER });
+  };
+
+  /** DELETE /api/consoles/:id: encerra uma conexão do próprio usuário e libera a vaga. */
+  terminateConsole = async (req: Request, res: Response) => {
+    const { id } = valid(res, 'params', consoleConnectionParamSchema);
+    await this.consoles.terminate(currentUser(req), id, req.ip ?? null);
+    res.status(204).end();
   };
 
   /** GET /api/vps/:id/live */

@@ -1,7 +1,16 @@
 import { BUSY_STATUSES } from '@shared/constants/vps';
 import type { METRICS_TIMEFRAMES } from '@shared/schemas/vps';
 import type { SshKeyDTO } from '@shared/types/auth';
-import type { InvoiceDTO, OsTemplateDTO, PlanDTO, VpsDTO, VpsEventDTO, VpsLiveDTO, VpsMetricPointDTO } from '@shared/types/catalog';
+import type {
+  ConsoleConnectionDTO,
+  InvoiceDTO,
+  OsTemplateDTO,
+  PlanDTO,
+  VpsDTO,
+  VpsEventDTO,
+  VpsLiveDTO,
+  VpsMetricPointDTO,
+} from '@shared/types/catalog';
 import { useQuery } from '@tanstack/react-query';
 import { ApiError, apiGet } from '@/lib/api';
 
@@ -17,6 +26,7 @@ export const queryKeys = {
   invoices: ['invoices'] as const,
   invoice: (id: string) => ['invoices', id] as const,
   sshKeys: ['account', 'ssh-keys'] as const,
+  consoles: ['consoles'] as const,
 };
 
 export const usePlans = () =>
@@ -90,3 +100,11 @@ export const useSshKeys = (enabled = true) =>
 export function formatMemory(mb: number, locale: string) {
   return mb >= 1024 ? `${new Intl.NumberFormat(locale).format(mb / 1024)} GB` : `${mb} MB`;
 }
+
+/** Conexões de console do usuário (todas as VPS). Consulta a cada 5 s enquanto a aba Console está aberta. */
+export const useConsoleConnections = () =>
+  useQuery({
+    queryKey: queryKeys.consoles,
+    queryFn: () => apiGet<{ connections: ConsoleConnectionDTO[]; limit: number }>('/consoles'),
+    refetchInterval: 5_000,
+  });

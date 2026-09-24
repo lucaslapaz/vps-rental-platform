@@ -1,5 +1,5 @@
 import '@xterm/xterm/css/xterm.css';
-import type { VpsDTO } from '@shared/types/catalog';
+import { useQueryClient } from '@tanstack/react-query';
 import { FitAddon } from '@xterm/addon-fit';
 import { Terminal } from '@xterm/xterm';
 import { RefreshCw } from 'lucide-react';
@@ -9,6 +9,8 @@ import { Button } from '@/components/ui/button';
 import { api } from '@/lib/api';
 import { errorMessage } from '@/lib/errors';
 import { cn } from '@/lib/utils';
+import { queryKeys } from '../queries';
+import type { ConsoleProps } from './ConsoleTab';
 
 type State = 'connecting' | 'connected' | 'disconnected' | 'error';
 
@@ -27,8 +29,12 @@ const utf8Length = (text: string) => new TextEncoder().encode(text).length;
  * "0:<bytes>:<texto>", redimensionar "1:<cols>:<rows>:" e ping "2" a cada 30 s. A autenticação com o ticket é feita
  * pelo proxy da Favo; o navegador só recebe um consoleId de uso único.
  */
-export function SerialConsole({ vps }: { vps: VpsDTO }) {
+export function SerialConsole({ vps, onConnection, stopSignal }: ConsoleProps) {
   const { t } = useTranslation('vps');
+  const queryClient = useQueryClient();
+  const refreshConnections = () => void queryClient.invalidateQueries({ queryKey: queryKeys.consoles });
+  const stopAtMount = useRef(stopSignal);
+  const socket = useRef<WebSocket | null>(null);
   const host = useRef<HTMLDivElement>(null);
   const [state, setState] = useState<State>('connecting');
   const [error, setError] = useState<string | null>(null);
@@ -64,13 +70,19 @@ export function SerialConsole({ vps }: { vps: VpsDTO }) {
     // Adiado um tick: no StrictMode (dev) o efeito monta duas vezes e não pode gastar 2 sessões de console (N31).
     const timer = setTimeout(async () => {
       try {
-        const { consoleId } = await api<{ consoleId: string }>('POST', `/vps/${vps.id}/console`, { type: 'serial' });
+        const { consoleId, connectionId } = await api<{ consoleId: string; connectionId: string }>('POST', `/vps/${vps.id}/console`, {
+          type: 'serial',
+        });
+        refreshConnections();
         if (disposed) return;
+        onConnection(connectionId);
         const scheme = window.location.protocol === 'https:' ? 'wss' : 'ws';
         ws = new WebSocket(`${scheme}://${window.location.host}/ws/console/${consoleId}`, ['binary']);
         ws.binaryType = 'arraybuffer';
+        socket.current = ws;
         ws.onopen = () => {
           setState('connected');
+          refreshConnections();
           send(`1:${term.cols}:${term.rows}:`);
           // Um Enter faz o getty mostrar o "login:" de novo (a tela da serial não tem histórico).
           send('0:1:\r');
@@ -79,11 +91,18 @@ export function SerialConsole({ vps }: { vps: VpsDTO }) {
         };
         ws.onmessage = (event) => term.write(new Uint8Array(event.data as ArrayBuffer));
         ws.onclose = (event) => {
+          refreshConnections();
           if (disposed) return;
+          // Encerrada pelo painel de conexões (4002): desconectada, sem erro.
+          if (event.code === 4002) {
+            setState('disconnected');
+            return;
+          }
           setState(event.code === 1000 || event.code === 1001 ? 'disconnected' : 'error');
           if (event.code !== 1000 && event.code !== 1001) setError(t('detail.console.failed'));
         };
       } catch (err) {
+        console.error('[console] falha ao abrir o console de texto', err);
         if (!disposed) {
           setState('error');
           setError(errorMessage(err));
@@ -102,6 +121,14 @@ export function SerialConsole({ vps }: { vps: VpsDTO }) {
       term.dispose();
     };
   }, [vps.id, attempt]);
+
+  // Encerrada pelo painel de conexões (a aba também pode receber o 4002 do servidor): fecha sem mostrar erro.
+  useEffect(() => {
+    if (stopSignal === stopAtMount.current) return;
+    socket.current?.close();
+    setState('disconnected');
+    setError(null);
+  }, [stopSignal]);
 
   const label: Record<State, string> = {
     connecting: t('detail.console.connecting'),

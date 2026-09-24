@@ -10,6 +10,8 @@
     "tests",
     "prisma",
     "scripts/pve/cli.ts",
+    "scripts/pve/inspect.ts",
+    "scripts/mcp",
     "prisma.config.ts",
     "vitest.config.ts",
     "vite.config.ts",

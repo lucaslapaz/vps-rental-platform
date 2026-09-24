@@ -1,7 +1,7 @@
 # CLAUDE.md — Favo (VPS Rental Platform)
 
 Contexto para o Claude implementar este projeto em conversas novas. **O plano completo e as decisões estão em
-[docs/PLANO_DE_IMPLEMENTACAO.md](docs/PLANO_DE_IMPLEMENTACAO.md)** (revisão 20, 2026-09-24). Este arquivo resume o
+[docs/PLANO_DE_IMPLEMENTACAO.md](docs/PLANO_DE_IMPLEMENTACAO.md)** (revisão 21, 2026-09-24). Este arquivo resume o
 que não dá para deduzir do código: regras combinadas com o usuário, estado do ambiente, armadilhas já encontradas
 (com a solução) e comandos que já foram testados.
 
@@ -32,12 +32,13 @@ que não dá para deduzir do código: regras combinadas com o usuário, estado d
   sala `agents`). Fase 9: E2E (`e2e/`, `npm run test:e2e`), cobertura, README, `docs/arquitetura.md` e
   `docs/seguranca.md`. Fase 10 (extras, na ordem do plano): 1 console de texto (xterm.js + termproxy), 2 firewall anti-spoofing por VPS e
   3 cobrança recorrente (`billing_cycle`, `Vps.paidUntil`, relógio acelerado `BILLING_TIME_SCALE`) e 4 painel admin
-  (`src/client/features/admin/`: `/admin`, `/admin/vps`, `/admin/users`, `/admin/roles`; `AdminService`) e 5 reinstalar (`reinstall_vps`, `/vps/:id/reinstall`) feitos; o próximo é o 6 (MCP próprio
-  somente leitura). **O banco de dev tem a VPS de demonstração da Ana** (ver §4, linha VMs).
+  (`src/client/features/admin/`: `/admin`, `/admin/vps`, `/admin/users`, `/admin/roles`; `AdminService`) e 5 reinstalar (`reinstall_vps`, `/vps/:id/reinstall`) e 6 MCP somente leitura (`npm run mcp`, `scripts/mcp/`) feitos; o
+  próximo é o 7 (Docker Compose e CI no GitHub Actions). **O banco de dev tem a VPS de demonstração da Ana** (ver §4, linha VMs).
 - **Proxmox no código:** `ProxmoxClient` (undici + CA + servername, token, zod), `TaskWaiter` (UPID), `QemuCloudInitProvider`
   (clone, cloud-init, resize, energia, status, pendências, métricas, console, guest agent) e `ImageProfile` (comandos fixos por
   família). Os testes comuns usam `tests/helpers/FakeVirtualizationProvider.ts`; só o `npm run test:lab` (LAB=1) toca o Proxmox.
-  `npm run pve -- status | capacity | list | show <vmid> | task <upid> | reconcile --dry-run`.
+  `npm run pve -- status | capacity | list | show <vmid> | task <upid> | reconcile --dry-run`. As consultas ficam em
+  `scripts/pve/inspect.ts` e também servem o MCP (`npm run mcp`; no Claude Code: `claude mcp add favo-pve -- npm run --silent mcp`).
 - **Autenticação (Fase 3):** cookies `sid` (HttpOnly), `psid` (pré-sessão, HttpOnly) e `csrf` (lido pelo JS e devolvido
   em `X-CSRF-Token`); HMAC com `CSRF_SECRET` (no `.env.*`). Ordem dos middlewares em `src/server/http/routes/index.ts`.
   Permissões verificadas com `requirePermission`/`req.user.can()` no servidor e `useCan()` no cliente. Textos de tela
@@ -422,6 +423,9 @@ que não dá para deduzir do código: regras combinadas com o usuário, estado d
   Prisma lançava P2025 ("No record was found for an update") e a rejeição solta encerrava o processo (Node 24). Hoje
   `checkpoint/complete/fail` usam `updateMany` e o `tick` do worker captura qualquer erro ao gravar o resultado.
   Reproduzia rodando `npm test` e logo depois `npm run test:e2e`.
+- **N43. MCP por stdio:** a saída padrão é só do protocolo. O `scripts/mcp/server.ts` cria o logger com `LOG_LEVEL: 'silent'` e
+  `NODE_ENV: 'production'` (sem o worker do pino-pretty) e nada ali usa `console.log`; rode com `npm run --silent mcp` (o npm
+  também escreveria no stdout). O SDK 1.30.1 aceita o zod 4 (peer `^3.25 || ^4.0`) e o `registerTool` recebe um *raw shape*.
 - **N17.** `execFileSync('npm', …, { shell: true })` gera o aviso `DEP0190` no Node 24; os scripts de `scripts/deps/` usam
   `execSync` com o nome do pacote validado por regex.
 

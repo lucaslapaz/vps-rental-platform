@@ -23,6 +23,7 @@
 | 18 | 2026-09-24 | **Fase 10, extra 3** (§12, §17): cobrança recorrente contada do `Vps.paidUntil`: renovação 7 dias antes do fim do período, suspensão (VM desligada) no vencimento, exclusão após 3 dias de carência e reativação ao pagar; "relógio acelerado" `BILLING_TIME_SCALE` para demonstração |
 | 19 | 2026-09-24 | **Console:** gerenciamento das conexões (`GET/DELETE /api/consoles`, painel na aba Console) e a vaga liberada quando a conexão falha no navegador (o erro relatado vinha de uma extensão que interceptava WebSockets). **Fase 10, extra 4:** painel admin ampliado (visão geral com capacidade do nó e fila de jobs, todas as VPS somente leitura e o editor de roles, com as roles do sistema travadas) |
 | 20 | 2026-09-24 | **Fase 10, extra 5:** reinstalar a VPS (apaga a VM e reaproveita o provisionamento com o mesmo IP, MAC, VMID e hostname; imagem e acesso escolhidos de novo). Correção: o reboot com CPU/RAM pendentes gravava `STOPPED` numa VM que o Proxmox estava religando |
+| 21 | 2026-09-24 | **Fase 10, extra 6:** MCP próprio somente leitura (`npm run mcp`, `@modelcontextprotocol/sdk` 1.30.1, stdio) com as 5 ferramentas previstas no §16.3; as consultas saíram do CLI para `scripts/pve/inspect.ts` e são as mesmas nos dois |
 | 11 | 2026-09-23 | **Fase 4 concluída** (§17): cliente do Proxmox, provider real, agente, CLI `npm run pve` e suíte `@lab` 30/30 nas quatro imagens. Mudanças: drop-in do sshd **`01-favo.conf`** (§10.6) e formato do ticket do `vncproxy` (§10.5) |
 | 10 | 2026-09-23 | **Fase 3 concluída** (§17): sessão, CSRF assinado, RBAC, conta, chaves SSH e administração de usuários. Detalhes da implementação em §9.8 (origem aceita, pré-sessão, validação real das chaves SSH, textos em namespaces) |
 | 9 | 2026-09-23 | **Fase 2 concluída** (§17): Prisma 7.10.0 + adapter MariaDB, migration `init`, seeds idempotentes. Ajustes: tabelas com `@@map` em snake_case (MySQL do Windows com `lower_case_table_names=1`), `IpAddress.macAddress` (MAC derivado do IP), pool `.200–.228`, plano **Medium** no seed, proteção do Prisma contra agentes de IA em comandos destrutivos (§19) |
@@ -2365,7 +2366,13 @@ e recuperação por `?after=`.
    extraído da criação) e a linha do tempo própria ("Apagando o sistema anterior" → … → "Pronta"), que ignora as etapas
    antigas da criação. Testado com o provider falso, no E2E e no laboratório (mesmo IP e VMID; o usuário novo entra por SSH e
    o da instalação anterior não existe mais).
-6. **MCP próprio somente leitura** (§16.3).
+6. ✅ **MCP próprio somente leitura** (§16.3).
+   **Feito (rev. 21):** `scripts/mcp/` (`npm run mcp`, transporte stdio). Ferramentas `pve_capacity`, `pve_list_instances`
+   (com a VPS da Favo dona de cada VM), `pve_instance_status` (com as pendências), `pve_task_log` e `platform_reconcile_report`,
+   todas com `readOnlyHint`. Usa o token da plataforma (restrito aos pools) e só faz GET; entradas validadas antes de chamar o
+   Proxmox (VMID numa faixa, UPID pelo formato). As consultas ficam em `scripts/pve/inspect.ts` (`PlatformInspector`), usado
+   também pelo CLI `npm run pve`. Testado com cliente e servidor em memória (`tests/server/mcp.test.ts`) e por stdio de
+   verdade contra o laboratório. Para usar no Claude Code: `claude mcp add favo-pve -- npm run --silent mcp`.
 7. Docker Compose (app + MySQL) e CI com GitHub Actions (lint, typecheck, testes sem `@lab`).
 
 ---

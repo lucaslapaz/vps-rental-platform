@@ -6,7 +6,6 @@
  */
 import 'reflect-metadata';
 import { container } from 'tsyringe';
-import { z } from 'zod';
 import { loadEnv } from '../../src/server/config/env.ts';
 import { registerDependencies } from '../../src/server/container/register.ts';
 import { TOKENS } from '../../src/server/container/tokens.ts';
@@ -14,20 +13,22 @@ import { createPrismaClient } from '../../src/server/db/prisma.ts';
 import { ProxmoxClient } from '../../src/server/integrations/proxmox/ProxmoxClient.ts';
 import type { VirtualizationProvider } from '../../src/server/integrations/virtualization/VirtualizationProvider.ts';
 import { createLogger } from '../../src/server/utils/logger.ts';
+import { PlatformInspector } from './inspect.ts';
 
 const env = loadEnv();
 const prisma = createPrismaClient({ url: env.DATABASE_URL, poolLimit: 2 });
 const di = registerDependencies({ env, logger: createLogger({ ...env, LOG_LEVEL: 'warn' }), prisma }, container.createChildContainer());
 const provider = di.resolve<VirtualizationProvider>(TOKENS.VirtualizationProvider);
 const client = di.resolve(ProxmoxClient);
+const inspector = new PlatformInspector(env, provider, client, prisma);
 
 const GiB = 1024 ** 3;
 const gib = (b: number) => `${(b / GiB).toFixed(2)} GiB`;
 const pct = (used: number, total: number) => `${((used / total) * 100).toFixed(0)}%`;
 
 async function capacity() {
-  const c = await provider.capacity();
-  console.log(`Proxmox ${c.pveVersion} · nó ${env.PVE_NODE} · ${c.cpuCount} vCPU`);
+  const c = await inspector.capacity();
+  console.log(`Proxmox ${c.pveVersion} · nó ${c.node} · ${c.cpuCount} vCPU`);
   console.log(
     `RAM      ${gib(c.memUsedBytes)} / ${gib(c.memTotalBytes)} (${pct(c.memUsedBytes, c.memTotalBytes)})  livre ${gib(c.memFreeBytes)}  disponível ${gib(c.memAvailableBytes)}`,
   );
@@ -37,44 +38,35 @@ async function capacity() {
 }
 
 async function list() {
-  const vmids = await provider.listManagedVmids();
-  if (!vmids.length) return console.log(`Nenhuma VM no pool ${env.PVE_POOL}.`);
-  for (const vmid of vmids.sort((a, b) => a - b)) {
-    const s = await provider.status(vmid);
+  const list = await inspector.instances();
+  if (!list.length) return console.log(`Nenhuma VM no pool ${env.PVE_POOL}.`);
+  for (const s of list) {
     console.log(
-      `${String(vmid).padEnd(6)} ${(s?.name ?? '?').padEnd(28)} ${(s?.status ?? '?').padEnd(8)} RAM ${gib(s?.memMaxBytes ?? 0)}  disco ${gib(s?.diskMaxBytes ?? 0)}`,
+      `${String(s.vmid).padEnd(6)} ${(s.name ?? '?').padEnd(28)} ${s.status.padEnd(8)} RAM ${gib(s.memMaxBytes)}  disco ${gib(s.diskMaxBytes)}`,
     );
   }
 }
 
 async function show(vmid: number) {
-  const s = await provider.status(vmid);
+  const s = await inspector.instance(vmid);
   if (!s) return console.log(`VM ${vmid} não existe (ou está fora dos pools do token).`);
-  console.log(JSON.stringify({ ...s, pending: await provider.pendingChanges(vmid) }, null, 2));
+  console.log(JSON.stringify(s, null, 2));
 }
 
 async function task(upid: string) {
-  const path = `/nodes/${env.PVE_NODE}/tasks/${encodeURIComponent(upid)}`;
-  console.log(JSON.stringify(await client.get(`${path}/status`, z.record(z.string(), z.unknown())), null, 2));
-  const log = await client.get(`${path}/log`, z.array(z.object({ n: z.number(), t: z.string() })), { start: 0, limit: 50 });
-  for (const l of log) console.log(`  ${l.t}`);
+  const t = await inspector.task(upid);
+  console.log(JSON.stringify(t.status, null, 2));
+  for (const l of t.log) console.log(`  ${l}`);
 }
 
-/** Compara o pool do Proxmox com a tabela `vps` (a reconciliação automática vem na Fase 6; aqui só o relatório). */
+/** Compara o pool do Proxmox com a tabela `vps` (só o relatório; a correção automática é o job reconcile). */
 async function reconcile() {
-  const inPool = new Set(await provider.listManagedVmids());
-  const inDb = await prisma.vps.findMany({
-    where: { pveVmid: { not: null }, deletedAt: null },
-    select: { id: true, pveVmid: true, status: true },
-  });
-  const dbVmids = new Set(inDb.map((v) => v.pveVmid as number));
-  const orphans = [...inPool].filter((v) => !dbVmids.has(v));
-  const missing = inDb.filter((v) => !inPool.has(v.pveVmid as number));
-  console.log(`Pool ${env.PVE_POOL}: ${inPool.size} VM(s) · banco: ${inDb.length} VPS com VMID`);
-  console.log(orphans.length ? `Órfãs no Proxmox (sem VPS no banco): ${orphans.join(', ')}` : 'Nenhuma VM órfã.');
+  const r = await inspector.reconcileReport();
+  console.log(`Pool ${r.pool}: ${r.vmsInPool} VM(s) · banco: ${r.vpsWithVmid} VPS com VMID`);
+  console.log(r.orphanVmids.length ? `Órfãs no Proxmox (sem VPS no banco): ${r.orphanVmids.join(', ')}` : 'Nenhuma VM órfã.');
   console.log(
-    missing.length
-      ? `VPS sem VM no Proxmox: ${missing.map((m) => `${m.id} (${m.pveVmid}, ${m.status})`).join(', ')}`
+    r.vpsWithoutVm.length
+      ? `VPS sem VM no Proxmox: ${r.vpsWithoutVm.map((m) => `${m.hostname} (${m.pveVmid}, ${m.status})`).join(', ')}`
       : 'Nenhuma VPS sem VM.',
   );
   console.log('(dry-run: nada foi alterado)');

@@ -106,6 +106,12 @@ O servidor do E2E sobe a aplicação inteira com um **provider falso** no lugar 
 para explorar as telas sem o laboratório: preencha o `.env.test`, rode `npm run build:client` e depois `npm run e2e:server`
 (porta 3100).
 
+### MCP para agentes de IA
+
+`npm run mcp` sobe um servidor [MCP](https://modelcontextprotocol.io) **somente leitura** por stdio, com o token da
+plataforma: capacidade do nó, VMs do pool (com a VPS dona de cada uma), estado de uma VM, log de uma task e o relatório
+de reconciliação entre o Proxmox e o banco. No Claude Code: `claude mcp add favo-pve -- npm run --silent mcp`.
+
 ## Testes
 
 | Comando | O que roda |
@@ -113,7 +119,7 @@ para explorar as telas sem o laboratório: preencha o `.env.test`, rode `npm run
 | `npm test` | Unidade e integração (HTTP, Socket.IO, fila, jobs, chat, concorrência) com o provider falso e o banco de teste |
 | `npm run test:coverage` | O mesmo, com relatório de cobertura em `coverage/` |
 | `npm run test:e2e` | Playwright: fluxos principais em pt-BR e en-US (com troca para es-ES) e o chat com três navegadores |
-| `npm run test:lab` | Contra o Proxmox real: as quatro imagens e o roteiro completo da VPS (criar, ligar, desligar, reiniciar, trocar plano, renomear, console, excluir) |
+| `npm run test:lab` | Contra o Proxmox real: as quatro imagens e o roteiro completo da VPS (criar, ligar, desligar, reiniciar, trocar plano, renomear, console, cobrança, reinstalar, excluir) |
 | `npm run lint` · `npm run typecheck` | Biome e TypeScript |
 
 ## Estrutura

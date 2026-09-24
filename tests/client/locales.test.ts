@@ -42,4 +42,15 @@ describe('traduções', () => {
       }
     }
   });
+
+  it('en-US e es-ES não têm texto que ficou em português (ã, õ, ç não existem nesses idiomas)', () => {
+    for (const lng of LANGUAGES.slice(1)) {
+      for (const ns of NAMESPACES) {
+        for (const [key, value] of flatten(load(lng, ns))) {
+          if (key === 'language.pt-BR') continue; // o nome do idioma no menu é sempre no próprio idioma
+          expect(String(value), `${lng}/${ns}: ${key}`).not.toMatch(/[ãõç]/i);
+        }
+      }
+    }
+  });
 });

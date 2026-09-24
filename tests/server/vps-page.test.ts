@@ -4,6 +4,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { WebSocket, WebSocketServer } from 'ws';
 import { JobWorker } from '../../src/server/jobs/JobWorker.ts';
 import { attachConsoleProxy } from '../../src/server/realtime/consoleProxy.ts';
+import { SessionService } from '../../src/server/services/SessionService.ts';
 import { closeTestPrisma, createTestApp, testPrisma } from '../helpers/app.ts';
 import { generateSshPublicKey, TestClient, uniqueEmail } from '../helpers/client.ts';
 
@@ -108,6 +109,19 @@ describe('console (noVNC via proxy)', () => {
     opened.ws?.close();
 
     expect((await openConsole(res.body.consoleId, headers)).status).toBe(403); // reutilizado
+  });
+
+  it('revogar a sessão (ex.: logout em outra aba) fecha o console aberto por ela', async () => {
+    const c = await customer();
+    const vps = await runningVps(c);
+    const { consoleId } = (await c.send('post', `/api/vps/${vps.id}/console`)).body;
+    const opened = await openConsole(consoleId, { Origin: env.APP_ORIGIN, Cookie: cookieHeader(c) });
+    expect(opened.status).toBe(101);
+    const closed = new Promise<number>((resolve) => opened.ws?.once('close', (code) => resolve(code)));
+    const me = (await c.get('/api/auth/me')).body.user;
+    const current = (await c.get('/api/account/sessions')).body.sessions.find((x: { current: boolean }) => x.current);
+    await di.resolve(SessionService).revoke(current.id, me.id);
+    expect(await closed).toBe(4001);
   });
 
   it('recusa: outro usuário (403), sem sessão (401), origem de outro site (403) e técnico sem permissão (403)', async () => {

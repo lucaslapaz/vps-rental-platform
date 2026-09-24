@@ -24,5 +24,13 @@ export default defineConfig({
     // sob pressão de memória, um teste de integração que levava <1 s passou de 5 s (padrão do Vitest). CLAUDE.md N35.
     testTimeout: 15_000,
     hookTimeout: 30_000,
+    // npm run test:coverage: foco no servidor (regras de negócio, jobs, integrações). O cliente é coberto pelo E2E.
+    coverage: {
+      provider: 'v8',
+      include: ['src/server/**/*.ts', 'src/shared/**/*.ts'],
+      exclude: ['src/server/generated/**', 'src/server/main.ts'],
+      reporter: ['text-summary', 'text', 'html'],
+      reportsDirectory: 'coverage',
+    },
   },
 });

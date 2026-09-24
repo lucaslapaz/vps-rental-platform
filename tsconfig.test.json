@@ -12,7 +12,9 @@
     "scripts/pve/cli.ts",
     "prisma.config.ts",
     "vitest.config.ts",
-    "vite.config.ts"
+    "vite.config.ts",
+    "e2e",
+    "playwright.config.ts"
   ],
   "exclude": []
 }

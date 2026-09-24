@@ -10,6 +10,7 @@ import { ConsoleService } from '../services/ConsoleService.ts';
 import { SessionService } from '../services/SessionService.ts';
 import type { Logger } from '../utils/logger.ts';
 import { authenticateHandshake, isAllowedOrigin } from './handshake.ts';
+import type { RealtimeHub } from './RealtimeEmitter.ts';
 
 const PATH = /^\/ws\/console\/([A-Za-z0-9_-]{16,64})$/;
 /** Sem tráfego em nenhum sentido por este tempo → encerra (plano §10.5). */
@@ -42,7 +43,11 @@ export function attachConsoleProxy(httpServer: http.Server, di: DependencyContai
     // O noVNC pede o subprotocolo "binary"; o Proxmox responde com o mesmo.
     handleProtocols: (protocols) => (protocols.has('binary') ? 'binary' : false),
   });
-  const open = new Set<WebSocket>();
+  // Cada console aberto, com a sessão que o abriu: revogar a sessão (logout em outra aba, troca de senha) fecha o console.
+  const open = new Map<WebSocket, string>();
+  const unsubscribe = di.resolve<RealtimeHub>(TOKENS.Realtime).onSessionEnded((sessionId) => {
+    for (const [client, owner] of open) if (owner === sessionId) client.close(4001, 'session revoked');
+  });
 
   httpServer.on('upgrade', (req: http.IncomingMessage, socket: Duplex, head: Buffer) => {
     const pathname = new URL(req.url ?? '/', 'http://localhost').pathname;
@@ -66,7 +71,7 @@ export function attachConsoleProxy(httpServer: http.Server, di: DependencyContai
         let lastActivity = started;
         const queue: { data: RawData; binary: boolean }[] = [];
         consoles.opened(user.id);
-        open.add(client);
+        open.set(client, user.sessionId);
         void audit.record({
           action: 'vps.console_opened',
           actorId: user.id,
@@ -129,7 +134,8 @@ export function attachConsoleProxy(httpServer: http.Server, di: DependencyContai
   return {
     /** Encerramento gracioso: fecha os consoles abertos. */
     close() {
-      for (const client of open) client.close(1001, 'shutdown');
+      unsubscribe();
+      for (const client of open.keys()) client.close(1001, 'shutdown');
       wss.close();
     },
   };

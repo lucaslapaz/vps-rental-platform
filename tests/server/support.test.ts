@@ -207,6 +207,10 @@ describe('suporte: tempo real (Socket.IO)', () => {
     const intruder = await socketOf(await customer('Intruso Socket'));
     expect(await sendViaSocket(intruder, conv.id, 'posso entrar?')).toEqual({ ok: false, code: 'NOT_FOUND' });
 
+    // Rajada: no máximo 20 mensagens a cada 10 s por socket (revisão de segurança, Fase 9).
+    const burst = await Promise.all(Array.from({ length: 21 }, (_, i) => sendViaSocket(customerSocket, conv.id, `rajada ${i}`)));
+    expect(burst.filter((r) => !r.ok).map((r) => (r.ok ? '' : r.code))).toContain('RATE_LIMITED');
+
     // Reconexão: busca só o que veio depois do último id recebido.
     const all = (await c.get(`/api/support/conversations/${conv.id}/messages`)).body.messages as { id: number }[];
     const afterFirst = (await c.get(`/api/support/conversations/${conv.id}/messages?after=${all[0]?.id}`)).body.messages;

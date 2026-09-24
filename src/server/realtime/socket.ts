@@ -54,9 +54,15 @@ export function attachSocketIo(httpServer: http.Server, di: DependencyContainer)
     if (user.can('support:queue:read')) void socket.join('agents');
     logger.debug({ userId: user.id }, 'socket conectado');
 
-    // Mensagens do chat pelo socket, com ack (a tela troca a mensagem otimista pela persistida).
+    // Mensagens do chat pelo socket, com ack (a tela troca a mensagem otimista pela persistida). Limite por socket:
+    // 20 mensagens a cada 10 s (o REST equivalente tem 30/min), para uma aba não inundar a conversa.
+    const recent: number[] = [];
     socket.on('support:message:send', async (payload, ack) => {
       const reply = typeof ack === 'function' ? ack : () => undefined;
+      const now = Date.now();
+      while (recent.length && now - (recent[0] as number) > 10_000) recent.shift();
+      if (recent.length >= 20) return reply({ ok: false, code: 'RATE_LIMITED' });
+      recent.push(now);
       const parsed = sendMessageSchema.safeParse(payload);
       if (!parsed.success) return reply({ ok: false, code: 'VALIDATION_ERROR' });
       try {

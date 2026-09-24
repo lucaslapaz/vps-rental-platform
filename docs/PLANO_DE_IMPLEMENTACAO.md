@@ -18,6 +18,7 @@
 | 13 | 2026-09-23 | **Fase 6 concluída** (§17): fila de jobs no MySQL + worker no processo, handlers de provisionamento/ações/troca de plano/exclusão/reconciliação/limpeza, IPAM atômico, máquina de estados com lock otimista e Socket.IO autenticado. Descobertas no laboratório (§10.6, §11.3): o guest agent responde **antes** de o cloud-init terminar (o pós-boot agora espera `cloud-init status --wait`) e, no Alpine (sshd **sem PAM**), uma conta criada só com chave nasce bloqueada e o SSH recusa até a chave (o `ImageProfile` troca `!` por `*`). `Vps.lastError` guarda só códigos traduzíveis |
 | 14 | 2026-09-23 | **Fase 7 concluída** (§17): página da VPS com abas, console noVNC por proxy `ws`, acesso pelo guest agent, métricas e histórico. Decisões e descobertas no laboratório: **o cloud-init é congelado no fim do provisionamento** (§10.6; renomear mudava o `instance-id` e regenerava as chaves de host), renomear e aumentar o disco passam a ser feitos pelo agente (§10.4, §11.4), `reboot` cai para `stop`+`start` quando o ACPI é ignorado, Ubuntu 24.04 precisa do `/run/sshd` antes do `sshd -t`, e a capacidade usa a memória **disponível** do nó (não a livre). Rotas de acesso síncronas (`200`) |
 | 15 | 2026-09-23 | **Fase 8 concluída** (§17): suporte com fila ao vivo, claim atômico, limite por técnico, devolver/encerrar e chat por Socket.IO com ack. Ajustes de implementação (§13.2): eventos vão para as salas `user:<id>` dos participantes (em vez de `conversation:<id>`, que exigiria entrar e sair de salas a cada claim), mensagens do sistema gravadas como **código** e traduzidas na tela, abrir conversa trava a linha do cliente (`FOR UPDATE`) e há envio por REST quando o socket está fora |
+| 16 | 2026-09-24 | **Fase 9 concluída** (§17): E2E com Playwright contra o app com o provider falso (`e2e/server.ts`), cobertura (`npm run test:coverage`), verificação de traduções, README de portfólio com GIF, `docs/arquitetura.md` e `docs/seguranca.md` (OWASP Top 10). A revisão corrigiu 2 pontos: o chat pelo socket sem limite de mensagens e o console que continuava aberto depois de revogar a sessão |
 | 11 | 2026-09-23 | **Fase 4 concluída** (§17): cliente do Proxmox, provider real, agente, CLI `npm run pve` e suíte `@lab` 30/30 nas quatro imagens. Mudanças: drop-in do sshd **`01-favo.conf`** (§10.6) e formato do ticket do `vncproxy` (§10.5) |
 | 10 | 2026-09-23 | **Fase 3 concluída** (§17): sessão, CSRF assinado, RBAC, conta, chaves SSH e administração de usuários. Detalhes da implementação em §9.8 (origem aceita, pré-sessão, validação real das chaves SSH, textos em namespaces) |
 | 9 | 2026-09-23 | **Fase 2 concluída** (§17): Prisma 7.10.0 + adapter MariaDB, migration `init`, seeds idempotentes. Ajustes: tabelas com `@@map` em snake_case (MySQL do Windows com `lower_case_table_names=1`), `IpAddress.macAddress` (MAC derivado do IP), pool `.200–.228`, plano **Medium** no seed, proteção do Prisma contra agentes de IA em comandos destrutivos (§19) |
@@ -2268,12 +2269,34 @@ posição na fila, claim concorrente (exatamente 1 sucesso), limite por técnico
 não participante (404 no REST e `NOT_FOUND` no ack do socket), devolver/encerrar, chat com ack e "digitando…" entre 2 sockets,
 e recuperação por `?after=`.
 
-### Fase 9: Qualidade e apresentação
-- [ ] Traduções completas de en-US e es-ES (ou a lista final de §20) + verificação de chaves faltando.
-- [ ] Cobertura dos services críticos, E2E dos fluxos principais (em pt-BR e em um segundo idioma).
-- [ ] README de portfólio: arquitetura (diagramas), decisões (este plano resumido), como rodar, screenshots e GIF.
-- [ ] `docs/arquitetura.md`.
-- [ ] Revisão de segurança (checklist OWASP deste plano).
+### Fase 9: Qualidade e apresentação — ✅ concluída em 2026-09-24
+- [x] Traduções completas de en-US e es-ES (ou a lista final de §20) + verificação de chaves faltando.
+- [x] Cobertura dos services críticos, E2E dos fluxos principais (em pt-BR e em um segundo idioma).
+- [x] README de portfólio: arquitetura (diagramas), decisões (este plano resumido), como rodar, screenshots e GIF.
+- [x] `docs/arquitetura.md`.
+- [x] Revisão de segurança (checklist OWASP deste plano).
+
+**Resultado (rev. 16):**
+- **E2E (`npm run test:e2e`, Playwright 1.63):** o `e2e/server.ts` sobe a aplicação inteira (`startServer`, o mesmo do `main.ts`)
+  com o `FakeVirtualizationProvider` e o banco de teste, então os fluxos rodam em ~25 s, sem o laboratório. Três roteiros:
+  cadastro → pedido → pagamento → "Ligada" sem refresh → desligar/ligar com confirmação → histórico → excluir digitando o
+  hostname (pt-BR); o mesmo em **en-US** com troca para **es-ES** pelo menu (o valor cobrado continua em R$); e o chat com
+  **3 contextos** (dois técnicos clicam juntos: um assume e o outro vê "já assumida"). O `globalSetup` limpa os dados
+  transitórios do banco de teste antes e depois (`tests/helpers/resetTestData.ts`, também no `npm test`).
+- **Cobertura (`npm run test:coverage`):** 76% das instruções e 81% das linhas do servidor; services críticos entre 94% e
+  100% (Auth, SshKey, VpsNotifier, VpsController 100%; VpsService 98,6%; OrderService 95,8%; IpamService 94%). O cliente
+  HTTP do Proxmox e o `TaskWaiter` ficam para os 36 testes `@lab` contra o Proxmox real. Testes novos para o que faltava:
+  limite de login (a 6ª tentativa recebe 429), colisão de VMID pelo índice único e `start()`/`stop()` do worker com timer.
+- **Traduções:** as três línguas têm as mesmas chaves e interpolações (teste existente) e um teste novo recusa `ã`, `õ`
+  ou `ç` em en-US/es-ES (sinal de texto que ficou em português). Os valores iguais ao pt-BR foram revisados: são termos
+  técnicos ou cognatos corretos.
+- **Documentação:** README de portfólio (GIF de uma criação real no laboratório, capturas, arquitetura, como rodar,
+  testes), [docs/arquitetura.md](arquitetura.md) (diagramas Mermaid) e [docs/seguranca.md](seguranca.md).
+- **Segurança (OWASP Top 10):** checklist com a evidência de cada item. Corrigidos: limite de 20 mensagens a cada 10 s
+  por socket no chat e fechamento do console quando a sessão é revogada. Teste estático `routes-guard.test.ts`: toda
+  rota que altera dados tem `originCheck`, CSRF e autenticação, nessa ordem. Riscos aceitos registrados (avisos do
+  `npm audit` no Prisma 7, enumeração de e-mail no cadastro).
+- 133 testes no `npm test`, 3 no E2E e 36 no `@lab`.
 
 ### Fase 10: Extras (opcionais, por prioridade sugerida)
 1. **Console em texto (xterm.js)** como alternativa ao noVNC: `termproxy` com `serial=serial0`, com o mesmo proxy de §10.5.

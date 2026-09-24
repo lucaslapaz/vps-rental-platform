@@ -143,6 +143,8 @@ describe('@lab roteiro E2E da VPS (Fase 7)', () => {
     expect(live.pendingReboot).toBe(true);
 
     await act('post', `/api/vps/${vpsId}/actions/reboot`);
+    // Com a memória pendente, o Proxmox termina o reboot com a VM parada e a religa logo depois: o painel não pode gravar STOPPED.
+    expect((await vps()).status).toBe('RUNNING');
     await sshReady();
     const memKb = Number(sshKey('cliente', "awk '/MemTotal/ {print $2}' /proc/meminfo").out);
     expect(memKb).toBeGreaterThan(400 * 1024);
@@ -194,6 +196,28 @@ describe('@lab roteiro E2E da VPS (Fase 7)', () => {
     expect((await vms.status(vmid))?.status).toBe('running');
     await sshReady();
   }, 240_000);
+
+  it('reinstalar (Fase 10): VM nova com o mesmo IP e VMID; o usuário novo entra por SSH e o antigo não existe mais', async () => {
+    const before = await vps();
+    const res = await client.send('post', `/api/vps/${vpsId}/reinstall`, {
+      osTemplate: 'alpine-3.24',
+      username: 'reinstalado',
+      newSshKey: { publicKey: myPublicKey() },
+      confirmHostname: before.hostname,
+    });
+    expect(res.status, JSON.stringify(res.body)).toBe(202);
+    await worker.drain();
+    const after = await vps();
+    expect(after).toMatchObject({ status: 'RUNNING', pveVmid: before.pveVmid, ipAddressId: before.ipAddressId, username: 'reinstalado' });
+    let r = sshKey('reinstalado', 'id -un');
+    for (let i = 0; i < 20 && r.code !== 0; i++) {
+      await new Promise((res) => setTimeout(res, 3000));
+      r = sshKey('reinstalado', 'id -un');
+    }
+    expect(r.out).toBe('reinstalado');
+    // Disco novo: o usuário da instalação anterior sumiu.
+    expect(sshKey('reinstalado', 'id cliente >/dev/null 2>&1 && echo EXISTE || echo SUMIU').out).toBe('SUMIU');
+  }, 300_000);
 
   it('excluir → DELETED, VM apagada no Proxmox e IP de volta ao pool', async () => {
     await act('delete', `/api/vps/${vpsId}`);

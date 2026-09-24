@@ -23,7 +23,8 @@ laboratório Proxmox, acessível por SSH e pelo console no navegador. Tudo em pt
   para demonstração (`BILLING_TIME_SCALE=1440`: um mês em 30 minutos).
 - **Acompanhar a criação ao vivo**: IP, cópia da imagem, configuração, boot, acesso e pronta, sem recarregar a página.
 - **Gerenciar**: ligar, desligar, reiniciar (com confirmação), trocar de plano (o disco cresce com a VM ligada),
-  renomear, redefinir senhas, ligar/desligar SSH por senha, adicionar chaves e excluir (digitando o hostname).
+  renomear, redefinir senhas, ligar/desligar SSH por senha, adicionar chaves, **reinstalar** (outra imagem e acesso novo,
+  mantendo o IP) e excluir (digitando o hostname).
 - **Console no navegador**: gráfico (noVNC), inclusive o login gráfico da imagem Desktop, ou de texto (xterm.js na
   porta serial da VM).
 - **Anti-spoofing de rede**: cada VPS só consegue usar o próprio IP e MAC (firewall do Proxmox por VM).

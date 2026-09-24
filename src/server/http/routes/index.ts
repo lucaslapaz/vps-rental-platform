@@ -16,6 +16,7 @@ import {
   createVpsSchema,
   metricsQuerySchema,
   payInvoiceSchema,
+  reinstallVpsSchema,
   renameVpsSchema,
   resizeVpsSchema,
   sshPasswordAuthSchema,
@@ -148,6 +149,17 @@ export function createApiRouter(di: DependencyContainer) {
   router.post('/vps/:id/actions/:action', O, vpsOps, C, A, manage, validate({ params: vpsActionParamsSchema }), vps.action);
   router.post('/vps/:id/resize', O, vpsOps, C, A, manage, validate({ params: uuidParamSchema, body: resizeVpsSchema }), vps.resize);
   router.delete('/vps/:id', O, vpsOps, C, A, P('vps:delete:own'), validate({ params: uuidParamSchema }), vps.remove);
+  // Reinstalar apaga o disco: exige as permissões de alterar E de excluir.
+  router.post(
+    '/vps/:id/reinstall',
+    O,
+    vpsOps,
+    C,
+    A,
+    P('vps:manage:own', 'vps:delete:own'),
+    validate({ params: uuidParamSchema, body: reinstallVpsSchema }),
+    vps.reinstall,
+  );
   router.patch('/vps/:id', O, vpsOps, C, A, manage, validate({ params: uuidParamSchema, body: renameVpsSchema }), vps.rename);
   router.get('/vps/:id/live', A, P('vps:read:own'), validate({ params: uuidParamSchema }), vps.live);
   router.get('/vps/:id/metrics', A, P('vps:read:own'), validate({ params: uuidParamSchema, query: metricsQuerySchema }), vps.metrics);

@@ -16,6 +16,8 @@ export const VPS_TRANSITIONS = {
   reset: { from: ['RUNNING'], via: 'REBOOTING' },
   resize: { from: ['RUNNING', 'STOPPED'], via: 'UPDATING' },
   delete: { from: ['RUNNING', 'STOPPED', 'SUSPENDED', 'ERROR'], via: 'DELETING' },
+  /** Apaga a VM e cria de novo com a imagem escolhida; mantém IP, hostname, plano e período pago (Fase 10). */
+  reinstall: { from: ['RUNNING', 'STOPPED', 'ERROR'], via: 'PROVISIONING' },
 } as const satisfies Record<string, { from: readonly VpsStatusDTO[]; via: VpsStatusDTO }>;
 export type VpsOperation = keyof typeof VPS_TRANSITIONS;
 
@@ -30,5 +32,12 @@ export function canRun(operation: VpsOperation, status: VpsStatusDTO) {
  * Códigos gravados em `Vps.lastError`: o cliente traduz (vps:lastError.<código>). O detalhe técnico, que pode ter nomes
  * internos do Proxmox, fica só no `Job.lastError` e nos logs.
  */
-export const VPS_ERROR_CODES = ['PROVISION_FAILED', 'ACTION_FAILED', 'RESIZE_FAILED', 'DELETE_FAILED', 'VM_MISSING'] as const;
+export const VPS_ERROR_CODES = [
+  'PROVISION_FAILED',
+  'ACTION_FAILED',
+  'RESIZE_FAILED',
+  'DELETE_FAILED',
+  'VM_MISSING',
+  'REINSTALL_FAILED',
+] as const;
 export type VpsErrorCode = (typeof VPS_ERROR_CODES)[number];

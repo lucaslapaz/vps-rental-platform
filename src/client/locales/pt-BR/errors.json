@@ -67,6 +67,8 @@
     "sshKeyChoice": "Escolha uma chave salva ou cole uma chave nova (uma das duas).",
     "subjectTooShort": "Escreva um assunto com pelo menos 3 caracteres.",
     "roleKey": "Use de 3 a 50 letras minúsculas, números ou _, começando por letra.",
-    "permission": "Permissão desconhecida."
-  }
+    "permission": "Permissão desconhecida.",
+    "confirmHostname": "Digite o hostname atual para confirmar."
+  },
+  "CONFIRMATION_MISMATCH": "O hostname digitado não confere."
 }

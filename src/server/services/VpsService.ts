@@ -1,6 +1,10 @@
 import { inject, injectable } from 'tsyringe';
 import { BUSY_STATUSES, type PowerActionName, VPS_TRANSITIONS, type VpsOperation } from '../../shared/constants/vps.ts';
+import type { reinstallVpsSchema } from '../../shared/schemas/vps.ts';
 import type { VpsDTO, VpsEventDTO, VpsStatusDTO } from '../../shared/types/catalog.ts';
+
+type ReinstallInput = import('zod').output<typeof reinstallVpsSchema>;
+
 import type { Env } from '../config/env.ts';
 import { TOKENS } from '../container/tokens.ts';
 import type { Database } from '../db/prisma.ts';
@@ -11,8 +15,10 @@ import { CatalogRepository } from '../repositories/CatalogRepository.ts';
 import { toVpsDTO, VpsRepository } from '../repositories/VpsRepository.ts';
 import type { Clock } from '../utils/clock.ts';
 import { AppError } from '../utils/errors.ts';
+import type { SecretBox } from '../utils/secretBox.ts';
 import { billingDurations } from './billingPeriods.ts';
 import { CapacityService } from './CapacityService.ts';
+import { OrderService, type ProvisionSecrets } from './OrderService.ts';
 import { VpsNotifier } from './VpsNotifier.ts';
 
 /**
@@ -32,6 +38,8 @@ export class VpsService {
     @inject(VpsNotifier) private readonly notify: VpsNotifier,
     @inject(AuditLogRepository) private readonly audit: AuditLogRepository,
     @inject(TOKENS.Env) private readonly env: Env,
+    @inject(OrderService) private readonly orders: OrderService,
+    @inject(TOKENS.SecretBox) private readonly secretBox: SecretBox,
   ) {}
 
   private async owned(userId: string, vpsId: string) {
@@ -163,6 +171,63 @@ export class VpsService {
       targetType: 'vps',
       targetId: vpsId,
       metadata: { from: oldPlan.slug, to: plan.slug, amountCents },
+      ip,
+    });
+    return this.dto(userId, vpsId);
+  }
+
+  /**
+   * POST /api/vps/:id/reinstall (plano §17, Fase 10): apaga a VM e cria de novo com a imagem e o acesso escolhidos. Mantém
+   * IP, MAC, VMID, hostname, plano e período pago; o disco é apagado. Confirmação pelo hostname atual. As senhas vão
+   * cifradas só no payload do job (como na criação, §10.6) e as regras de acesso são as mesmas da criação.
+   */
+  async reinstall(userId: string, vpsId: string, input: ReinstallInput, ip: string | null) {
+    const current = await this.owned(userId, vpsId);
+    if (input.confirmHostname.trim() !== current.hostname) {
+      throw new AppError(422, 'CONFIRMATION_MISMATCH', 'Digite o hostname atual para confirmar', [
+        { path: 'confirmHostname', message: 'confirmHostname' },
+      ]);
+    }
+    const template = await this.catalog.findOsTemplate(input.osTemplate);
+    if (!template) throw new AppError(422, 'IMAGE_NOT_FOUND', 'Imagem inexistente', [{ path: 'osTemplate', message: 'IMAGE_NOT_FOUND' }]);
+    if (current.memoryMb < template.minMemoryMb || current.diskGb < template.minDiskGb) {
+      throw new AppError(422, 'PLAN_BELOW_IMAGE_MINIMUM', `${template.name} requer ${template.minMemoryMb} MB e ${template.minDiskGb} GB`, {
+        minMemoryMb: template.minMemoryMb,
+        minDiskGb: template.minDiskGb,
+      });
+    }
+    if (!(VPS_TRANSITIONS.reinstall.from as readonly string[]).includes(current.status)) this.rejectTransition(current.status);
+    const keys = await this.orders.resolveAccess(userId, template, input, `chave-${current.hostname}`);
+    const secrets = this.secretBox.seal(
+      JSON.stringify({ password: input.password, rootPassword: input.rootPassword, sshKeys: keys } satisfies ProvisionSecrets),
+    );
+
+    const moved = await this.db.$transaction(async (tx) => {
+      const r = await tx.vps.updateMany({
+        where: { id: vpsId, userId, deletedAt: null, status: { in: [...VPS_TRANSITIONS.reinstall.from] } },
+        data: {
+          status: 'PROVISIONING',
+          osTemplateId: template.id,
+          username: input.username,
+          sshPasswordAuth: input.sshPasswordAuth,
+          rootPasswordSet: Boolean(input.rootPassword),
+          diskGrowPending: false,
+          lastError: null,
+        },
+      });
+      if (!r.count) return false;
+      await this.queue.enqueue('reinstall_vps', { vpsId, secrets }, { tx, maxAttempts: 3 });
+      await tx.vpsEvent.create({ data: { vpsId, actorId: userId, action: 'reinstall', status: 'requested', message: template.slug } });
+      return true;
+    });
+    if (!moved) this.rejectTransition((await this.owned(userId, vpsId)).status);
+    this.notify.status({ id: vpsId, userId }, 'PROVISIONING', null);
+    await this.audit.record({
+      action: 'vps.reinstall',
+      actorId: userId,
+      targetType: 'vps',
+      targetId: vpsId,
+      metadata: { from: current.osTemplate.slug, to: template.slug },
       ip,
     });
     return this.dto(userId, vpsId);

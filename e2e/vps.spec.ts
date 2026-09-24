@@ -32,6 +32,20 @@ test('cadastro, criação e ciclo de vida da VPS (pt-BR)', async ({ page }) => {
   await page.getByTestId('tab-history').click();
   await expect(page.getByTestId('vps-history')).toContainText('Desligar');
 
+  // Reinstalar (Fase 10): acesso novo por senha, confirmação pelo hostname; a VPS volta a ficar Ligada sem refresh.
+  await page.getByTestId('tab-settings').click();
+  await page.getByTestId('reinstall-vps').click();
+  await expect(page.getByTestId('reinstall-page')).toBeVisible();
+  await page.getByTestId('method-password').click();
+  await page.locator('#vps-password').fill('Senha-Nova-E2E-1');
+  await page.locator('#vps-password2').fill('Senha-Nova-E2E-1');
+  await expect(page.getByTestId('reinstall-submit')).toBeDisabled();
+  await page.locator('#reinstall-confirm').fill(hostname);
+  await page.getByTestId('reinstall-submit').click();
+  await expect(page.getByTestId('vps-detail')).toHaveAttribute('data-status', 'RUNNING', { timeout: 20_000 });
+  await page.getByTestId('tab-history').click();
+  await expect(page.getByTestId('vps-history')).toContainText('Reinstalação');
+
   // Excluir: o botão só habilita com o hostname digitado.
   await page.getByTestId('tab-settings').click();
   await page.getByTestId('delete-vps').click();

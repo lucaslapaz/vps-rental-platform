@@ -3,7 +3,12 @@ import type { ConversationStatusDTO, QueueItemDTO, SupportMessageDTO } from '../
 
 /** Etapas da linha do tempo de criação (plano §14.5), na ordem em que acontecem. */
 export const PROVISION_STEPS = ['payment', 'ip', 'cloning', 'configuring', 'starting', 'booting', 'access', 'ready'] as const;
-export type ProvisionStep = (typeof PROVISION_STEPS)[number];
+/**
+ * Etapas da reinstalação (Fase 10): apaga a VM e segue o provisionamento com o mesmo IP, MAC e VMID (sem pagamento nem
+ * reserva de IP).
+ */
+export const REINSTALL_STEPS = ['wiping', 'cloning', 'configuring', 'starting', 'booting', 'access', 'ready'] as const;
+export type ProvisionStep = (typeof PROVISION_STEPS)[number] | (typeof REINSTALL_STEPS)[number];
 
 /** Eventos do Socket.IO servidor → cliente (plano §15). */
 export interface ServerToClientEvents {

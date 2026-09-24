@@ -97,14 +97,16 @@
     "starting": "Ligando",
     "booting": "Inicializando o sistema",
     "access": "Aplicando senhas e SSH",
-    "ready": "Pronta"
+    "ready": "Pronta",
+    "wiping": "Apagando o sistema anterior"
   },
   "lastError": {
     "PROVISION_FAILED": "A criação falhou. Nada foi mantido no servidor; você pode excluir e tentar de novo.",
     "ACTION_FAILED": "A última ação falhou e o estado da VM não pôde ser confirmado.",
     "RESIZE_FAILED": "A troca de plano falhou.",
     "DELETE_FAILED": "A exclusão falhou. Tente de novo.",
-    "VM_MISSING": "A máquina virtual não foi encontrada no servidor."
+    "VM_MISSING": "A máquina virtual não foi encontrada no servidor.",
+    "REINSTALL_FAILED": "A reinstalação falhou. O IP continua reservado para esta VPS: tente reinstalar de novo ou exclua."
   },
   "toast": {
     "ready": "{{hostname}} está no ar em {{ip}}.",
@@ -191,7 +193,8 @@
     "timeline": {
       "title": "Criando a sua VPS",
       "subtitle": "Isto leva cerca de um minuto. Pode sair da página: a criação continua.",
-      "failed": "A criação falhou."
+      "failed": "A criação falhou.",
+      "titleReinstall": "Reinstalando a sua VPS"
     },
     "console": {
       "connect": "Abrir console",
@@ -277,7 +280,10 @@
       "resizeConfirmBody": "A diferença proporcional aos dias que faltam no mês (no máximo {{amount}}, simulada) vira uma fatura quando a troca terminar.",
       "resizeNoCharge": "Sem cobrança adicional neste mês.",
       "resizeRequested": "Troca de plano em andamento.",
-      "notAvailable": "Disponível com a VPS ligada ou desligada, sem outra operação em andamento."
+      "notAvailable": "Disponível com a VPS ligada ou desligada, sem outra operação em andamento.",
+      "reinstallTitle": "Reinstalar o sistema",
+      "reinstallDescription": "Apaga o disco e instala a imagem de novo (a mesma ou outra). O IP, o hostname e o plano continuam.",
+      "reinstallButton": "Reinstalar…"
     },
     "danger": {
       "title": "Zona de perigo",
@@ -306,7 +312,8 @@
         "ssh_password_auth": "Login SSH por senha",
         "ssh_key": "Chave SSH adicionada",
         "reconcile": "Ajuste automático de estado",
-        "expire": "Pedido expirado"
+        "expire": "Pedido expirado",
+        "reinstall": "Reinstalação"
       },
       "status": {
         "requested": "pedido",
@@ -321,5 +328,20 @@
       "upgrade": "A diferença da troca de plano ({{amount}}) está em aberto até {{date}}.",
       "suspended": "VPS suspensa por falta de pagamento: a máquina foi desligada. Pague a renovação até {{date}} para reativá-la; depois disso, ela será excluída."
     }
+  },
+  "reinstall": {
+    "back": "Voltar para {{hostname}}",
+    "title": "Reinstalar {{hostname}}",
+    "subtitle": "Escolha a imagem e o acesso de novo, como na criação.",
+    "warning": "Tudo o que está no disco será apagado. Não dá para desfazer.",
+    "kept": "Continuam: o IP {{ip}}, o hostname, o plano {{plan}} e o período já pago.",
+    "belowPlan": "Não cabe no plano {{plan}}.",
+    "confirmTitle": "Confirmação",
+    "confirmHint": "Digite {{hostname}} para confirmar.",
+    "confirmHelp": "A reinstalação leva cerca de um minuto; a VPS fica fora do ar nesse tempo.",
+    "submit": "Reinstalar",
+    "submitting": "Iniciando…",
+    "started": "Reinstalando {{hostname}}.",
+    "notAllowed": "Não dá para reinstalar esta VPS agora. Espere a operação em andamento terminar."
   }
 }

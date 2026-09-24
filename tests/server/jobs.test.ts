@@ -433,3 +433,87 @@ describe('cobrança recorrente (Fase 10)', () => {
     expect(upgrade.amountCents).toBe(500); // (1990 - 990) / 2
   });
 });
+
+describe('reinstalar (Fase 10)', () => {
+  // Mesmo motivo da cobrança: o pool de IPs de teste tem só 10 endereços.
+  beforeAll(async () => {
+    const old = await db.vps.findMany({
+      where: { userId: { in: createdUsers }, deletedAt: null },
+      select: { id: true, ipAddressId: true },
+    });
+    await db.vps.updateMany({
+      where: { id: { in: old.map((v) => v.id) } },
+      data: { status: 'DELETED', deletedAt: new Date(), ipAddressId: null, pveVmid: null },
+    });
+    const ips = old.map((v) => v.ipAddressId).filter((id): id is number => id !== null);
+    await db.ipAddress.updateMany({ where: { id: { in: ips } }, data: { status: 'FREE' } });
+  });
+
+  const reinstall = (c: TestClient, id: string, body: Record<string, unknown>) =>
+    c.send('post', `/api/vps/${id}/reinstall`, {
+      osTemplate: 'alpine-3.24',
+      username: 'maria',
+      password: 'senha-nova-da-vps-1',
+      confirmHostname: 'vps-jobs',
+      ...body,
+    });
+
+  it('apaga a VM e cria de novo com a imagem e o acesso novos, mantendo IP, MAC, VMID e hostname', async () => {
+    const c = await customer();
+    const id = await paidVps(c);
+    await worker.drain();
+    const before = await vpsRow(id);
+
+    expect((await reinstall(c, id, { confirmHostname: 'outro-nome' })).body.error.code).toBe('CONFIRMATION_MISMATCH');
+    expect((await reinstall(c, id, { osTemplate: 'debian-13' })).body.error.code).toBe('PLAN_BELOW_IMAGE_MINIMUM');
+    expect((await reinstall(c, id, { password: undefined })).status).toBe(400); // sem chave nem senha
+
+    const res = await reinstall(c, id, { rootPassword: 'senha-root-nova-1' });
+    expect(res.status).toBe(202);
+    expect(res.body.vps.status).toBe('PROVISIONING');
+    // Uma reinstalação por vez: a VPS já está em PROVISIONING.
+    expect((await reinstall(c, id, {})).body.error.code).toBe('VPS_BUSY');
+    await worker.drain();
+
+    const after = await vpsRow(id);
+    expect(after).toMatchObject({
+      status: 'RUNNING',
+      hostname: 'vps-jobs',
+      username: 'maria',
+      pveVmid: before.pveVmid,
+      ipAddressId: before.ipAddressId,
+    });
+    expect(after.ipAddress).toMatchObject({ status: 'ASSIGNED', macAddress: before.ipAddress?.macAddress });
+    const vm = fake.vms.get(after.pveVmid as number);
+    expect(vm?.cloudInit).toMatchObject({ user: 'maria', password: 'senha-nova-da-vps-1', ip: before.ipAddress?.address });
+    expect(vm?.passwords).toMatchObject({ root: 'senha-root-nova-1' });
+    const vmid = String(after.pveVmid);
+    expect(fake.calls.lastIndexOf(`destroy:${vmid}`)).toBeLessThan(fake.calls.lastIndexOf(`clone:${vmid}`));
+
+    const job = await db.job.findFirstOrThrow({ where: { type: 'reinstall_vps', payload: { path: '$.vpsId', equals: id } } });
+    expect(job.status).toBe('SUCCEEDED');
+    expect((job.payload as Record<string, unknown>).secrets).toBeNull();
+    const events = await db.vpsEvent.findMany({ where: { vpsId: id }, orderBy: { id: 'asc' } });
+    expect(events.filter((e) => e.action === 'reinstall').map((e) => e.status)).toEqual(['requested', 'succeeded']);
+    expect(events.some((e) => e.action === 'provision' && e.message === 'wiping')).toBe(true);
+  });
+
+  it('falha definitiva: VPS em ERROR (REINSTALL_FAILED) sem VM parcial, mas o IP continua dela; reinstalar de novo funciona', async () => {
+    const c = await customer();
+    const id = await paidVps(c);
+    await worker.drain();
+    const before = await vpsRow(id);
+    fake.failNext('power', new PermanentJobError('boom')); // falha definitiva na primeira tentativa
+    expect((await reinstall(c, id, {})).status).toBe(202);
+    await worker.drain();
+
+    const failed = await vpsRow(id);
+    expect(failed).toMatchObject({ status: 'ERROR', lastError: 'REINSTALL_FAILED', pveVmid: null, ipAddressId: before.ipAddressId });
+    expect(fake.vms.has(before.pveVmid as number)).toBe(false);
+
+    expect((await reinstall(c, id, {})).status).toBe(202);
+    await worker.drain();
+    const ok = await vpsRow(id);
+    expect(ok).toMatchObject({ status: 'RUNNING', ipAddressId: before.ipAddressId });
+  });
+});

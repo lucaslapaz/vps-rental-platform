@@ -78,6 +78,31 @@ export const createVpsSchema = z
   .refine((v) => !v.sshPasswordAuth || Boolean(v.password), { error: 'sshPasswordNeedsPassword', path: ['sshPasswordAuth'] });
 export type CreateVpsInput = z.input<typeof createVpsSchema>;
 
+/**
+ * POST /api/vps/:id/reinstall (Fase 10): imagem e acesso novos, como na criação. Hostname, IP, plano e período pago são
+ * mantidos; `confirmHostname` precisa ser o hostname atual (a operação apaga o disco).
+ */
+export const reinstallVpsSchema = z
+  .object({
+    osTemplate: z.string().min(1, { error: 'required' }),
+    username: vpsUsernameSchema,
+    sshKeyIds: z.array(z.coerce.number().int().positive()).max(10).default([]),
+    newSshKey: z
+      .object({
+        publicKey: z.string().min(1, { error: 'required' }).max(16_384, { error: 'tooLong' }),
+        name: z.string().trim().max(80, { error: 'tooLong' }).optional(),
+        save: z.boolean().default(false),
+      })
+      .optional(),
+    password: newPasswordSchema.optional(),
+    sshPasswordAuth: z.boolean().default(false),
+    rootPassword: newPasswordSchema.optional(),
+    confirmHostname: z.string().min(1, { error: 'required' }),
+  })
+  .refine((v) => Boolean(v.password) || v.sshKeyIds.length > 0 || Boolean(v.newSshKey), { error: 'authMethodRequired', path: ['password'] })
+  .refine((v) => !v.sshPasswordAuth || Boolean(v.password), { error: 'sshPasswordNeedsPassword', path: ['sshPasswordAuth'] });
+export type ReinstallVpsInput = z.input<typeof reinstallVpsSchema>;
+
 /** Dados do cartão de teste. PAN e CVV nunca são gravados nem logados (plano §12). */
 export const payInvoiceSchema = z
   .object({

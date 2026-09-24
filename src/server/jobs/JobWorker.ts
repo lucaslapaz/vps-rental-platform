@@ -9,6 +9,7 @@ import { DeleteVpsHandler } from './handlers/DeleteVpsHandler.ts';
 import { CleanupHandler, ExpirePendingHandler } from './handlers/MaintenanceHandlers.ts';
 import { ProvisionVpsHandler } from './handlers/ProvisionVpsHandler.ts';
 import { ReconcileHandler } from './handlers/ReconcileHandler.ts';
+import { ReinstallVpsHandler } from './handlers/ReinstallVpsHandler.ts';
 import { ResizeVpsHandler } from './handlers/ResizeVpsHandler.ts';
 import { errorMessage, type JobContext, type JobHandler, PermanentJobError } from './handlers/types.ts';
 import { VpsActionHandler } from './handlers/VpsActionHandler.ts';
@@ -50,6 +51,7 @@ export class JobWorker {
     @inject(CleanupHandler) cleanup: CleanupHandler,
     @inject(BillingCycleHandler) billing: BillingCycleHandler,
     @inject(SuspendVpsHandler) suspend: SuspendVpsHandler,
+    @inject(ReinstallVpsHandler) reinstall: ReinstallVpsHandler,
   ) {
     this.workerId = `${env.WORKER_ID ?? os.hostname()}#${process.pid}`;
     this.handlers = {
@@ -62,6 +64,7 @@ export class JobWorker {
       cleanup_sessions: cleanup,
       billing_cycle: billing,
       suspend_vps: suspend,
+      reinstall_vps: reinstall,
     };
   }
 

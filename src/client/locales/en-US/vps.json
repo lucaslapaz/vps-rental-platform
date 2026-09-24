@@ -97,14 +97,16 @@
     "starting": "Powering on",
     "booting": "Booting the system",
     "access": "Applying passwords and SSH",
-    "ready": "Ready"
+    "ready": "Ready",
+    "wiping": "Erasing the previous system"
   },
   "lastError": {
     "PROVISION_FAILED": "Creation failed. Nothing was kept on the server; you can delete it and try again.",
     "ACTION_FAILED": "The last action failed and the VM state could not be confirmed.",
     "RESIZE_FAILED": "The plan change failed.",
     "DELETE_FAILED": "Deletion failed. Try again.",
-    "VM_MISSING": "The virtual machine was not found on the server."
+    "VM_MISSING": "The virtual machine was not found on the server.",
+    "REINSTALL_FAILED": "The reinstall failed. The IP is still reserved for this VPS: try reinstalling again or delete it."
   },
   "toast": {
     "ready": "{{hostname}} is up at {{ip}}.",
@@ -191,7 +193,8 @@
     "timeline": {
       "title": "Creating your VPS",
       "subtitle": "This takes about a minute. You can leave the page: creation continues.",
-      "failed": "Creation failed."
+      "failed": "Creation failed.",
+      "titleReinstall": "Reinstalling your VPS"
     },
     "console": {
       "connect": "Open console",
@@ -277,7 +280,10 @@
       "resizeConfirmBody": "The difference prorated to the days left in the month (at most {{amount}}, simulated) becomes an invoice when the change finishes.",
       "resizeNoCharge": "No extra charge this month.",
       "resizeRequested": "Plan change in progress.",
-      "notAvailable": "Available with the VPS on or off, with no other operation in progress."
+      "notAvailable": "Available with the VPS on or off, with no other operation in progress.",
+      "reinstallTitle": "Reinstall the system",
+      "reinstallDescription": "Erases the disk and installs the image again (the same or another one). The IP, hostname and plan are kept.",
+      "reinstallButton": "Reinstall…"
     },
     "danger": {
       "title": "Danger zone",
@@ -306,7 +312,8 @@
         "ssh_password_auth": "SSH password login",
         "ssh_key": "SSH key added",
         "reconcile": "Automatic state fix",
-        "expire": "Order expired"
+        "expire": "Order expired",
+        "reinstall": "Reinstall"
       },
       "status": {
         "requested": "requested",
@@ -321,5 +328,20 @@
       "upgrade": "The plan change difference ({{amount}}) is open until {{date}}.",
       "suspended": "This VPS was suspended for non-payment and its machine was shut down. Pay the renewal by {{date}} to reactivate it; after that, it will be deleted."
     }
+  },
+  "reinstall": {
+    "back": "Back to {{hostname}}",
+    "title": "Reinstall {{hostname}}",
+    "subtitle": "Choose the image and access again, as when creating it.",
+    "warning": "Everything on the disk will be erased. This cannot be undone.",
+    "kept": "Kept: the IP {{ip}}, the hostname, the {{plan}} plan and the period already paid.",
+    "belowPlan": "Does not fit the {{plan}} plan.",
+    "confirmTitle": "Confirmation",
+    "confirmHint": "Type {{hostname}} to confirm.",
+    "confirmHelp": "Reinstalling takes about a minute; the VPS is offline during that time.",
+    "submit": "Reinstall",
+    "submitting": "Starting…",
+    "started": "Reinstalling {{hostname}}.",
+    "notAllowed": "This VPS cannot be reinstalled right now. Wait for the current operation to finish."
   }
 }

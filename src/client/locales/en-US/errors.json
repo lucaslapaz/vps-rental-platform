@@ -67,6 +67,8 @@
     "sshKeyChoice": "Choose a saved key or paste a new one (one of the two).",
     "subjectTooShort": "Write a subject with at least 3 characters.",
     "roleKey": "Use 3 to 50 lowercase letters, digits or _, starting with a letter.",
-    "permission": "Unknown permission."
-  }
+    "permission": "Unknown permission.",
+    "confirmHostname": "Type the current hostname to confirm."
+  },
+  "CONFIRMATION_MISMATCH": "The hostname you typed does not match."
 }

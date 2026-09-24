@@ -13,7 +13,8 @@ export type JobType =
   | 'expire_pending'
   | 'cleanup_sessions'
   | 'billing_cycle'
-  | 'suspend_vps';
+  | 'suspend_vps'
+  | 'reinstall_vps';
 
 export interface ClaimedJob {
   id: number;

@@ -24,6 +24,9 @@ export interface ProvisionSecrets {
   sshKeys: string[];
 }
 
+/** Campos de acesso comuns à criação e à reinstalação. */
+type AccessInput = Pick<CreateVps, 'sshKeyIds' | 'newSshKey' | 'password' | 'rootPassword'>;
+
 const invalid = (code: string, message: string, path?: string) =>
   new AppError(422, code, message, path ? [{ path, message: code }] : undefined);
 
@@ -42,22 +45,15 @@ export class OrderService {
   ) {}
 
   /**
-   * POST /api/vps: valida o pedido (as mesmas regras da tela, plano §14.5), confere a capacidade e cria a VPS em
-   * PENDING_PAYMENT com a fatura da primeira mensalidade. Nada é criado no Proxmox antes do pagamento.
+   * Regras de acesso da imagem e as chaves SSH do pedido (as salvas precisam ser do usuário; a nova é validada de verdade
+   * e, se pedido, salva na conta). Usado na criação e na reinstalação; devolve as chaves para o cloud-init.
    */
-  async create(userId: string, input: CreateVps, ip: string | null): Promise<{ vps: VpsDTO; invoice: InvoiceDTO }> {
-    const template = await this.catalog.findOsTemplate(input.osTemplate);
-    if (!template) throw invalid('IMAGE_NOT_FOUND', 'Imagem inexistente', 'osTemplate');
-    const plan = await this.catalog.findPlan(input.plan);
-    if (!plan) throw invalid('PLAN_NOT_FOUND', 'Plano inexistente', 'plan');
-
-    // Mínimos da imagem: o frontend desabilita o plano, mas o servidor é quem decide (plano §3.7).
-    if (plan.memoryMb < template.minMemoryMb || plan.diskGb < template.minDiskGb) {
-      throw new AppError(422, 'PLAN_BELOW_IMAGE_MINIMUM', `${template.name} requer ${template.minMemoryMb} MB e ${template.minDiskGb} GB`, {
-        minMemoryMb: template.minMemoryMb,
-        minDiskGb: template.minDiskGb,
-      });
-    }
+  async resolveAccess(
+    userId: string,
+    template: NonNullable<Awaited<ReturnType<CatalogRepository['findOsTemplate']>>>,
+    input: AccessInput,
+    keyName: string,
+  ): Promise<string[]> {
     if (template.requiresPassword && !input.password) throw invalid('PASSWORD_REQUIRED', 'Esta imagem exige senha', 'password');
     if (input.rootPassword && !template.supportsRootPassword)
       throw invalid('ROOT_PASSWORD_NOT_SUPPORTED', 'Imagem sem senha root', 'rootPassword');
@@ -79,13 +75,35 @@ export class OrderService {
         if (input.newSshKey.save && !saved.some((k) => k.fingerprint === parsed.fingerprint)) {
           await this.sshKeys.create({
             userId,
-            name: input.newSshKey.name || `chave-${input.hostname}`,
+            name: input.newSshKey.name || keyName,
             publicKey: parsed.line,
             fingerprint: parsed.fingerprint,
           });
         }
       }
     }
+
+    return keys;
+  }
+
+  /**
+   * POST /api/vps: valida o pedido (as mesmas regras da tela, plano §14.5), confere a capacidade e cria a VPS em
+   * PENDING_PAYMENT com a fatura da primeira mensalidade. Nada é criado no Proxmox antes do pagamento.
+   */
+  async create(userId: string, input: CreateVps, ip: string | null): Promise<{ vps: VpsDTO; invoice: InvoiceDTO }> {
+    const template = await this.catalog.findOsTemplate(input.osTemplate);
+    if (!template) throw invalid('IMAGE_NOT_FOUND', 'Imagem inexistente', 'osTemplate');
+    const plan = await this.catalog.findPlan(input.plan);
+    if (!plan) throw invalid('PLAN_NOT_FOUND', 'Plano inexistente', 'plan');
+
+    // Mínimos da imagem: o frontend desabilita o plano, mas o servidor é quem decide (plano §3.7).
+    if (plan.memoryMb < template.minMemoryMb || plan.diskGb < template.minDiskGb) {
+      throw new AppError(422, 'PLAN_BELOW_IMAGE_MINIMUM', `${template.name} requer ${template.minMemoryMb} MB e ${template.minDiskGb} GB`, {
+        minMemoryMb: template.minMemoryMb,
+        minDiskGb: template.minDiskGb,
+      });
+    }
+    const keys = await this.resolveAccess(userId, template, input, `chave-${input.hostname}`);
 
     await this.capacity.assertCanAllocate(userId, plan);
 

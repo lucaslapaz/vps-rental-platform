@@ -17,6 +17,7 @@ import { AgentPage } from '@/features/support/AgentPage';
 import { SupportPage } from '@/features/support/SupportPage';
 import { CreateVpsPage } from '@/features/vps/CreateVpsPage';
 import { VpsDetailPage } from '@/features/vps/detail/VpsDetailPage';
+import { ReinstallVpsPage } from '@/features/vps/ReinstallVpsPage';
 import { VpsListPage } from '@/features/vps/VpsListPage';
 
 // Rotas do plano §14.1; as demais entram nas fases seguintes.
@@ -58,6 +59,16 @@ export const router = createBrowserRouter([
           <RequireAuth>
             <RequirePermission permission="vps:create">
               <CreateVpsPage />
+            </RequirePermission>
+          </RequireAuth>
+        ),
+      },
+      {
+        path: 'vps/:id/reinstall',
+        element: (
+          <RequireAuth>
+            <RequirePermission permission="vps:manage:own">
+              <ReinstallVpsPage />
             </RequirePermission>
           </RequireAuth>
         ),

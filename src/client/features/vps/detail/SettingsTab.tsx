@@ -6,7 +6,7 @@ import { Check } from 'lucide-react';
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
-import { useNavigate } from 'react-router';
+import { Link, useNavigate } from 'react-router';
 import type { z } from 'zod';
 import { TextField } from '@/components/form/TextField';
 import {
@@ -170,6 +170,30 @@ function ResizeCard({ vps }: { vps: VpsDTO }) {
   );
 }
 
+/** Reinstalar (Fase 10): leva à página com imagem, acesso e confirmação. */
+function ReinstallCard({ vps }: { vps: VpsDTO }) {
+  const { t } = useTranslation('vps');
+  return (
+    <Card className="border-destructive/40">
+      <CardHeader>
+        <CardTitle>{t('detail.settings.reinstallTitle')}</CardTitle>
+        <CardDescription>{t('detail.settings.reinstallDescription')}</CardDescription>
+      </CardHeader>
+      <CardFooter>
+        {canRun('reinstall', vps.status) ? (
+          <Button asChild variant="outline" data-testid="reinstall-vps">
+            <Link to={`/vps/${vps.id}/reinstall`}>{t('detail.settings.reinstallButton')}</Link>
+          </Button>
+        ) : (
+          <Button variant="outline" disabled>
+            {t('detail.settings.reinstallButton')}
+          </Button>
+        )}
+      </CardFooter>
+    </Card>
+  );
+}
+
 function DangerZone({ vps }: { vps: VpsDTO }) {
   const { t } = useTranslation('vps');
   const navigate = useNavigate();
@@ -245,6 +269,7 @@ export function SettingsTab({ vps }: { vps: VpsDTO }) {
     <div className="flex flex-col gap-4">
       {canManage ? <RenameCard vps={vps} /> : null}
       {canManage ? <ResizeCard vps={vps} /> : null}
+      {canManage && canDelete ? <ReinstallCard vps={vps} /> : null}
       {canDelete ? <DangerZone vps={vps} /> : null}
     </div>
   );

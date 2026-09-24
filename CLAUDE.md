@@ -1,7 +1,7 @@
 # CLAUDE.md — Favo (VPS Rental Platform)
 
 Contexto para o Claude implementar este projeto em conversas novas. **O plano completo e as decisões estão em
-[docs/PLANO_DE_IMPLEMENTACAO.md](docs/PLANO_DE_IMPLEMENTACAO.md)** (revisão 19, 2026-09-24). Este arquivo resume o
+[docs/PLANO_DE_IMPLEMENTACAO.md](docs/PLANO_DE_IMPLEMENTACAO.md)** (revisão 20, 2026-09-24). Este arquivo resume o
 que não dá para deduzir do código: regras combinadas com o usuário, estado do ambiente, armadilhas já encontradas
 (com a solução) e comandos que já foram testados.
 
@@ -32,8 +32,8 @@ que não dá para deduzir do código: regras combinadas com o usuário, estado d
   sala `agents`). Fase 9: E2E (`e2e/`, `npm run test:e2e`), cobertura, README, `docs/arquitetura.md` e
   `docs/seguranca.md`. Fase 10 (extras, na ordem do plano): 1 console de texto (xterm.js + termproxy), 2 firewall anti-spoofing por VPS e
   3 cobrança recorrente (`billing_cycle`, `Vps.paidUntil`, relógio acelerado `BILLING_TIME_SCALE`) e 4 painel admin
-  (`src/client/features/admin/`: `/admin`, `/admin/vps`, `/admin/users`, `/admin/roles`; `AdminService`) feitos; o próximo é o 5
-  (reinstalar VPS). **O banco de dev tem a VPS de demonstração da Ana** (ver §4, linha VMs).
+  (`src/client/features/admin/`: `/admin`, `/admin/vps`, `/admin/users`, `/admin/roles`; `AdminService`) e 5 reinstalar (`reinstall_vps`, `/vps/:id/reinstall`) feitos; o próximo é o 6 (MCP próprio
+  somente leitura). **O banco de dev tem a VPS de demonstração da Ana** (ver §4, linha VMs).
 - **Proxmox no código:** `ProxmoxClient` (undici + CA + servername, token, zod), `TaskWaiter` (UPID), `QemuCloudInitProvider`
   (clone, cloud-init, resize, energia, status, pendências, métricas, console, guest agent) e `ImageProfile` (comandos fixos por
   família). Os testes comuns usam `tests/helpers/FakeVirtualizationProvider.ts`; só o `npm run test:lab` (LAB=1) toca o Proxmox.
@@ -194,6 +194,9 @@ que não dá para deduzir do código: regras combinadas com o usuário, estado d
 - **A15. Firewall da VM por API:** `…/firewall/ipset` e `…/firewall/options` exigem `VM.Config.Network` (leitura:
   `VM.Audit`); booleanos vão como `1`/`0`. Para VMs, o `ipfilter: 1` só libera os endereços do IPSet `ipfilter-net0` (e os
   link-local): **sem o IPSet, a VPS fica sem rede IPv4**. Contraprova do anti-spoofing: `ip addr add <outro IP>` + `ping -I`.
+- **A16. Reboot com CPU/RAM pendentes termina com a VM PARADA:** a task `qmreboot` fica OK e o Proxmox religa a VM ~1 s depois
+  (`qmstart` como `root@pam`). Ler o estado nesse intervalo gravava `STOPPED` para uma VM que estava ligando (o roteiro
+  `@lab` passava por sorte de tempo). O `power('reboot'|'reset')` do provider agora espera a VM voltar a `running` (até 60 s).
 - **A13. noVNC do próprio Proxmox** (`/usr/share/novnc-pve/app.js`): `password = data.password ?? data.ticket`,
   `vncwebsocket?port=…&vncticket=…`, subprotocolo `binary`. O proxy da Favo faz o mesmo. `get-fsinfo` do agente devolve
   `result[].mountpoint/used-bytes/total-bytes` (aceita token, `VM.GuestAgent.Audit`). Pendência de memória aparece em

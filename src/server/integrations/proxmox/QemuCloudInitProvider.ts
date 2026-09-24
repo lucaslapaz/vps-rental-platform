@@ -190,6 +190,18 @@ export class QemuCloudInitProvider implements VirtualizationProvider {
       await this.power(vmid, 'stop');
       await this.power(vmid, 'start');
     }
+    // Com CPU/RAM pendentes, a task do reboot termina com a VM PARADA e o próprio Proxmox a liga ~1 s depois (qmstart
+    // como root@pam, CLAUDE.md A12). Quem lesse o estado nesse intervalo gravaria STOPPED para uma VM que está ligando.
+    if (action === 'reboot' || action === 'reset') await this.waitRunning(vmid, 60_000);
+  }
+
+  /** Espera a VM aparecer como "running" (depois de um reboot); se não aparecer no prazo, segue com o estado real. */
+  private async waitRunning(vmid: number, timeoutMs: number) {
+    const deadline = Date.now() + timeoutMs;
+    while (Date.now() < deadline) {
+      if ((await this.status(vmid))?.status === 'running') return;
+      await new Promise((r) => setTimeout(r, 1000));
+    }
   }
 
   async status(vmid: number): Promise<VmStatus | null> {

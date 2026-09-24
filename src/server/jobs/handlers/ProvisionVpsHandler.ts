@@ -23,6 +23,8 @@ const payloadSchema = z.object({
   cloneStarted: z.boolean().optional(),
   configured: z.boolean().optional(),
   accessApplied: z.boolean().optional(),
+  /** Veio do reinstall_vps (Fase 10): os eventos do histórico saem como "reinstall" em vez de "create". */
+  reinstall: z.boolean().optional(),
 });
 
 /**
@@ -164,7 +166,7 @@ export class ProvisionVpsHandler implements JobHandler {
       this.db.ipAddress.update({ where: { id: ip.id }, data: { status: 'ASSIGNED' } }),
       this.db.vps.updateMany({ where: { id: vps.id, status: 'PROVISIONING' }, data: { status: 'RUNNING', lastError: null } }),
     ]);
-    await this.notify.event(vps.id, 'create', 'succeeded', { message: ip.address });
+    await this.notify.event(vps.id, p.reinstall ? 'reinstall' : 'create', 'succeeded', { message: ip.address });
     await this.notify.progress(owner, 'ready');
     this.notify.status(owner, 'RUNNING', null);
   }

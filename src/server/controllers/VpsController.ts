@@ -6,6 +6,7 @@ import {
   consoleRequestSchema,
   createVpsSchema,
   metricsQuerySchema,
+  reinstallVpsSchema,
   renameVpsSchema,
   resizeVpsSchema,
   sshPasswordAuthSchema,
@@ -64,6 +65,13 @@ export class VpsController {
     const { id } = valid(res, 'params', uuidParamSchema);
     const { plan } = valid(res, 'body', resizeVpsSchema);
     res.status(202).json({ vps: await this.service.resize(currentUser(req).id, id, plan, req.ip ?? null) });
+  };
+
+  /** POST /api/vps/:id/reinstall (Fase 10): apaga a VM e cria de novo, com o mesmo IP → 202 */
+  reinstall = async (req: Request, res: Response) => {
+    const { id } = valid(res, 'params', uuidParamSchema);
+    const input = valid(res, 'body', reinstallVpsSchema);
+    res.status(202).json({ vps: await this.service.reinstall(currentUser(req).id, id, input, req.ip ?? null) });
   };
 
   /** DELETE /api/vps/:id */

@@ -1,10 +1,8 @@
-import { PROVISION_STEPS, type ProvisionStep } from '@shared/constants/events';
 import { VPS_ERROR_CODES, type VpsErrorCode } from '@shared/constants/vps';
 import type { VpsDTO } from '@shared/types/catalog';
 import { useTranslation } from 'react-i18next';
+import { provisionState } from './provisionSteps';
 import { useVpsEvents } from './queries';
-
-const isStep = (v: string | null): v is ProvisionStep => (PROVISION_STEPS as readonly string[]).includes(v ?? '');
 
 /**
  * Etapa atual da criação (plano §14.5), reconstruída do histórico: sobrevive a um refresh. O socket invalida o
@@ -15,10 +13,9 @@ export function ProvisionProgress({ vps }: { vps: VpsDTO }) {
   const events = useVpsEvents(vps.id, vps.status === 'PROVISIONING');
   if (vps.status !== 'PROVISIONING') return null;
 
-  const last = events.data?.filter((e) => e.action === 'provision' && isStep(e.message)).at(-1)?.message;
-  const step: ProvisionStep = isStep(last ?? null) ? (last as ProvisionStep) : 'payment';
-  const current = PROVISION_STEPS.indexOf(step) + 1;
-  const total = PROVISION_STEPS.length;
+  const { steps, lastIndex, current: step } = provisionState(events.data);
+  const current = lastIndex + 1;
+  const total = steps.length;
 
   return (
     <div className="mt-1 flex flex-col gap-1" data-testid="provision-progress" data-step={step}>

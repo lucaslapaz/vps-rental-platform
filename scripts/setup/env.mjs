@@ -143,8 +143,11 @@ console.log('\nPróximos passos:');
 if (missing.length) {
   console.log('  1. No Git Bash: scripts/pve/bootstrap.sh (cria o token do Proxmox e grava as PVE_* no .env.development)');
   console.log('  2. npm run env:setup de novo (copia as PVE_* para os outros arquivos; não repete as perguntas)');
+  console.log('  3. Continue no guia (docs/instalacao.md): imagens, templates e firewall (D2 a D4), depois a parte E');
 } else {
-  console.log('  npm run db:setup:dev e depois npm run dev (docs/instalacao.md, parte E)');
+  // O assistente não sabe se os templates já existem: numa instalação nova, ainda faltam D2 a D4.
+  console.log('  Instalação nova? Continue em docs/instalacao.md, passo D2: imagens, templates e firewall (D2 a D4).');
+  console.log('  Com os templates prontos: npm run db:setup:dev e depois npm run dev (parte E).');
 }
 console.log('  A senha dos usuários de demonstração fica em SEED_DEFAULT_PASSWORD, no .env.development.');
 

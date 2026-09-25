@@ -93,7 +93,7 @@ que não dá para deduzir do código: regras combinadas com o usuário, estado d
 | Shells | Ferramenta Bash = **Git Bash** (use sintaxe POSIX) e PowerShell 5.1 |
 | Node | 24.12 ou maior (`engines` do package.json) |
 | MySQL | 8.4, serviço do Windows (o instalador chama de `MySQL84`), porta 3306. Cliente fora do PATH: `"/c/Program Files/MySQL/MySQL Server 8.4/bin/mysql.exe"` |
-| VirtualBox | 7.2. `"C:\Program Files\Oracle\VirtualBox\VBoxManage.exe"`. O nome da VM do Proxmox é escolha do usuário (`VBoxManage list vms`); as outras VMs do VirtualBox não são do projeto: não mexer |
+| VirtualBox | 7.2 (testado na 7.2.12 e na 7.2.20). `"C:\Program Files\Oracle\VirtualBox\VBoxManage.exe"`. O nome da VM do Proxmox é escolha do usuário (`VBoxManage list vms`); as outras VMs do VirtualBox não são do projeto: não mexer |
 | SSH | OpenSSH, chave `~/.ssh/id_ed25519` (instalada no root do Proxmox; os testes `@lab` e o aceite dos templates usam essa chave) |
 | Arquivos temporários | Usar o **scratchpad** da sessão, nunca o `/tmp` (ver armadilha T2) |
 
@@ -108,7 +108,7 @@ que não dá para deduzir do código: regras combinadas com o usuário, estado d
 | Se o PC reiniciar | Ligar a VM: `VBoxManage startvm "<VM do Proxmox>" --type headless` e esperar ~20 s pela porta 8006 |
 | Rede | `vmbr0` = 10.0.2.15/24 sobre `nic0` (NAT, saída para a internet) · **`vmbr1` = 192.168.56.10/24 sobre `nic1`** + `MASQUERADE -s 192.168.56.0/24 -o vmbr0` |
 | IPs | DHCP do host-only: `.101–.199`. **VPS: `.200–.228`** (IPAM no banco, tabela `ip_addresses`). `.229` = testes manuais. `.250` = build de templates. Windows = `.1` |
-| Storage | `local` (dir, `/var/lib/vz`, imagens em `import/`) · `local-lvm` (lvmthin `data`, ~16 GB num disco de 30 GB; criado pela instalação com ext4) |
+| Storage | `local` (dir, `/var/lib/vz`, imagens em `import/`) · `local-lvm` (lvmthin `data`, criado pela instalação com ext4). O tamanho depende das opções de disco do instalador: com os padrões, discos < 48 GiB dão metade para a raiz (35 GB → `local-lvm` de 9,6 GiB); o guia recomenda `maxroot=10`/`minfree=2` (B1). Os 4 templates ocupam ~3,8 GiB |
 | RAM | O Proxmox usa ~1,3–1,4 GB; sobram **~1,5 GB para as VPS**. O Windows costuma ficar com só ~0,5 GB livres com o Proxmox ligado |
 | VMs | VPS da plataforma a partir do VMID **2000** (pool `vps-platform`). Templates **9000** `favo-tpl-alpine`, **9001** `favo-tpl-debian`, **9002** `favo-tpl-ubuntu`, **9003** `favo-tpl-alpine-desktop` (pool `vps-templates`). VMID **9199** = clone temporário do teste de aceite (IP `.229`) |
 | Identidade da plataforma | Pools `vps-platform` e `vps-templates`, role `VPSPlatformVM`, usuário `vpsplatform@pve`, token `vpsplatform@pve!backend` (`privsep=1`). Secret e demais `PVE_*` no `.env.development`; CA em `certs/pve-root-ca.pem` |
@@ -158,6 +158,18 @@ Mantenha os dois atualizados quando mudar scripts, variáveis ou requisitos do l
 - **V4. Pouca RAM no Windows:** por isso o Proxmox tem 3 GB, e não 4. Planos e capacidade foram dimensionados para isso.
 - **V5.** Para que os guests aninhados falem com o Windows, o Adaptador 2 precisa de `--nic-promisc2=allow-all`
   (doc *Proxmox VE inside VirtualBox*).
+- **V6. Conferir a VM antes de instalar (guia, A5).** Numa reinstalação criada pela interface, a VM ficou com
+  `nested-hw-virt="off"` (caixa acinzentada) e `Promisc Policy: deny` no Adaptador 2, sem nenhum erro até o teste do template.
+  `VBoxManage showvminfo <vm> --machinereadable` (`nested-hw-virt`, `nic1`/`nic2`) e `showvminfo <vm> | Select-String '^NIC [12]:'`
+  (`Promisc Policy: allow-all`) pegam os dois; a correção é um `modifyvm --nested-hw-virt=on --nic-promisc2=allow-all` com a VM desligada.
+- **V7. IP do Windows na host-only:** em alguns PCs o Windows perde o `192.168.56.1` ao reiniciar. Conferir com
+  `Get-NetIPAddress -InterfaceAlias (Get-NetAdapter -InterfaceDescription 'VirtualBox Host-Only Ethernet Adapter').Name` e
+  regravar com `VBoxManage hostonlyif ipconfig "VirtualBox Host-Only Ethernet Adapter" --ip 192.168.56.1 --netmask 255.255.255.0`
+  (funciona sem administrador). A linha `DHCP: Disabled` do `list hostonlyifs` é o IP fixo do Windows; o servidor DHCP das VMs é o
+  do `list dhcpservers`.
+- **V8. Console da VM com teclado ABNT2:** o `keyboardputstring` do VBoxManage manda scancodes do layout americano, e o console do
+  Proxmox não tem outros mapas (`loadkeys us` falha). Para digitar pelo VBoxManage num console ABNT2, a `/` é o scancode `73 f3`, e
+  `;`, `:`, `'`, `|` saem trocados: evite-os (um comando por chamada, heredoc sem aspas).
 
 ### Proxmox: rede e sistema
 - **P1.** O `apt` do Proxmox falhava (`401 Unauthorized` em `enterprise.proxmox.com`): os repositórios enterprise vêm ativos e
@@ -497,6 +509,12 @@ Mantenha os dois atualizados quando mudar scripts, variáveis ou requisitos do l
 - **T21. GIF e capturas do README:** quadros com o Playwright MCP (`page.screenshot` num laço) e montagem com o **Pillow**
   pelo `py` (já instalado; o ffmpeg do Playwright só tem VP8/webm). `print` com caracteres fora do cp1252 quebra no
   console do Windows. Imagens em `docs/images/` (PNG otimizado, ≤ 1280 px).
+- **T22. `ssh-keygen -R` recusa um `known_hosts` com linha inválida** ("Not replacing existing known_hosts file because of
+  errors") e não apaga nada; o SSH seguinte cai em "REMOTE HOST IDENTIFICATION HAS CHANGED". Apague só as linhas do IP
+  (`sed -i '/^192.168.56.10[ ,]/d' ~/.ssh/known_hosts`, com backup) e não mexa na linha quebrada (é do usuário).
+- **T23. `CREATE USER IF NOT EXISTS` não troca a senha** de um `vps_app` que já existia: por isso o SQL do C3 do guia tem os
+  `ALTER USER` logo depois. Para responder às perguntas do `npm run env:setup` sem terminal, mande as respostas pelo stdin
+  (uma por linha; sem entrada, a confirmação final é cancelada).
 
 ## 6. Decisões de arquitetura mais importantes (detalhes no plano)
 

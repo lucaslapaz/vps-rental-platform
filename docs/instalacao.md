@@ -241,8 +241,9 @@ ligado, desligue-o de forma limpa e espere o estado `poweroff`:
 & $vb modifyvm $vm --nested-hw-virt=on --nic-promisc2=allow-all
 ```
 
-O `--nested-hw-virt=on` é o jeito normal de ligar a opção que fica acinzentada na interface: ele grava a opção na
-configuração da VM, e a caixa passa a aparecer marcada. Rode o item 1 de novo para conferir.
+O `--nested-hw-virt=on` é o jeito normal de ligar a opção que fica acinzentada na interface: a interface não deixa
+marcar a caixa, mas o comando grava a opção direto na configuração da VM. **Não se guie pela caixa na interface**: o
+que vale é o `nested-hw-virt="on"` do item 1 e o `NestedHWVirt ... (1)` do item 3. Rode o item 1 de novo para conferir.
 
 **3. Confira no log que o VT-x chegou à VM.** Ligue a VM com uma janela (`& $vb startvm $vm`) e, com ela ligada:
 

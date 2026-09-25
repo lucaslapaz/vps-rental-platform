@@ -35,7 +35,9 @@
     "e2e:server": "cross-env NODE_ENV=test PORT=3100 APP_ORIGIN=http://localhost:3100 VPS_WAIT_SSH=false WORKER_POLL_MS=200 MAX_VPS_PER_USER=20 CAPACITY_MAX_MEMORY_MB=1000000 CAPACITY_MAX_DISK_GB=100000 tsx --tsconfig tsconfig.server.json e2e/server.ts",
     "test:e2e": "npm run build:client && playwright test",
     "test:coverage": "cross-env NODE_ENV=test vitest run --coverage",
-    "mcp": "cross-env NODE_ENV=development tsx --tsconfig tsconfig.server.json scripts/mcp/server.ts"
+    "mcp": "cross-env NODE_ENV=development tsx --tsconfig tsconfig.server.json scripts/mcp/server.ts",
+    "env:setup": "node scripts/setup/env.mjs",
+    "env:secret": "node scripts/setup/secret.mjs"
   },
   "repository": {
     "type": "git",

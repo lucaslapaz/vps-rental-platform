@@ -121,8 +121,11 @@ que não dá para deduzir do código: regras combinadas com o usuário, estado d
 O passo a passo de uma instalação do zero (VirtualBox, adaptadores, Proxmox, rede `vmbr1`, MySQL, `.env`) está em
 [docs/instalacao.md](docs/instalacao.md); o que quebra e o que dá para mudar, em [docs/problemas-comuns.md](docs/problemas-comuns.md).
 Mantenha os dois atualizados quando mudar scripts, variáveis ou requisitos do laboratório.
-- `node scripts/setup/env.mjs '<senha do vps_app>' [--production]`: cria/completa os `.env.*` com segredos aleatórios (nunca
-  sobrescreve) e copia as `PVE_*` do `.env.development` para os outros.
+- `npm run env:setup [-- --production]` (`scripts/setup/env.mjs`): cria/completa os `.env.*` com segredos aleatórios (nunca
+  sobrescreve; pergunta a senha do `vps_app` só se faltar `DATABASE_URL`) e SEMPRE copia as `PVE_*` do `.env.development`
+  para os outros. `npm run env:secret -- <VAR> [--write <ambiente>]` (`scripts/setup/secret.mjs`) gera um segredo avulso.
+  Formatos e efeitos de troca: `scripts/setup/lib.mjs` (`SECRETS`) e [docs/variaveis-de-ambiente.md](docs/variaveis-de-ambiente.md);
+  mantenha os dois em sincronia com o `src/server/config/env.ts`.
 - `scripts/pve/download-images.sh`: idempotente. Baixa as 3 imagens cloud para `/var/lib/vz/import/` e confere o checksum publicado.
 - `scripts/pve/bootstrap.sh [--rotate-token]`: idempotente. Envia a si mesmo por SSH, copia a CA e grava os `PVE_*` no `.env.development`.
   O nome do nó é descoberto (`hostname -s`); `PVE_NODE=<nome>` força outro.

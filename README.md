@@ -84,6 +84,9 @@ MySQL, com `SELECT … FOR UPDATE SKIP LOCKED`). Detalhes, diagramas de sequênc
 - 📘 **Instalação do zero, passo a passo: [docs/instalacao.md](docs/instalacao.md).** O guia vai do Windows sem
   nada até a primeira VPS criada: VirtualBox com virtualização aninhada, os dois adaptadores de rede, instalação do
   Proxmox, rede das VPS, MySQL, `.env`, token, imagens e templates.
+- 🔑 **Variáveis de ambiente e tokens: [docs/variaveis-de-ambiente.md](docs/variaveis-de-ambiente.md).** O que é cada
+  variável, o formato de cada segredo, o token do Proxmox e os comandos que geram os valores (`npm run env:setup` e
+  `npm run env:secret`).
 - 🩺 **Algo diferente ou quebrado? [docs/problemas-comuns.md](docs/problemas-comuns.md).** O documento diz o que dá
   para mudar sem quebrar (senhas, nome do nó, RAM) e o que quebra (Hyper-V, VT-x aninhado, modo promíscuo, IPs,
   storage), cada item com o sintoma e a correção.
@@ -95,9 +98,9 @@ Resumo, com o Proxmox já instalado e a rede `vmbr1` criada (partes A e B do gui
 
 ```bash
 npm install                                   # também gera o Prisma Client
-node scripts/setup/env.mjs '<senha do vps_app>'   # .env.development e .env.test com segredos aleatórios
+npm run env:setup                             # .env.development e .env.test com segredos aleatórios (pede a senha do MySQL)
 scripts/pve/bootstrap.sh                      # usuário, token e permissões no Proxmox; grava as PVE_* no .env
-node scripts/setup/env.mjs '<senha do vps_app>'   # copia as PVE_* para o .env.test
+npm run env:setup                             # copia as PVE_* para o .env.test
 scripts/pve/download-images.sh                # imagens cloud oficiais, com checksum conferido
 scripts/pve/build-template.sh all             # os quatro templates, cada um com teste de aceite
 scripts/pve/firewall.sh                       # anti-spoofing das VPS

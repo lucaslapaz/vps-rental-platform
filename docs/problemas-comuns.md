@@ -11,8 +11,8 @@ Este documento complementa o [guia de instalação](instalacao.md). Ele responde
 | **Senha do root do Proxmox** diferente | ✅ | O projeto não usa nem guarda essa senha. Ela só serve para o login web e para instalar a chave SSH uma vez (instalação, B4). Trocar a senha depois também não afeta nada |
 | **Hostname / nome do nó** (qualquer um) | ✅ | O `bootstrap.sh` descobre o nome sozinho e grava em `PVE_NODE` e `PVE_TLS_SERVERNAME`. Não renomeie o nó **depois** de instalado: renomear um nó do Proxmox é um procedimento à parte, e o `.env` ficaria com o nome antigo |
 | **Nome da VM no VirtualBox** | ✅ | Só aparece nos seus comandos `VBoxManage` |
-| **Senha do MySQL** (`vps_app`) | ✅ | Fica no `DATABASE_URL`. Troque a senha no MySQL e no `.env.*`, ou apague as linhas `DATABASE_URL` e `SHADOW_DATABASE_URL` e rode o `scripts/setup/env.mjs` de novo |
-| **MySQL em outra porta** | ✅ | `MYSQL_HOST=127.0.0.1:3307 node scripts/setup/env.mjs '…'`, ou edite o `DATABASE_URL` |
+| **Senha do MySQL** (`vps_app`) | ✅ | Fica no `DATABASE_URL`. Troque a senha no MySQL e no `.env.*`, ou apague as linhas `DATABASE_URL` e `SHADOW_DATABASE_URL` e rode `npm run env:setup` de novo |
+| **MySQL em outra porta** | ✅ | `MYSQL_HOST=127.0.0.1:3307 npm run env:setup`, ou edite o `DATABASE_URL` |
 | **Mais RAM para o Proxmox** | ✅ | Aumente `CAPACITY_MAX_MEMORY_MB` no `.env.*` (padrão 1536, calibrado para uma VM de 3 GB) |
 | **Menos RAM** (2 GB) | ⚠️ | O Proxmox liga, mas quase não sobra memória para VPS. Reduza o `CAPACITY_MAX_MEMORY_MB`, senão a criação é aceita e a VM não cabe |
 | **Disco maior que 30 GB** | ✅ | Pode aumentar o `CAPACITY_MAX_DISK_GB` (padrão 12) |
@@ -81,15 +81,15 @@ Proxmox e pelo **nome do nó** (`PVE_TLS_SERVERNAME`), não pelo IP. Por isso tr
 | Chave do Windows **sem** `id_ed25519` (só `id_rsa`, por exemplo) | O acesso ao Proxmox pode funcionar, mas o teste dos templates e o `npm run test:lab` falham ao ler `~/.ssh/id_ed25519.pub` | `ssh-keygen -t ed25519 -N "" -f ~/.ssh/id_ed25519` e instale a nova chave (instalação, B4) |
 | Chave com **senha** (passphrase) | Os scripts param com `Permission denied` | Use uma chave sem senha, ou carregue-a num `ssh-agent` antes |
 | **`.env.development` apagado**, com o Proxmox mantido | `bootstrap.sh`: *"o token já existia e … não tem PVE_TOKEN_SECRET"* | `scripts/pve/bootstrap.sh --rotate-token` (gera um *secret* novo; o antigo deixa de valer) |
-| Token com *secret* errado | A API responde 401, e `npm run pve -- status` falha | Mesmo remédio: `--rotate-token`, e depois `node scripts/setup/env.mjs '…'` para os outros `.env` (apague antes a linha `PVE_TOKEN_SECRET` deles) |
+| Token com *secret* errado | A API responde 401, e `npm run pve -- status` falha | Mesmo remédio: `--rotate-token`, e depois `npm run env:setup`, que copia o secret novo para os outros `.env` |
 
 ### Banco de dados e aplicação
 
 | Situação | Sintoma | Correção |
 |---|---|---|
 | **Bancos de uma instalação anterior** com um Proxmox novo | VPS antigas aparecem em **Erro** (*"A máquina virtual não foi encontrada no servidor."*), e o login dos usuários de demonstração falha: o seed não troca a senha de quem já existe | Apague e recrie os bancos (instalação, C3) e rode `npm run db:setup:dev` |
-| `.env.*` copiado do `.env.example` sem preencher | A aplicação não sobe e lista as variáveis inválidas (`Variáveis de ambiente inválidas (.env.development)`) | Rode `node scripts/setup/env.mjs '<senha>'`. Ele só acrescenta o que falta; apague antes as linhas com `<…>` do modelo |
-| `npm test` falha no login ou por falta de `PVE_*` | O `.env.test` está incompleto, ou tem uma `SEED_DEFAULT_PASSWORD` diferente da que o banco de teste já tinha | Rode o `env.mjs` depois do `bootstrap.sh`. Se o banco de teste é antigo, recrie-o (C3) |
+| `.env.*` copiado do `.env.example` sem preencher | A aplicação não sobe e lista as variáveis inválidas (`Variáveis de ambiente inválidas (.env.development)`) | Apague as linhas com `<…>` que vieram do modelo e rode `npm run env:setup`, que só acrescenta o que falta. Para gerar um valor avulso: `npm run env:secret -- <VARIÁVEL>` ([variaveis-de-ambiente.md](variaveis-de-ambiente.md)) |
+| `npm test` falha no login ou por falta de `PVE_*` | O `.env.test` está incompleto, ou tem uma `SEED_DEFAULT_PASSWORD` diferente da que o banco de teste já tinha | Rode `npm run env:setup` depois do `bootstrap.sh`. Se o banco de teste é antigo, recrie-o (C3) |
 | **Dev e "produção" local ao mesmo tempo** com o mesmo Proxmox | Os dois bancos usam a mesma faixa de IPs (`.200–.228`) e podem dar o mesmo IP a duas VPS | Use um de cada vez, ou dê ao `.env.production` outra faixa (`IP_POOL_START`/`IP_POOL_END`, antes do seed de produção) |
 | Processos `node` esquecidos de uma execução anterior | O servidor "velho" responde na porta 3000, ou provisiona VPS sozinho | Feche todos: PowerShell `Get-CimInstance Win32_Process -Filter "Name='node.exe'" \| ? { $_.CommandLine -match 'vps-rental-platform' } \| % { Stop-Process -Id $_.ProcessId -Force }` |
 | **Console não conecta** só no seu navegador | A aba Console mostra erro, mas funciona em outro navegador | Uma extensão que intercepta WebSockets foi a causa real neste projeto. Teste numa janela anônima ou sem extensões. As conexões presas podem ser encerradas no painel da aba Console |

@@ -329,25 +329,27 @@ GRANT ALL PRIVILEGES ON vps_platform_shadow.* TO 'vps_app'@'localhost', 'vps_app
 ### C4. Arquivos de configuração (`.env.*`)
 
 A aplicação lê `.env.development` (`npm run dev`), `.env.test` (testes) e `.env.production` (`npm start`). Eles ficam
-**fora do git**. O modelo comentado, com todas as opções, é o [.env.example](../.env.example).
-
-Não copie o modelo à mão. Rode o script abaixo, que cria os arquivos com segredos aleatórios. Ele nunca troca um valor
-que já existe, só acrescenta o que falta:
+**fora do git**. Não copie o [.env.example](../.env.example) à mão. Rode o comando abaixo, que cria os arquivos com
+segredos aleatórios. Ele pergunta a senha do `vps_app` do passo C3, nunca troca um valor que já existe e só acrescenta o
+que falta:
 
 ```bash
-node scripts/setup/env.mjs 'TROQUE_ESTA_SENHA'                  # a senha do vps_app do passo C3
-node scripts/setup/env.mjs 'TROQUE_ESTA_SENHA' --production     # opcional: também o .env.production
+npm run env:setup                    # .env.development e .env.test
+npm run env:setup -- --production    # opcional: também o .env.production (com o admin inicial)
 ```
 
 Ele avisa que ainda faltam as variáveis do Proxmox (`PVE_*`). Elas vêm no passo D1.
 
+O que é cada variável, o formato de cada segredo e como gerar um valor novo para uma variável específica
+(`npm run env:secret -- <VARIÁVEL>`) estão em [variaveis-de-ambiente.md](variaveis-de-ambiente.md).
+
 | Variável | De onde vem | Para que serve |
 |---|---|---|
-| `DATABASE_URL`, `SHADOW_DATABASE_URL` | Script (C4) | Conexão com o MySQL. O shadow é usado pelo `prisma migrate dev` |
-| `SEED_DEFAULT_PASSWORD` | Script (C4), aleatória | **Senha dos usuários de demonstração** (`ana@favo.local` e os outros) |
-| `CSRF_SECRET`, `JOB_SECRET_KEY` | Script (C4), aleatórias | Assinatura do token CSRF e cifra das senhas nos jobs |
-| `SEED_ADMIN_EMAIL`, `SEED_ADMIN_PASSWORD` | Script com `--production` | Admin inicial do banco de produção |
-| `PVE_URL`, `PVE_NODE`, `PVE_TLS_SERVERNAME`, `PVE_CA_FILE`, `PVE_TOKEN_ID`, `PVE_TOKEN_SECRET` | `scripts/pve/bootstrap.sh` (D1) | Acesso ao Proxmox com o token da plataforma |
+| `DATABASE_URL`, `SHADOW_DATABASE_URL` | `npm run env:setup` (C4) | Conexão com o MySQL. O shadow é usado pelo `prisma migrate dev` |
+| `SEED_DEFAULT_PASSWORD` | `npm run env:setup` (C4), aleatória | **Senha dos usuários de demonstração** (`ana@favo.local` e os outros) |
+| `CSRF_SECRET`, `JOB_SECRET_KEY` | `npm run env:setup` (C4), aleatórias | Assinatura do token CSRF e cifra das senhas nos jobs |
+| `SEED_ADMIN_EMAIL`, `SEED_ADMIN_PASSWORD` | `npm run env:setup -- --production` | Admin inicial do banco de produção |
+| `PVE_URL`, `PVE_NODE`, `PVE_TLS_SERVERNAME`, `PVE_CA_FILE`, `PVE_TOKEN_ID`, `PVE_TOKEN_SECRET` | `scripts/pve/bootstrap.sh` (D1) | Acesso ao Proxmox com o token da plataforma (um *API Token* do Proxmox, criado pelo próprio Proxmox) |
 
 ---
 
@@ -360,7 +362,7 @@ rodar de novo não estraga nada. Todos aceitam `PVE_HOST=<ip>` se o Proxmox não
 
 ```bash
 scripts/pve/bootstrap.sh
-node scripts/setup/env.mjs 'TROQUE_ESTA_SENHA'     # copia as PVE_* para o .env.test (e o .env.production)
+npm run env:setup                  # copia as PVE_* para o .env.test (e o .env.production); não pergunta a senha de novo
 ```
 
 O `bootstrap.sh` cria no Proxmox:

@@ -46,14 +46,18 @@ export const SECRETS = {
   },
 };
 
-/** Lê as linhas KEY=valor de um arquivo .env (ignora comentários e linhas vazias). */
+/**
+ * Lê as linhas KEY=valor de um arquivo .env (ignora comentários e linhas vazias). Tira aspas em volta do valor, como o
+ * dotenv faz (KEY="valor" e KEY='valor' valem o mesmo que KEY=valor).
+ */
 export function readEnv(file) {
   if (!existsSync(file)) return new Map();
+  const unquote = (v) => (/^(["'])[\s\S]*\1$/.test(v) && v.length >= 2 ? v.slice(1, -1) : v);
   return new Map(
     readFileSync(file, 'utf8')
       .split(/\r?\n/)
       .filter((l) => /^[A-Z0-9_]+=/.test(l))
-      .map((l) => [l.slice(0, l.indexOf('=')), l.slice(l.indexOf('=') + 1)]),
+      .map((l) => [l.slice(0, l.indexOf('=')), unquote(l.slice(l.indexOf('=') + 1).trim())]),
   );
 }
 

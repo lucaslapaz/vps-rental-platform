@@ -42,7 +42,13 @@ const env = Object.fromEntries(
   readFileSync('.env.development', 'utf8')
     .split(/\r?\n/)
     .filter((l) => /^[A-Z0-9_]+=/.test(l))
-    .map((l) => [l.slice(0, l.indexOf('=')), l.slice(l.indexOf('=') + 1)]),
+    .map((l) => [
+      l.slice(0, l.indexOf('=')),
+      l
+        .slice(l.indexOf('=') + 1)
+        .trim()
+        .replace(/^(["'])(.*)\1$/, '$2'),
+    ]), // tira aspas, como o dotenv
 );
 for (const k of ['PVE_URL', 'PVE_NODE', 'PVE_TOKEN_ID', 'PVE_TOKEN_SECRET', 'PVE_CA_FILE', 'PVE_TLS_SERVERNAME']) {
   if (!env[k]) throw new Error(`${k} ausente no .env.development (rode scripts/pve/bootstrap.sh)`);

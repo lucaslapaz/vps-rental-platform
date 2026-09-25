@@ -19,8 +19,9 @@ comandos abaixo criam os arquivos.
 
 | Comando | O que faz |
 |---|---|
-| `npm run env:setup` | Cria ou completa os `.env.development` e `.env.test` com tudo que dá para gerar localmente. Pergunta a senha do usuário `vps_app` do MySQL. **Nunca troca um valor que já existe.** Também copia as `PVE_*` do `.env.development` para os outros arquivos, e essas ele sempre atualiza |
-| `npm run env:setup -- --production` | O mesmo, incluindo o `.env.production` (com o admin inicial) |
+| `npm run env:setup` | **Assistente:** pergunta no console só o que é escolha sua (MySQL, senha de demonstração, porta, cobrança acelerada e, se quiser, o admin de produção), testa a conexão com o MySQL, mostra um resumo e grava o `.env.development` e o `.env.test`. Os segredos são gerados sozinhos. **Nunca troca um valor que já existe**, e rodar de novo só pergunta o que falta. Também copia as `PVE_*` do `.env.development` para os outros arquivos, e essas ele sempre atualiza. As perguntas estão no [guia, passo C4](instalacao.md#c4-arquivos-de-configuração-env) |
+| `npm run env:setup -- --production` | O mesmo, criando também o `.env.production` sem perguntar se deve |
+| `DB_PASSWORD=<senha> npm run env:setup -- --yes` | Sem perguntas (para automatizar): aceita todos os padrões e gera as senhas |
 | `npm run env:secret` | Lista os segredos que dá para gerar, com o formato de cada um |
 | `npm run env:secret -- <VARIÁVEL>` | Imprime `VARIÁVEL=<valor novo>`, sem gravar nada. Serve para copiar e colar |
 | `npm run env:secret -- <VARIÁVEL> --write <development\|test\|production>` | Gera e **grava** no arquivo do ambiente, substituindo o valor atual, e avisa o que a troca afeta |
@@ -31,9 +32,9 @@ comandos abaixo criam os arquivos.
 Os scripts `.sh` rodam no **Git Bash**, não pelo `npm run`. No Windows, um script npm que chama `bash` pode cair no bash
 do WSL, que fica em `C:\Windows\System32`, em vez do Git Bash.
 
-Senha do MySQL com caracteres especiais: prefira responder à pergunta do `npm run env:setup` a passar a senha como
-argumento, porque o PowerShell e o cmd interpretam alguns caracteres. O script já codifica a senha dentro da URL
-(`@` vira `%40`, por exemplo).
+Senha do MySQL com caracteres especiais: não há problema. O assistente pergunta a senha, em vez de recebê-la como
+argumento, onde o PowerShell e o cmd interpretariam alguns caracteres, e já a codifica dentro da URL (`@` vira `%40`,
+por exemplo).
 
 Depois de mudar um `.env`, reinicie o servidor: ele só lê o arquivo quando sobe.
 
@@ -43,11 +44,11 @@ Depois de mudar um `.env`, reinicie o servidor: ele só lê o arquivo quando sob
 
 | Variável | Formato | Como gerar | Observações |
 |---|---|---|---|
-| `DATABASE_URL` | `mysql://vps_app:<senha>@127.0.0.1:3306/<banco>` | `npm run env:setup` (a partir da senha do `vps_app`) | Um banco por ambiente. Caracteres especiais da senha vão codificados (`encodeURIComponent`). O `npm test` e o E2E se recusam a rodar se o nome do banco não tiver `_test` |
+| `DATABASE_URL` | `mysql://vps_app:<senha>@127.0.0.1:3306/<banco>` | `npm run env:setup` (pergunta endereço, usuário e senha) | Um banco por ambiente. Caracteres especiais da senha vão codificados (`encodeURIComponent`). O `npm test` e o E2E se recusam a rodar se o nome do banco não tiver `_test` |
 | `SHADOW_DATABASE_URL` | Igual, apontando para `vps_platform_shadow` | `npm run env:setup` | Só no `.env.development`. O `prisma migrate dev` usa esse banco vazio para comparar o schema |
 
 O usuário e os bancos são criados uma vez, com o SQL do [guia de instalação, passo C3](instalacao.md#c3-mysql-bancos-e-usuário).
-Para usar outro host ou porta: `MYSQL_HOST=127.0.0.1:3307 npm run env:setup`.
+Outro host ou porta: responda à pergunta *MySQL: endereço* do assistente (ex.: `127.0.0.1:3307`).
 
 ### Segredos gerados localmente
 
@@ -60,7 +61,7 @@ os comandos em vez de inventar um.
 | `JOB_SECRET_KEY` | Chave **AES-256-GCM** que cifra as senhas das VPS entre o pedido e o provisionamento. Senha de VPS nunca fica em texto puro no banco | **Exatamente 32 bytes em base64** (44 caracteres). Outro tamanho é recusado | `npm run env:secret -- JOB_SECRET_KEY` | VPS aguardando pagamento e jobs de criação ou reinstalação na fila não conseguem ler as senhas e terminam em erro. Troque com a fila vazia |
 | `SEED_DEFAULT_PASSWORD` | Senha dos usuários de demonstração em dev e teste: `ana@`, `bruno@`, `carla@`, `diego@` e `admin@favo.local` | Mínimo 10 caracteres. O gerador faz 16 | `npm run env:secret -- SEED_DEFAULT_PASSWORD` | Só vale para usuários **criados depois**: o seed não troca a senha de quem já existe no banco. Para valer, recrie o banco (guia, C3) |
 | `SEED_ADMIN_PASSWORD` | Senha do administrador inicial. Obrigatória em produção; opcional em dev (sem ela, o admin usa a `SEED_DEFAULT_PASSWORD`) | Mínimo 12 caracteres. O gerador faz 20 | `npm run env:secret -- SEED_ADMIN_PASSWORD` | Mesma regra: só vale se o admin ainda não existir |
-| `SEED_ADMIN_EMAIL` | E-mail do administrador inicial. Obrigatório em produção | Um e-mail | O `npm run env:setup -- --production` usa `admin@favo.local` | Com um e-mail novo, o seed cria **mais** um admin |
+| `SEED_ADMIN_EMAIL` | E-mail do administrador inicial. Obrigatório em produção | Um e-mail | Perguntado pelo `npm run env:setup` ao criar o `.env.production` (padrão `admin@favo.local`) | Com um e-mail novo, o seed cria **mais** um admin |
 
 Não é preciso manter os mesmos segredos entre os ambientes: cada arquivo tem os seus. A exceção é a
 `SEED_DEFAULT_PASSWORD`, que o `env:setup` repete no `.env.test` só para ser uma senha a menos para lembrar.
@@ -128,5 +129,5 @@ Só defina estas se quiser mudar o comportamento. Os padrões valem para o labor
 | `RECONCILE_INTERVAL_SECONDS` | `60` | Intervalo da conferência entre o banco e o Proxmox |
 | `IP_POOL_START` / `IP_POOL_END` / `IP_POOL_GATEWAY` / `IP_POOL_PREFIX` | `.200` / `.228` / `.10` / `24` (em `192.168.56.x`; nos testes, uma faixa fictícia `10.99.0.10–19`) | Faixa de IPs das VPS, gravada no banco pelo **seed**. Mudar exige rodar o seed de novo |
 
-Variáveis usadas só por ferramentas: `MYSQL_HOST` (`npm run env:setup`), `PVE_HOST` e `PVE_NODE` (scripts
+Variáveis usadas só por ferramentas: `DB_PASSWORD` (`npm run env:setup -- --yes`), `PVE_HOST` e `PVE_NODE` (scripts
 `scripts/pve/*.sh`) e `LAB=1` (definida pelo `npm run test:lab`).

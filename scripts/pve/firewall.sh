@@ -23,7 +23,7 @@ log() { echo "[firewall] $*" >&2; }
 remote() { ssh "${SSH_OPTS[@]}" "root@${PVE_HOST}" "$@"; }
 # A9/T9: valida o certificado pela CA do nó e pelo nome dele (o IP não está no SAN). Os dois vêm do bootstrap.sh.
 CA="${ROOT}/certs/pve-root-ca.pem"
-TLS_NAME="${PVE_TLS_SERVERNAME:-$(sed -n 's/^PVE_TLS_SERVERNAME=//p' "${ROOT}/.env.development" 2>/dev/null | tr -d '\r' | tail -1)}"
+TLS_NAME="${PVE_TLS_SERVERNAME:-$(sed -n 's/^PVE_TLS_SERVERNAME=//p' "${ROOT}/.env.development" 2>/dev/null | tr -d "\r\"'" | tail -1)}"
 [ -f "$CA" ] && [ -n "$TLS_NAME" ] || { log "falta a CA ou o PVE_TLS_SERVERNAME: rode scripts/pve/bootstrap.sh antes"; exit 1; }
 
 # ── 1. Zona de conntrack (não afeta o acesso ao nó: só pacotes que entram pelas bridges de firewall das VMs) ──

@@ -98,9 +98,9 @@ Resumo, com o Proxmox já instalado e a rede `vmbr1` criada (partes A e B do gui
 
 ```bash
 npm install                                   # também gera o Prisma Client
-npm run env:setup                             # .env.development e .env.test com segredos aleatórios (pede a senha do MySQL)
+npm run env:setup                             # assistente: pergunta MySQL, porta etc. e gera os .env com segredos aleatórios
 scripts/pve/bootstrap.sh                      # usuário, token e permissões no Proxmox; grava as PVE_* no .env
-npm run env:setup                             # copia as PVE_* para o .env.test
+npm run env:setup                             # de novo: copia as PVE_* para o .env.test (só confirma)
 scripts/pve/download-images.sh                # imagens cloud oficiais, com checksum conferido
 scripts/pve/build-template.sh all             # os quatro templates, cada um com teste de aceite
 scripts/pve/firewall.sh                       # anti-spoofing das VPS

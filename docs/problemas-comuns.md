@@ -12,7 +12,7 @@ Este documento complementa o [guia de instalação](instalacao.md). Ele responde
 | **Hostname / nome do nó** (qualquer um) | ✅ | O `bootstrap.sh` descobre o nome sozinho e grava em `PVE_NODE` e `PVE_TLS_SERVERNAME`. Não renomeie o nó **depois** de instalado: renomear um nó do Proxmox é um procedimento à parte, e o `.env` ficaria com o nome antigo |
 | **Nome da VM no VirtualBox** | ✅ | Só aparece nos seus comandos `VBoxManage` |
 | **Senha do MySQL** (`vps_app`) | ✅ | Fica no `DATABASE_URL`. Troque a senha no MySQL e no `.env.*`, ou apague as linhas `DATABASE_URL` e `SHADOW_DATABASE_URL` e rode `npm run env:setup` de novo |
-| **MySQL em outra porta** | ✅ | `MYSQL_HOST=127.0.0.1:3307 npm run env:setup`, ou edite o `DATABASE_URL` |
+| **MySQL em outra porta** | ✅ | Responda `127.0.0.1:3307` (por exemplo) à pergunta *MySQL: endereço* do `npm run env:setup`, ou edite o `DATABASE_URL` |
 | **Mais RAM para o Proxmox** | ✅ | Aumente `CAPACITY_MAX_MEMORY_MB` no `.env.*` (padrão 1536, calibrado para uma VM de 3 GB) |
 | **Menos RAM** (2 GB) | ⚠️ | O Proxmox liga, mas quase não sobra memória para VPS. Reduza o `CAPACITY_MAX_MEMORY_MB`, senão a criação é aceita e a VM não cabe |
 | **Disco maior que 30 GB** | ✅ | Pode aumentar o `CAPACITY_MAX_DISK_GB` (padrão 12) |
@@ -69,7 +69,7 @@ Proxmox e pelo **nome do nó** (`PVE_TLS_SERVERNAME`), não pelo IP. Por isso tr
 | **Proxmox VE 8** ou mais antigo | O `bootstrap.sh` falha ao criar a role: ele usa privilégios que só existem no PVE 9 (`VM.GuestAgent.*`) | Use o Proxmox VE 9 |
 | Rede das VPS com outra bridge (não `vmbr1`) | Clone ou configuração falham por falta de permissão ou de bridge | Use `vmbr1`, ou troque `BRIDGE` nos scripts e defina `PVE_BRIDGE` no `.env.*` |
 | **Linha do `MASQUERADE` diferente** da do guia | `firewall.sh`: *"não achei a linha do MASQUERADE da vmbr1"* | O script procura `post-down iptables -t nat -D POSTROUTING … -o vmbr0 -j MASQUERADE` dentro da `vmbr1` (com ou sem aspas na rede) |
-| Repositórios *enterprise* sem assinatura | `apt update` falha no nó | Não afeta a Favo. Para atualizar o Proxmox, veja o B3 do guia |
+| Repositórios *enterprise* sem assinatura | `apt update` no nó falha com `401 Unauthorized` em `enterprise.proxmox.com` | Não afeta a Favo. Para atualizar o Proxmox, troque para o `pve-no-subscription`: script da comunidade *PVE Post Install*, interface web ou terminal (B3 do guia) |
 | As VPS ligam, mas **sem internet** (DNS falha dentro delas) com o firewall ligado | `wget: bad address` dentro da VPS | Falta a *conntrack zone*. Rode `scripts/pve/firewall.sh`, que grava a regra na `vmbr1` |
 
 ### SSH e token

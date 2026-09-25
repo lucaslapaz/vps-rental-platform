@@ -238,13 +238,79 @@ Logo depois da instalação, o Windows ainda **não alcança** o Proxmox: o úni
 Daqui em diante, a janela da VM não é mais necessária. Para ligar o Proxmox sem janela no dia a dia:
 `& $vb startvm $vm --type headless`. Para desligar de forma limpa: `& $vb controlvm $vm acpipowerbutton`.
 
-### B3. Repositórios de atualização (opcional)
+### B3. Repositórios de atualização (o `apt update` dá erro 401)
 
-O Proxmox vem configurado com os repositórios *enterprise*, que exigem assinatura, e por isso o `apt update` do nó dá
-erro. **A Favo não precisa de `apt` no nó**, então este passo é opcional. Se quiser atualizar o Proxmox, vá na interface
-web em *nó → Atualizações → Repositórios*: desabilite os dois repositórios *enterprise* (`pve-enterprise` e `ceph`) e
-adicione o **No-Subscription**. Neste laboratório, isso foi feito com o script da comunidade *post-pve-install*
-([community-scripts.org](https://community-scripts.org)), que também tira o aviso de assinatura.
+O Proxmox VE vem com os repositórios **enterprise** (`enterprise.proxmox.com`) ativados por padrão, tanto o do
+Proxmox quanto o do Ceph. Eles só funcionam com uma **assinatura paga**. Sem ela, o `apt update` no nó falha assim
+(erro reproduzido neste laboratório):
+
+```
+Err:1 https://enterprise.proxmox.com/debian/pve trixie InRelease
+  401  Unauthorized [IP: … 443]
+E: Failed to fetch https://enterprise.proxmox.com/debian/pve/dists/trixie/InRelease  401  Unauthorized [IP: … 443]
+```
+
+A [documentação oficial](https://pve.proxmox.com/wiki/Package_Repositories) diz o mesmo: é preciso uma chave de
+assinatura para acessar o `pve-enterprise`. Quem não tem assinatura deve desativá-lo com uma linha `Enabled: no` e
+configurar o repositório **`pve-no-subscription`**, que é gratuito e indicado para testes e uso fora de produção.
+
+**A Favo não usa o `apt` do nó.** Os scripts do repositório instalam pacotes dentro das VMs, não no Proxmox. Então
+este passo só é necessário se você quiser atualizar o Proxmox ou instalar algo nele. Escolha **um** dos três caminhos.
+
+**Caminho 1: script da comunidade "PVE Post Install" (o usado neste laboratório).** O
+[community-scripts.org](https://community-scripts.org/scripts?q=proxmox&preview=post-pve-install) mantém scripts prontos
+para o Proxmox. Esse é o antigo *tteck Proxmox VE Helper Scripts*, com licença MIT; o código está em
+[GitHub](https://github.com/community-scripts/ProxmoxVE/blob/main/tools/pve/post-pve-install.sh). Ele corrige os
+repositórios, pode tirar o aviso de assinatura da interface web e desligar os serviços de cluster, que um nó só não usa.
+Rode como root no Proxmox: pelo console da VM, por SSH ou pelo *Shell* do nó na interface web.
+
+```bash
+bash -c "$(curl -fsSL https://raw.githubusercontent.com/community-scripts/ProxmoxVE/main/tools/pve/post-pve-install.sh)"
+```
+
+Ele faz uma pergunta por etapa. Respostas para este laboratório:
+
+| Pergunta do script | Resposta | Por quê |
+|---|---|---|
+| *SOURCES* (corrigir as fontes / formato deb822) | yes | Deixa os repositórios do Debian e do Proxmox no formato do PVE 9 |
+| *PVE-ENTERPRISE* | disable | É o repositório que dá o erro 401 |
+| *CEPH ENTERPRISE* | disable | Mesmo problema, com o repositório do Ceph |
+| *PVE-NO-SUBSCRIPTION* | yes | O repositório gratuito, o que faz o `apt update` funcionar |
+| *CEPH PACKAGE REPOSITORIES* | yes ou no | A Favo não usa o Ceph |
+| *PVETEST* | no | Repositório de testes, desnecessário |
+| *SUBSCRIPTION NAG* | yes, se quiser | Só tira o aviso "No valid subscription" do login da interface web |
+| *HIGH AVAILABILITY* (desabilitar) e *COROSYNC* | yes | São serviços de cluster; num nó só, liberam um pouco de RAM |
+| *UPDATE* | yes | Atualiza o Proxmox (leva alguns minutos) |
+| *REBOOT* | yes | Recomendado depois da atualização |
+
+Cuidados:
+- É um script de **terceiros**, que roda como root e **não é oficial do Proxmox**. Se quiser, leia-o antes (link acima).
+- O script confere a versão e **para** em versões que ainda não conhece. Em 2026-09-25, ele aceitava o PVE 8.0–8.9 e o
+  9.0–9.2. Numa versão mais nova, use o caminho 2 ou 3.
+- Depois dele, recarregue a interface web com `Ctrl+Shift+R`, como o próprio script avisa.
+
+**Caminho 2: pela interface web (oficial).** Vá em *nó → Atualizações → Repositórios* (*Updates → Repositories*):
+1. Selecione o `pve-enterprise` e clique em **Desabilitar**. Faça o mesmo com o repositório *enterprise* do Ceph.
+2. Clique em **Adicionar** e escolha **No-Subscription**.
+3. Em *Atualizações*, clique em **Atualizar** (*Refresh*).
+
+**Caminho 3: pelo terminal (oficial, testado neste laboratório).** Como root no Proxmox:
+
+```bash
+# desativa os repositórios enterprise (a doc oficial manda acrescentar "Enabled: no")
+for f in /etc/apt/sources.list.d/pve-enterprise.sources /etc/apt/sources.list.d/ceph.sources; do
+  [ -f "$f" ] && ! grep -q '^Enabled:' "$f" && echo 'Enabled: no' >> "$f"
+done
+# repositório gratuito (conteúdo da doc oficial, PVE 9 / Debian trixie)
+cat > /etc/apt/sources.list.d/proxmox.sources <<'EOF'
+Types: deb
+URIs: http://download.proxmox.com/debian/pve
+Suites: trixie
+Components: pve-no-subscription
+Signed-By: /usr/share/keyrings/proxmox-archive-keyring.gpg
+EOF
+apt update
+```
 
 ### B4. Chave SSH do Windows no root do Proxmox
 
@@ -329,14 +395,29 @@ GRANT ALL PRIVILEGES ON vps_platform_shadow.* TO 'vps_app'@'localhost', 'vps_app
 ### C4. Arquivos de configuração (`.env.*`)
 
 A aplicação lê `.env.development` (`npm run dev`), `.env.test` (testes) e `.env.production` (`npm start`). Eles ficam
-**fora do git**. Não copie o [.env.example](../.env.example) à mão. Rode o comando abaixo, que cria os arquivos com
-segredos aleatórios. Ele pergunta a senha do `vps_app` do passo C3, nunca troca um valor que já existe e só acrescenta o
-que falta:
+**fora do git**. Não copie o [.env.example](../.env.example) à mão. Rode o **assistente**:
 
 ```bash
-npm run env:setup                    # .env.development e .env.test
-npm run env:setup -- --production    # opcional: também o .env.production (com o admin inicial)
+npm run env:setup
 ```
+
+Ele faz perguntas no console. Enter aceita o valor entre colchetes, e onde cabe uma senha, Enter gera uma aleatória:
+
+| Pergunta | Padrão | Observação |
+|---|---|---|
+| MySQL: endereço | `127.0.0.1:3306` | |
+| MySQL: usuário da aplicação | `vps_app` | O do passo C3 |
+| MySQL: senha | — | A do passo C3, sem aparecer na tela no PowerShell ou no cmd. O assistente **testa a conexão** e confere se os quatro bancos existem antes de continuar |
+| Senha dos usuários de demonstração | gerada | Digite uma, se quiser uma fácil de lembrar (mínimo 10 caracteres) |
+| Porta do servidor | `3000` | |
+| Acelerar a cobrança para demonstração? | não | "Sim" faz o mês de cobrança durar 30 minutos (`BILLING_TIME_SCALE=1440`) |
+| Criar também o `.env.production`? | não | Se sim, pergunta o e-mail e a senha do administrador de produção |
+
+No fim, mostra um resumo do que vai gravar e pede confirmação.
+- **Não pergunta segredos nem tokens:** `CSRF_SECRET` e `JOB_SECRET_KEY` são gerados sozinhos, e as `PVE_*` vêm do
+  passo D1.
+- **Nunca troca um valor que já existe.** Rodar de novo só pergunta o que falta.
+- Sem perguntas, para automatizar: `DB_PASSWORD=<senha> npm run env:setup -- --yes` usa os padrões.
 
 Ele avisa que ainda faltam as variáveis do Proxmox (`PVE_*`). Elas vêm no passo D1.
 
@@ -362,7 +443,7 @@ rodar de novo não estraga nada. Todos aceitam `PVE_HOST=<ip>` se o Proxmox não
 
 ```bash
 scripts/pve/bootstrap.sh
-npm run env:setup                  # copia as PVE_* para o .env.test (e o .env.production); não pergunta a senha de novo
+npm run env:setup                  # copia as PVE_* para o .env.test (e o .env.production); só pede confirmação
 ```
 
 O `bootstrap.sh` cria no Proxmox:

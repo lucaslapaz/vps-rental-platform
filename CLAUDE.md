@@ -121,9 +121,10 @@ que não dá para deduzir do código: regras combinadas com o usuário, estado d
 O passo a passo de uma instalação do zero (VirtualBox, adaptadores, Proxmox, rede `vmbr1`, MySQL, `.env`) está em
 [docs/instalacao.md](docs/instalacao.md); o que quebra e o que dá para mudar, em [docs/problemas-comuns.md](docs/problemas-comuns.md).
 Mantenha os dois atualizados quando mudar scripts, variáveis ou requisitos do laboratório.
-- `npm run env:setup [-- --production]` (`scripts/setup/env.mjs`): cria/completa os `.env.*` com segredos aleatórios (nunca
-  sobrescreve; pergunta a senha do `vps_app` só se faltar `DATABASE_URL`) e SEMPRE copia as `PVE_*` do `.env.development`
-  para os outros. `npm run env:secret -- <VAR> [--write <ambiente>]` (`scripts/setup/secret.mjs`) gera um segredo avulso.
+- `npm run env:setup [-- --production | --yes]` (`scripts/setup/env.mjs`): assistente interativo que cria/completa os `.env.*`
+  (pergunta só escolhas do usuário: MySQL, senha de demonstração, porta, cobrança acelerada, admin de produção; testa a conexão
+  com o driver `mariadb`; segredos gerados; nunca sobrescreve) e SEMPRE copia as `PVE_*` do `.env.development` para os outros.
+  Nos testes, as respostas podem vir pelo stdin (uma por linha); `--yes` + `DB_PASSWORD` roda sem perguntas. `npm run env:secret -- <VAR> [--write <ambiente>]` (`scripts/setup/secret.mjs`) gera um segredo avulso.
   Formatos e efeitos de troca: `scripts/setup/lib.mjs` (`SECRETS`) e [docs/variaveis-de-ambiente.md](docs/variaveis-de-ambiente.md);
   mantenha os dois em sincronia com o `src/server/config/env.ts`.
 - `scripts/pve/download-images.sh`: idempotente. Baixa as 3 imagens cloud para `/var/lib/vz/import/` e confere o checksum publicado.
@@ -159,7 +160,8 @@ Mantenha os dois atualizados quando mudar scripts, variáveis ou requisitos do l
   (doc *Proxmox VE inside VirtualBox*).
 
 ### Proxmox: rede e sistema
-- **P1.** O `apt` do Proxmox falhava por causa do repositório enterprise. O usuário resolveu rodando o script da comunidade
+- **P1.** O `apt` do Proxmox falhava (`401 Unauthorized` em `enterprise.proxmox.com`): os repositórios enterprise vêm ativos e
+  exigem assinatura. Três soluções no B3 de docs/instalacao.md (script da comunidade, interface web, terminal). Neste laboratório foi usado o script da comunidade
   `post-pve-install` (community-scripts.org), que também desativou o cluster e o aviso de assinatura.
 - **P2. Mudar a rede pode derrubar o acesso.** A técnica usada e que funcionou: fazer backup, agendar um rollback
   automático e só então aplicar:

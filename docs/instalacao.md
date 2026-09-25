@@ -429,7 +429,7 @@ O que é cada variável, o formato de cada segredo e como gerar um valor novo pa
 | `DATABASE_URL`, `SHADOW_DATABASE_URL` | `npm run env:setup` (C4) | Conexão com o MySQL. O shadow é usado pelo `prisma migrate dev` |
 | `SEED_DEFAULT_PASSWORD` | `npm run env:setup` (C4), aleatória | **Senha dos usuários de demonstração** (`ana@favo.local` e os outros) |
 | `CSRF_SECRET`, `JOB_SECRET_KEY` | `npm run env:setup` (C4), aleatórias | Assinatura do token CSRF e cifra das senhas nos jobs |
-| `SEED_ADMIN_EMAIL`, `SEED_ADMIN_PASSWORD` | `npm run env:setup -- --production` | Admin inicial do banco de produção |
+| `SEED_ADMIN_EMAIL`, `SEED_ADMIN_PASSWORD` | `npm run env:setup`, se você pedir o `.env.production` | Admin inicial do banco de produção |
 | `PVE_URL`, `PVE_NODE`, `PVE_TLS_SERVERNAME`, `PVE_CA_FILE`, `PVE_TOKEN_ID`, `PVE_TOKEN_SECRET` | `scripts/pve/bootstrap.sh` (D1) | Acesso ao Proxmox com o token da plataforma (um *API Token* do Proxmox, criado pelo próprio Proxmox) |
 
 ---

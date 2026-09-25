@@ -40,7 +40,8 @@ Endereços reservados na rede host-only: `.1` Windows · `.10` Proxmox · `.101�
 
 > **Reinstalando por cima de uma instalação anterior?** Quatro coisas sobram no Windows e atrapalham:
 > 1. **A chave de host do Proxmox antigo** no `~/.ssh/known_hosts`. O SSH recusa a conexão com *"REMOTE HOST
->    IDENTIFICATION HAS CHANGED"*. O passo [B4](#b4-chave-ssh-do-windows-no-root-do-proxmox) já inclui a limpeza.
+>    IDENTIFICATION HAS CHANGED"*. O passo [B4](#b4-chave-ssh-do-windows-no-root-do-proxmox) já inclui a limpeza. O mesmo
+>    vale para as VPS antigas (`.200` em diante), e o E5 explica como limpar.
 > 2. **Os bancos do MySQL**, com VPS que apontam para VMs que não existem mais. Recrie os bancos no passo
 >    [C3](#c3-mysql-bancos-e-usuário).
 > 3. **O usuário `vps_app` do MySQL**, com a senha antiga. O SQL do C3 já redefine a senha.
@@ -298,6 +299,16 @@ Logo depois da instalação, o Windows ainda **não alcança** o Proxmox: o úni
 **janela da VM**. Entre como `root`, com a senha escolhida. Os comandos usam `/`, `>` e `-`: se esses símbolos saírem
 trocados na tela, o layout de teclado escolhido no B1 não é o do seu teclado (veja problemas-comuns).
 
+> **Prefere colar os comandos em vez de digitá-los?** Abra um acesso SSH temporário pelo NAT. Ele funciona com a VM
+> ligada, e também serve quando os símbolos saem trocados no console. No PowerShell, com `$vb` e `$vm` do A5:
+>
+> ```powershell
+> & $vb controlvm $vm natpf1 "ssh,tcp,127.0.0.1,2222,,22"   # porta 2222 do Windows → porta 22 do Proxmox
+> ssh -p 2222 root@127.0.0.1                                  # responda yes e use a senha do root
+> ```
+>
+> Siga os itens abaixo nessa sessão SSH. O item 5 diz quando remover o acesso.
+
 1. Confira os nomes das placas: `ip -br link`. Devem aparecer `nic0` e `nic1`, e a `nic1` aparece como `DOWN` (ainda
    não está em uso). Compare o MAC da `nic1` com o do Adaptador 2 do VirtualBox, que o VirtualBox mostra sem os
    dois-pontos (por exemplo, `08:00:27:ab:cd:ef` no Proxmox = `080027ABCDEF` no VirtualBox).
@@ -369,7 +380,8 @@ trocados na tela, o layout de teclado escolhido no B1 não é o do seu teclado (
    reinicia. O que está no `/etc/network/interfaces` volta sozinho a cada boot.
 5. No Windows: `ping 192.168.56.10` deve responder, e **https://192.168.56.10:8006** deve abrir a interface web, depois
    do aviso de certificado. Entre com `root`, realm *Linux PAM*. Se o ping não responder, confira o IP do Windows na
-   host-only (A3, item 4).
+   host-only (A3, item 4). Se você abriu o acesso SSH temporário, feche-o agora. Daqui em diante, o SSH vai direto para
+   o `192.168.56.10`: `& $vb controlvm $vm natpf1 delete ssh`.
 6. **Confira que a rede sobrevive a um reinício.** No PowerShell (com `$vb` e `$vm` do A5), reinicie a VM e espere a
    interface web voltar (~1 a 2 minutos). O `ping 192.168.56.10` tem que voltar a responder sem você fazer nada no console:
 
@@ -533,6 +545,12 @@ npm install          # também gera o Prisma Client
 Use `git clone`, não o ZIP do GitHub: o `.gitattributes` garante que os `.sh` tenham quebra de linha LF, e com CRLF o
 bash do Proxmox não roda os scripts.
 
+O `npm install` termina com *"6 vulnerabilities (1 moderate, 5 high)"* e sugere `npm audit fix --force`. **Não rode o
+`--force`**: ele rebaixaria o Prisma para a versão 6 e quebraria o projeto. Os avisos vêm das dependências do Prisma 7
+(`mariadb`, `mysql2` e `deepmerge-ts`), e não há correção sem voltar de versão. Eles foram avaliados e não se aplicam
+aqui: exigem TLS com um atacante no meio, um servidor MySQL malicioso ou charsets asiáticos, e o MySQL é local, com
+utf8mb4 ([plano, §19](PLANO_DE_IMPLEMENTACAO.md#19-riscos-e-mitigações)).
+
 ### C3. MySQL: bancos e usuário
 
 A aplicação usa quatro bancos e um usuário próprio, `vps_app`, que só tem acesso a eles. Abra o cliente do MySQL como
@@ -591,7 +609,7 @@ Ele faz perguntas no console. Enter aceita o valor entre colchetes, e onde cabe 
 |---|---|---|
 | MySQL: endereço | `127.0.0.1:3306` | |
 | MySQL: usuário da aplicação | `vps_app` | O do passo C3 |
-| MySQL: senha | — | A do passo C3, sem aparecer na tela no PowerShell ou no cmd. O assistente **testa a conexão** e confere se os quatro bancos existem antes de continuar |
+| MySQL: senha | — | A do passo C3, sem aparecer na tela no PowerShell ou no cmd. O assistente **testa a conexão** (`conexão com o MySQL: ok`) e confere se os quatro bancos existem. Só fala dos bancos se faltar algum |
 | Senha dos usuários de demonstração | gerada | Digite uma, se quiser uma fácil de lembrar (mínimo 10 caracteres) |
 | Porta do servidor | `3000` | |
 | Acelerar a cobrança para demonstração? | não | "Sim" faz o mês de cobrança durar 30 minutos (`BILLING_TIME_SCALE=1440`) |
@@ -742,8 +760,11 @@ O `npm run dev` ocupa o terminal: deixe-o aberto e use outro para os comandos se
 5. Teste o acesso:
    - aba **Console**: tem que aparecer *Conectado* e a tela da VPS (as mensagens do boot e o `login:`);
    - SSH pelo Git Bash: a aba *Visão geral* mostra o comando pronto, em *Conectar por SSH* (por exemplo,
-     `ssh alpine@192.168.56.200`). Na primeira vez, responda `yes`. Se o IP já foi de outra VPS, apague a chave antiga
-     com `ssh-keygen -R 192.168.56.200`.
+     `ssh alpine@192.168.56.200`). Na primeira vez, responda `yes`. Se o IP já foi de outra VPS (de uma instalação
+     anterior, por exemplo), o SSH recusa com *"REMOTE HOST IDENTIFICATION HAS CHANGED"*. Apague a chave antiga com
+     `ssh-keygen -R 192.168.56.200`. Se ele responder `Not replacing existing known_hosts file because of errors`, não
+     apagou nada; use o `sed` do [B4](#b4-chave-ssh-do-windows-no-root-do-proxmox) com o IP da VPS:
+     `sed -i '/^192\.168\.56\.200[ ,]/d' ~/.ssh/known_hosts`.
 
 ### Outros comandos
 

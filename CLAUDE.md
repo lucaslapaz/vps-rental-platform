@@ -170,7 +170,10 @@ Mantenha os dois atualizados quando mudar scripts, variáveis ou requisitos do l
   do `list dhcpservers`.
 - **V8. Console da VM com teclado ABNT2:** o `keyboardputstring` do VBoxManage manda scancodes do layout americano, e o console do
   Proxmox não tem outros mapas (`loadkeys us` falha). Para digitar pelo VBoxManage num console ABNT2, a `/` é o scancode `73 f3`, e
-  `;`, `:`, `'`, `|` saem trocados: evite-os (um comando por chamada, heredoc sem aspas).
+  `;`, `:`, `'`, `|` saem trocados: evite-os (um comando por chamada, heredoc sem aspas). **Melhor ainda:** antes da
+  `vmbr1` existir, entre por SSH pelo NAT (`VBoxManage controlvm "<VM do Proxmox>" natpf1 "ssh,tcp,127.0.0.1,2222,,22"`,
+  `ssh -p 2222 root@127.0.0.1` com a senha do root via T5; funciona com a VM ligada) e remova no fim
+  (`natpf1 delete ssh`). Foi assim que o B2 foi feito no teste do guia em 2026-09-25.
 
 ### Proxmox: rede e sistema
 - **P1.** O `apt` do Proxmox falhava (`401 Unauthorized` em `enterprise.proxmox.com`): os repositórios enterprise vêm ativos e
@@ -512,7 +515,8 @@ Mantenha os dois atualizados quando mudar scripts, variáveis ou requisitos do l
   console do Windows. Imagens em `docs/images/` (PNG otimizado, ≤ 1280 px).
 - **T22. `ssh-keygen -R` recusa um `known_hosts` com linha inválida** ("Not replacing existing known_hosts file because of
   errors") e não apaga nada; o SSH seguinte cai em "REMOTE HOST IDENTIFICATION HAS CHANGED". Apague só as linhas do IP
-  (`sed -i '/^192.168.56.10[ ,]/d' ~/.ssh/known_hosts`, com backup) e não mexa na linha quebrada (é do usuário).
+  (`sed -i '/^192.168.56.10[ ,]/d' ~/.ssh/known_hosts`, com backup) e não mexa na linha quebrada (é do usuário). O mesmo
+  acontece com o IP de uma VPS de uma instalação anterior (`.200`, guia E5).
 - **T23. `CREATE USER IF NOT EXISTS` não troca a senha** de um `vps_app` que já existia: por isso o SQL do C3 do guia tem os
   `ALTER USER` logo depois. Para responder às perguntas do `npm run env:setup` sem terminal, mande as respostas pelo stdin
   (uma por linha; sem entrada, a confirmação final é cancelada).

@@ -5,8 +5,9 @@ Contexto para o Claude implementar este projeto em conversas novas. **O plano co
 que não dá para deduzir do código: regras combinadas com o usuário, estado do ambiente, armadilhas já encontradas
 (com a solução) e comandos que já foram testados.
 
-> Antes de agir no laboratório, **confira o estado real** (Proxmox, VirtualBox, MySQL): o que está aqui era
-> verdade em 2026-09-23 e pode ter mudado.
+> Antes de agir no laboratório, **confira o estado real** (Proxmox, VirtualBox, MySQL). Nomes, senhas e VMs existentes
+> variam de uma instalação para outra: este arquivo descreve as **convenções** do projeto, não uma instalação específica.
+> O nome do nó está em `PVE_NODE` no `.env.development`; o nome da VM do Proxmox no VirtualBox, em `VBoxManage list vms`.
 
 ## 1. O projeto em uma página
 
@@ -33,7 +34,7 @@ que não dá para deduzir do código: regras combinadas com o usuário, estado d
   `docs/seguranca.md`. Fase 10 (extras, na ordem do plano): 1 console de texto (xterm.js + termproxy), 2 firewall anti-spoofing por VPS e
   3 cobrança recorrente (`billing_cycle`, `Vps.paidUntil`, relógio acelerado `BILLING_TIME_SCALE`) e 4 painel admin
   (`src/client/features/admin/`: `/admin`, `/admin/vps`, `/admin/users`, `/admin/roles`; `AdminService`) e 5 reinstalar (`reinstall_vps`, `/vps/:id/reinstall`), 6 MCP somente leitura (`npm run mcp`, `scripts/mcp/`) e 7 CI no
-  GitHub Actions (`.github/workflows/ci.yml`). Docker Compose ficou fora por decisão do usuário. **O banco de dev tem a VPS de demonstração da Ana** (ver §4, linha VMs).
+  GitHub Actions (`.github/workflows/ci.yml`). Docker Compose ficou fora por decisão do usuário.
 - **Proxmox no código:** `ProxmoxClient` (undici + CA + servername, token, zod), `TaskWaiter` (UPID), `QemuCloudInitProvider`
   (clone, cloud-init, resize, energia, status, pendências, métricas, console, guest agent) e `ImageProfile` (comandos fixos por
   família). Os testes comuns usam `tests/helpers/FakeVirtualizationProvider.ts`; só o `npm run test:lab` (LAB=1) toca o Proxmox.
@@ -79,37 +80,40 @@ que não dá para deduzir do código: regras combinadas com o usuário, estado d
    AES-256-GCM e apagado após o uso). Nunca expor `agent/exec` ao cliente.
 7. Todo texto de tela nasce como chave de tradução (`t('...')`). Cores e fontes só pelos tokens da marca.
 8. Verificar telas com o **Playwright MCP**; testes contra o laboratório ficam marcados `@lab` (fora do CI).
+9. **Documentação agnóstica à instalação.** Nada do que o usuário escolhe ao montar o ambiente entra no repositório: o nome
+   da VM no VirtualBox, o hostname, o domínio e o DNS do Proxmox, os usuários e senhas, as outras VMs e placas do PC, o
+   usuário do Windows nos caminhos, as VPS que existem e as mensagens do usuário. Use marcadores (`<VM do Proxmox>`, `<nó>`,
+   `{node}` nos caminhos da API, `%USERPROFILE%`) e descreva as **convenções** do projeto (IPs, pools, VMIDs, `vmbr1`).
 
 ## 3. Ambiente da máquina (Windows 11)
 
 | Item | Valor |
 |---|---|
-| Hardware | i3-10100F (4c/8t), **8 GB RAM**. O Windows costuma ter só ~1,6 GB livres com o Proxmox desligado |
+| Hardware | PC de **8 GB de RAM** (o laboratório foi dimensionado para isso: pouca memória livre no Windows) |
 | Shells | Ferramenta Bash = **Git Bash** (use sintaxe POSIX) e PowerShell 5.1 |
-| Node / npm | v24.12.0 / 11.6.2 |
-| MySQL | Serviço `MySQL84` (8.4.6), porta 3306. Cliente fora do PATH: `"/c/Program Files/MySQL/MySQL Server 8.4/bin/mysql.exe"` |
-| VirtualBox | 7.2.12. `"C:\Program Files\Oracle\VirtualBox\VBoxManage.exe"`. VM do Proxmox: **`Segundo Proxmox`** (outras VMs: `coolify-ubuntu-server-2604-lts`, `alpine`, não mexer) |
-| SSH | OpenSSH 10.3, chave `~/.ssh/id_ed25519` (instalada no root do Proxmox) |
+| Node | 24.12 ou maior (`engines` do package.json) |
+| MySQL | 8.4, serviço do Windows (o instalador chama de `MySQL84`), porta 3306. Cliente fora do PATH: `"/c/Program Files/MySQL/MySQL Server 8.4/bin/mysql.exe"` |
+| VirtualBox | 7.2. `"C:\Program Files\Oracle\VirtualBox\VBoxManage.exe"`. O nome da VM do Proxmox é escolha do usuário (`VBoxManage list vms`); as outras VMs do VirtualBox não são do projeto: não mexer |
+| SSH | OpenSSH, chave `~/.ssh/id_ed25519` (instalada no root do Proxmox; os testes `@lab` e o aceite dos templates usam essa chave) |
 | Arquivos temporários | Usar o **scratchpad** da sessão, nunca o `/tmp` (ver armadilha T2) |
 
-## 4. Laboratório Proxmox (estado em 2026-09-23)
+## 4. Laboratório Proxmox (convenções; passo a passo em [docs/instalacao.md](docs/instalacao.md))
 
 | Item | Valor |
 |---|---|
-| Proxmox VE | **9.2.2**, kernel 7.0.2-6-pve, nó **`primeiro`** (standalone) |
+| Proxmox VE | **9.x** (testado na 9.2.2), nó standalone. O nome do nó é o hostname curto escolhido na instalação (`PVE_NODE`) |
 | Acesso | Web/API `https://192.168.56.10:8006` (certificado autoassinado) · `ssh root@192.168.56.10` (chave, sem senha) |
-| Senha do root do Proxmox / MySQL | No §0/§0.2 do plano (fornecidas pelo usuário). Normalmente não são necessárias: use SSH com chave e o usuário `vps_app` |
+| Senhas do root do Proxmox / MySQL | Escolhidas pelo usuário e **fora do repositório**. Não são necessárias: use SSH com chave e o usuário `vps_app` |
 | VM no VirtualBox | 2 vCPU, **3 GB**, **nested VT-x ligado**, Adaptador 1 = NAT (`nic0`), Adaptador 2 = Host-only com promíscuo `allow-all` (`nic1`) |
-| Se o PC reiniciar | Ligar a VM: `VBoxManage startvm "Segundo Proxmox" --type headless` e esperar ~20 s pela porta 8006 |
+| Se o PC reiniciar | Ligar a VM: `VBoxManage startvm "<VM do Proxmox>" --type headless` e esperar ~20 s pela porta 8006 |
 | Rede | `vmbr0` = 10.0.2.15/24 sobre `nic0` (NAT, saída para a internet) · **`vmbr1` = 192.168.56.10/24 sobre `nic1`** + `MASQUERADE -s 192.168.56.0/24 -o vmbr0` |
 | IPs | DHCP do host-only: `.101–.199`. **VPS: `.200–.228`** (IPAM no banco, tabela `ip_addresses`). `.229` = testes manuais. `.250` = build de templates. Windows = `.1` |
-| DNS do nó | 45.5.96.96 (search `promox.teste`) |
-| Storage | `local` (dir, `/var/lib/vz`, ~2,8 GB livres) · `local-lvm` (lvmthin `data`, **16,8 GB**; VDI aumentado para 30 GB na Fase 0) |
+| Storage | `local` (dir, `/var/lib/vz`, imagens em `import/`) · `local-lvm` (lvmthin `data`, ~16 GB num disco de 30 GB; criado pela instalação com ext4) |
 | RAM | O Proxmox usa ~1,3–1,4 GB; sobram **~1,5 GB para as VPS**. O Windows costuma ficar com só ~0,5 GB livres com o Proxmox ligado |
-| VMs | VPS da plataforma a partir do VMID **2000** (pool `vps-platform`; hoje só a VPS de demonstração da Ana, `favo-demo`, Alpine Nano só com a chave do Windows, criada no fim da Fase 7). Templates **9000** `favo-tpl-alpine`, **9001** `favo-tpl-debian`, **9002** `favo-tpl-ubuntu`, **9003** `favo-tpl-alpine-desktop` (pool `vps-templates`). VMID **9199** = clone temporário do teste de aceite (IP `.229`) |
+| VMs | VPS da plataforma a partir do VMID **2000** (pool `vps-platform`). Templates **9000** `favo-tpl-alpine`, **9001** `favo-tpl-debian`, **9002** `favo-tpl-ubuntu`, **9003** `favo-tpl-alpine-desktop` (pool `vps-templates`). VMID **9199** = clone temporário do teste de aceite (IP `.229`) |
 | Identidade da plataforma | Pools `vps-platform` e `vps-templates`, role `VPSPlatformVM`, usuário `vpsplatform@pve`, token `vpsplatform@pve!backend` (`privsep=1`). Secret e demais `PVE_*` no `.env.development`; CA em `certs/pve-root-ca.pem` |
 | Imagens cloud (checksums conferidos) | `/var/lib/vz/import/`: `generic_alpine-3.24.1-x86_64-bios-cloudinit-r0.qcow2`, `debian-13-genericcloud-amd64.qcow2`, `ubuntu-24.04-minimal-cloudimg-amd64.img` |
-| Backup da rede | `/root/interfaces.bak-20260923020356` (antes da `vmbr1`) e `/root/interfaces.bak-20260923215318` (antes da zona de conntrack) |
+| Backup da rede | `/root/interfaces.orig` (guia de instalação, antes da `vmbr1`) e `/root/interfaces.bak-<data>` (`firewall.sh`, antes da zona de conntrack) |
 | Firewall | **Ligado no datacenter** (`/etc/pve/firewall/cluster.fw`, políticas ACCEPT, IPSet `management`) só para o anti-spoofing das VPS; zona de conntrack do NAT na `vmbr1`. Ver `scripts/pve/firewall.sh` e P5 |
 | MySQL | Bancos `vps_platform_{dev,test,prod,shadow}` + usuário **`vps_app`** (só nesses bancos, `caching_sha2_password`). `DATABASE_URL` em `.env.development`/`.env.test`, e `SHADOW_DATABASE_URL` em `.env.development` |
 
@@ -136,8 +140,8 @@ Mantenha os dois atualizados quando mudar scripts, variáveis ou requisitos do l
 ### Windows / VirtualBox
 - **V1. "KVM virtualisation configured, but not available"** ao criar VM no Proxmox: a VM do VirtualBox estava com
   `nested-hw-virt=off`. **Na interface do VirtualBox a caixa "Nested VT-x/AMD-V" fica acinzentada**, mas o
-  `VBoxManage modifyvm "Segundo Proxmox" --nested-hw-virt=on` (com a VM desligada) funciona. Para validar: `NestedHWVirt = 1`
-  em `%USERPROFILE%\VirtualBox VMs\Segundo Proxmox\Logs\VBox.log`, e `grep -c vmx /proc/cpuinfo` > 0 + `/dev/kvm` no Proxmox.
+  `VBoxManage modifyvm "<VM do Proxmox>" --nested-hw-virt=on` (com a VM desligada) funciona. Para validar: `NestedHWVirt = 1`
+  em `%USERPROFILE%\VirtualBox VMs\<VM do Proxmox>\Logs\VBox.log`, e `grep -c vmx /proc/cpuinfo` > 0 + `/dev/kvm` no Proxmox.
 - **V2. Não ativar WSL2, Docker Desktop, Hyper-V nem "Integridade de Memória"** no Windows: o VirtualBox cai para o modo
   NEM (tartaruga) e a virtualização aninhada **para de funcionar**. Hoje estão todos desativados (há um `com.docker.service`
   instalado, inativo). O log deve mostrar `HM: HMR3Init: VT-x w/ nested paging…` e `UseNEMInstead = 0`.
@@ -181,9 +185,9 @@ Mantenha os dois atualizados quando mudar scripts, variáveis ou requisitos do l
   O `vncwebsocket` exige `port` + `vncticket`, e os dois aceitam API token (`allowtoken=1`).
 - **A7.** No `net[n]` do QEMU, `rate` é em **MB/s** ("megabytes per second"): 10 Mbps = 1,25.
 - **A8.** Resize: *"Shrinking disk size is not supported"*. Com `+`, soma; sem `+`, é o tamanho absoluto.
-- **A9. O certificado do Proxmox NÃO tem `192.168.56.10` no SAN** (só `10.0.2.15`, `primeiro`, `primeiro.promox.teste`, localhost).
-  Solução adotada: conectar no IP e validar pelo nome do nó, com `servername: 'primeiro'` + `ca` (Node `https`/undici) ou
-  `curl --cacert certs/pve-root-ca.pem --resolve primeiro:8006:192.168.56.10 https://primeiro:8006/...`. Não desligue a verificação.
+- **A9. O certificado do Proxmox NÃO tem `192.168.56.10` no SAN** (só `10.0.2.15`, o hostname curto e o FQDN do nó e localhost: o certificado é gerado na instalação, quando a gerência está no NAT).
+  Solução adotada: conectar no IP e validar pelo nome do nó, com `servername: <nó>` (`PVE_TLS_SERVERNAME`) + `ca` (Node `https`/undici) ou
+  `curl --cacert certs/pve-root-ca.pem --resolve <nó>:8006:192.168.56.10 https://<nó>:8006/...`. Não desligue a verificação.
 - **A10.** O `DELETE` de um template com o token devolve `403 Permission check failed (/vms/9000, VM.Allocate)`: prova de que os
   templates estão protegidos. O token cria clones vinculados em ~1 s.
 - **A11. ARP do Windows atrasa o primeiro contato com uma VPS nova.** Pingar a VM **a partir do Windows durante o boot** deixa a
@@ -231,7 +235,7 @@ Mantenha os dois atualizados quando mudar scripts, variáveis ou requisitos do l
   (confirmado no Alpine e no Debian), e é isso que o noVNC exibe. Mantenha também `--serial0 socket`.
 - **C10.** Tempos e RAM medidos (VM de teste, KVM ativo): Alpine ~63 s até o SSH, 34 MB usados; Debian ~73 s, 84 MB;
   Ubuntu ~72 s, ~160 MB. O processo `kvm` de uma VM de 256 MB ocupa ~225 MB no host. `qm shutdown` (ACPI) leva ~4 s no Alpine.
-- **C11. Senha root pelo agente funciona:** `pvesh create /nodes/primeiro/qemu/<id>/agent/set-user-password --username root --password '…'`
+- **C11. Senha root pelo agente funciona:** `pvesh create /nodes/<nó>/qemu/<id>/agent/set-user-password --username root --password '…'`
   (o root passou de `L` para `P`, e `su root` funcionou), sem reboot.
 - **C12. Alpine Desktop:** `BROWSER=xfce4-taskmanager setup-desktop xfce` (com argumento, roda sem perguntas; conferido no
   código-fonte do `alpine-conf`). Sem o `BROWSER`, o script instala o Firefox (`${BROWSER:-firefox}`; variável vazia não
@@ -272,7 +276,7 @@ Mantenha os dois atualizados quando mudar scripts, variáveis ou requisitos do l
   `/etc/shadow`; o sshd do Alpine é compilado **sem PAM**, e o OpenSSH só checa conta bloqueada sem PAM (`auth.c`:
   `!options.use_pam && platform_locked_account`; no Linux, bloqueada = hash começando com `!`). Log: *"User ana not allowed because
   account is locked"*. Correção: `unlockForKeyLogin` no `ImageProfile` do Alpine troca `!` por `*` (sem senha válida, mas não
-  bloqueada). Debian/Ubuntu usam PAM e não têm o problema. A `favo-demo` não tinha o problema porque a conta tinha senha.
+  bloqueada). Debian/Ubuntu usam PAM e não têm o problema. Uma conta criada com senha não tem o problema.
 - **C22. O guest agent responde ANTES de o cloud-init terminar** (usuário, `authorized_keys`). Sem esperar, a VPS chegava a
   `RUNNING` com o SSH ainda recusando a chave. O job roda `cloud-init status --wait` pelo agente depois do `agent/ping` (saída 0 = ok,
   **2 = concluído com avisos**, ex. o `user:` deprecated da C8; 1 = erro). Com isso, pagamento → `RUNNING` em ~34 s no Alpine e o SSH
@@ -466,7 +470,7 @@ Mantenha os dois atualizados quando mudar scripts, variáveis ou requisitos do l
   `powershell -NoProfile -Command "Get-CimInstance Win32_Process -Filter \"Name='node.exe'\" | ? { $_.CommandLine -match 'vps-rental-platform' } | % { Stop-Process -Id $_.ProcessId -Force }"`.
   `npm start` exige o `.env.production` (fora do git; aponta para `vps_platform_prod`, criado na Fase 2).
   **Com o worker (Fase 6), um órfão também PROCESSA A FILA:** um `tsx watch` esquecido recarregou o `main.ts` novo e
-  provisionou a `favo-demo` sozinho. Antes de testar jobs, confira que não há `node` do projeto rodando.
+  provisionou uma VPS sozinho. Antes de testar jobs, confira que não há `node` do projeto rodando.
 - **T15. Captura do Playwright pode mostrar a tela atrasada:** uma captura tirada 20 s depois do evento ainda mostrava o estado
   antigo, embora o navegador já tivesse buscado os dados novos (causa provável, não confirmada: a janela sem foco atrasa os
   `setTimeout` com que o TanStack Query agenda o re-render). Para medir o tempo real, use um `MutationObserver` via `browser_evaluate` e leia o resultado depois.
@@ -530,7 +534,7 @@ const m={};(function w(n){for(const c of n){m[c.path]=c.info;if(c.children)w(c.c
 
 ### 7.3 Proxmox via SSH
 ```bash
-ssh -o BatchMode=yes root@192.168.56.10 'qm list; free -m; pvesh get /nodes/primeiro/status --output-format json'
+ssh -o BatchMode=yes root@192.168.56.10 'qm list; free -m; pvesh get /nodes/<nó>/status --output-format json'
 qm cloudinit dump <vmid> user            # ver o user-data gerado
 qm agent <vmid> ping
 ```

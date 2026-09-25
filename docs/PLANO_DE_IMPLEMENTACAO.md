@@ -169,12 +169,12 @@ Dados coletados agora, direto das máquinas, não de suposição.
 | CPU / RAM | Intel i3-10100F (4c/8t), **8 GB** de RAM |
 | Node.js / npm | **v24.12.0** / 11.6.2 |
 | MySQL | Serviço **`MySQL84` rodando** (MySQL Server 8.4), porta 3306 aberta. Cliente em `C:\Program Files\MySQL\MySQL Server 8.4\bin\mysql.exe` (fora do PATH) |
-| VirtualBox | 7.2.12. VMs: `coolify-ubuntu-server-2604-lts`, `alpine`, **`Segundo Proxmox`** (em execução) |
+| VirtualBox | 7.2.12, com a VM do Proxmox em execução (as outras VMs do usuário não fazem parte do projeto) |
 | VBS / Hyper-V | VBS desligado (`VirtualizationBasedSecurityStatus = 0`); Hyper-V, WSL e "Plataforma de Máquina Virtual" **desativados**; nenhum hipervisor ativo no Windows. Ver §2.4 |
-| Placas de rede | `Ethernet` (Intel I219-V), `Ethernet 2` (VirtualBox Host-Only), `Radmin VPN`. **Nenhuma** tem o driver "VirtualBox Bridged Networking" vinculado (por isso o modo Bridge não aparece no VirtualBox, ver §3.3.1) |
+| Placas de rede | A placa física, a VirtualBox Host-Only e um adaptador de VPN. **Nenhuma** tem o driver "VirtualBox Bridged Networking" vinculado (por isso o modo Bridge não aparece no VirtualBox, ver §3.3.1) |
 | SSH | OpenSSH 10.3 disponível, com chaves `id_ed25519` e `id_rsa` em `~/.ssh` |
 
-### 2.2 VM "Segundo Proxmox" no VirtualBox
+### 2.2 VM do Proxmox no VirtualBox
 
 | Item | Valor atual | Problema |
 |---|---|---|
@@ -190,7 +190,7 @@ Dados coletados agora, direto das máquinas, não de suposição.
 | Item | Valor |
 |---|---|
 | Versão | `pve-manager/9.2.2`, kernel `7.0.2-6-pve` |
-| Nó | **`primeiro`** (standalone, sem cluster) |
+| Nó | Standalone, sem cluster. O nome é o hostname curto escolhido na instalação |
 | CPU vista pelo Proxmox | 1 vCPU, flags **sem `vmx`** (tem `hypervisor`) |
 | Storage `local` | `dir`, `/var/lib/vz`, conteúdo `iso,backup,import,vztmpl`. 9,2 GB no total, **3,8 GB livres** |
 | Storage `local-lvm` | `lvmthin` (pool `data`), conteúdo `images,rootdir`. **7,3 GB** |
@@ -198,7 +198,7 @@ Dados coletados agora, direto das máquinas, não de suposição.
 | SDN | Só a zona implícita `localnetwork` |
 | Pools / usuários | Nenhum pool; só `root@pam` |
 | Guests | **VM 100** "VM 100": Alpine ISO, 1 GB de RAM, disco de 32 GB em `local-lvm`, `cpu: x86-64-v2-AES`, **`kvm: 0`**, rodando |
-| DNS do nó | `45.5.96.96`, search `promox.teste` |
+| DNS do nó | O recebido pelo DHCP do NAT na instalação |
 | Templates LXC disponíveis (aplinfo) | `alpine-3.24-default_20260714_amd64.tar.xz`, `alpine-3.23-…`, `debian-13-standard_13.6-1_amd64.tar.zst`, `ubuntu-24.04-standard_24.04-2_amd64.tar.zst` |
 | Acesso | API `https://192.168.56.10:8006` ✅ · SSH porta 22 aberta ✅ |
 
@@ -220,7 +220,7 @@ que ela não estava disponível, e que só funcionou depois de desativá-la. A i
 | Log da VM (`VBox.log`) | `HM: HMR3Init: VT-x w/ nested paging and unrestricted guest execution hw support`, `UseNEMInstead = 0` | O VirtualBox **já usa VT-x nativo** (não está no modo lento "tartaruga", o NEM) |
 | Log da VM (`VBox.log`) | `NestedHWVirt = 0` | **Esta é a única trava.** A VM do Proxmox não repassa o VT-x para dentro, então o Proxmox não vê `vmx` e o KVM falha |
 
-**Conclusão:** o seu caso tem solução. Basta ligar o "Nested VT-x/AMD-V" na VM "Segundo Proxmox",
+**Conclusão:** o seu caso tem solução. Basta ligar o "Nested VT-x/AMD-V" na VM do Proxmox,
 com ela desligada (comando em §3.2). Na interface do VirtualBox essa opção fica em
 *Configurações → Sistema → Processador → "Habilitar VT-x/AMD-V Aninhado"*. Se a caixa estiver
 acinzentada, o `VBoxManage` resolve.
@@ -235,7 +235,7 @@ o Docker não está ativando o Hyper-V.
 
 | Item | Antes | Depois |
 |---|---|---|
-| VM "Segundo Proxmox" | 1 vCPU, 2 GB, nested **off**, promíscuo `deny` | **2 vCPU, 3 GB, nested on**, promíscuo **`allow-all`** no Adaptador 2 |
+| VM do Proxmox | 1 vCPU, 2 GB, nested **off**, promíscuo `deny` | **2 vCPU, 3 GB, nested on**, promíscuo **`allow-all`** no Adaptador 2 |
 | Aceleração no Proxmox | sem `vmx`, VMs com `kvm: 0` | `vmx` presente, `/dev/kvm` existe, **VMs com KVM ativo** |
 | DHCP host-only | `.101–.254` | **`.101–.199`** (`.200–.254` livres para IPs fixos) |
 | VM 100 | Rodando, 1 GB | **Excluída** (disco removido) |
@@ -300,8 +300,8 @@ As imagens ficaram em `/var/lib/vz/import/` com checksum conferido (Debian: `SHA
 | Alpine Desktop | **Login gráfico no LightDM com a senha do cliente funciona** e abre o XFCE (testado digitando pelo monitor QEMU). Não precisa dos grupos `audio`/`video` (o `elogind` cuida do seat). VGA em 1280×800 |
 
 **Descobertas:**
-1. **Certificado do Proxmox sem o IP no SAN** (tem `10.0.2.15`, `primeiro` e `primeiro.promox.teste`): a validação TLS é feita com a CA
-   **e o nome `primeiro`** (`servername`), em vez de desligar a verificação (§3.5).
+1. **Certificado do Proxmox sem o IP no SAN** (tem `10.0.2.15`, o hostname curto e o FQDN do nó): a validação TLS é feita com a CA
+   **e o nome do nó** (`servername`), em vez de desligar a verificação (§3.5).
 2. **Cache ARP do Windows:** pingar a VM a partir do Windows enquanto ela ainda bootava (ou com uma entrada ARP antiga, de outro MAC,
    no mesmo IP) deixava o Windows ~45 s sem alcançá-la, embora o Proxmox já alcançasse. Decisões: a plataforma considera a VM pronta
    pelo **`agent/ping`** (§11.3, já era o plano) e usa **MAC derivado do IP** (§3.3).
@@ -355,9 +355,9 @@ aceitou a configuração normalmente com a VM desligada. Comandos executados (si
 
 ```powershell
 $vb = "C:\Program Files\Oracle\VirtualBox\VBoxManage.exe"
-& $vb modifyvm "Segundo Proxmox" --nested-hw-virt=on --cpus=2 --memory=3072 --nic-promisc2=allow-all
+& $vb modifyvm "<VM do Proxmox>" --nested-hw-virt=on --cpus=2 --memory=3072 --nic-promisc2=allow-all
 & $vb dhcpserver modify --network="HostInterfaceNetworking-VirtualBox Host-Only Ethernet Adapter" --upper-ip=192.168.56.199
-& $vb startvm "Segundo Proxmox" --type headless     # sem janela; "Mostrar" no VirtualBox abre o console
+& $vb startvm "<VM do Proxmox>" --type headless     # sem janela; "Mostrar" no VirtualBox abre o console
 ```
 
 - **Memória: 3 GB, e não 4.** Com o Proxmox desligado, o Windows estava com só **1,6 GB livres de
@@ -376,7 +376,7 @@ $vb = "C:\Program Files\Oracle\VirtualBox\VBoxManage.exe"
 
 ```powershell
 # Windows, com o Proxmox desligado de forma limpa
-& $vb modifymedium disk "C:\Users\Lapaz\VirtualBox VMs\Segundo Proxmox\Segundo Proxmox.vdi" --resize 30720
+& $vb modifymedium disk "$env:USERPROFILE\VirtualBox VMs\<VM do Proxmox>\<VM do Proxmox>.vdi" --resize 30720
 ```
 ```bash
 # Proxmox, depois de ligar (growpart/parted não vêm instalados; conferido)
@@ -496,7 +496,7 @@ A plataforma **não usa root**. Ela usa um usuário e token dedicados, com escop
 | Usuário | `vpsplatform@pve` (realm interno do Proxmox) |
 | Token | `vpsplatform@pve!backend`, com `privsep=1` (a permissão efetiva é a interseção entre usuário e token) |
 | Role customizada | `VPSPlatformVM` = `VM.Allocate, VM.Audit, VM.Config.CPU, VM.Config.Memory, VM.Config.Disk, VM.Config.Network, VM.Config.Options, VM.Config.Cloudinit, VM.PowerMgmt, VM.Console, VM.GuestAgent.Audit, VM.GuestAgent.Unrestricted, Pool.Audit` |
-| ACLs (usuário **e** token) | `/pool/vps-platform` → `VPSPlatformVM` · `/pool/vps-templates` → `PVETemplateUser` (`VM.Audit, VM.Clone`) · `/storage/local-lvm` → `PVEDatastoreUser` · `/sdn/zones/localnetwork/vmbr1` → `PVESDNUser` · `/nodes/primeiro` → `PVEAuditor` (capacidade e logs de tasks) |
+| ACLs (usuário **e** token) | `/pool/vps-platform` → `VPSPlatformVM` · `/pool/vps-templates` → `PVETemplateUser` (`VM.Audit, VM.Clone`) · `/storage/local-lvm` → `PVEDatastoreUser` · `/sdn/zones/localnetwork/vmbr1` → `PVESDNUser` · `/nodes/{node}` → `PVEAuditor` (capacidade e logs de tasks) |
 
 Permissões conferidas no schema oficial (`apidoc.js`):
 - **clone:** *"VM.Clone on /vms/{vmid}, and VM.Allocate on /vms/{newid} (or on the VM pool /pool/{pool}). You also
@@ -535,7 +535,7 @@ for who in "--users vpsplatform@pve" "--tokens vpsplatform@pve!backend"; do
   pveum acl modify /pool/vps-templates             $who --roles PVETemplateUser
   pveum acl modify /storage/local-lvm              $who --roles PVEDatastoreUser
   pveum acl modify /sdn/zones/localnetwork/vmbr1   $who --roles PVESDNUser
-  pveum acl modify /nodes/primeiro                 $who --roles PVEAuditor
+  pveum acl modify /nodes/<nó>                     $who --roles PVEAuditor
 done
 ```
 (Cada comando é protegido por verificações de existência, para ser idempotente. As flags exatas do
@@ -548,11 +548,11 @@ TLS: o certificado do Proxmox é autoassinado. O script também copia `/etc/pve/
 desligar a verificação.
 
 **Implementado na revisão 7:** o script roda na máquina de desenvolvimento e envia a si mesmo por SSH (`bash -s -- --remote`).
-O certificado do nó **não tem `192.168.56.10` no SAN** (só `127.0.0.1`, `::1`, `localhost`, `10.0.2.15`, `primeiro`,
-`primeiro.promox.teste`, porque foi gerado quando o IP de gerência era o da NAT). Em vez de regenerar o certificado (mexer no
+O certificado do nó **não tem `192.168.56.10` no SAN** (só `127.0.0.1`, `::1`, `localhost`, `10.0.2.15`, o hostname curto e o
+FQDN do nó, porque foi gerado quando o IP de gerência era o da NAT). Em vez de regenerar o certificado (mexer no
 `/etc/hosts` do nó afeta o `pve-cluster`) ou desligar a verificação, a conexão vai para o IP e **valida o certificado pelo nome
-do nó**: `PVE_TLS_SERVERNAME=primeiro` (no Node, `servername` no `https`/`undici`; no curl, `--resolve primeiro:8006:192.168.56.10`
-e a URL `https://primeiro:8006`). O `PVE_TLS_INSECURE` deixa de ser necessário. Variáveis gravadas pelo script:
+do nó**: `PVE_TLS_SERVERNAME=<nó>` (no Node, `servername` no `https`/`undici`; no curl, `--resolve <nó>:8006:192.168.56.10`
+e a URL `https://<nó>:8006`). O `PVE_TLS_INSECURE` deixa de ser necessário. Variáveis gravadas pelo script:
 `PVE_URL`, `PVE_NODE`, `PVE_TLS_SERVERNAME`, `PVE_CA_FILE`, `PVE_TOKEN_ID`, `PVE_TOKEN_SECRET`.
 
 ### 3.6 Golden images: templates 9000–9003 (`scripts/pve/build-template.sh <imagem>`)
@@ -1534,12 +1534,12 @@ export class ProxmoxClient {
 **Sequência de criação** (validada manualmente com `qm` na Fase 0; os parâmetros são os mesmos da API):
 
 ```
-POST /nodes/primeiro/qemu/9000/clone
+POST /nodes/{node}/qemu/9000/clone
   newid=2000  name=<hostname>  pool=vps-platform  full=0          # linked clone
   description=vps:<uuid-da-vps>                                  # vínculo reverso para a reconciliação
 → esperar UPID
 
-POST /nodes/primeiro/qemu/2000/config
+POST /nodes/{node}/qemu/2000/config
   cores=1  memory=256
   ciuser=<usuário escolhido, padrão "alpine">
   cipassword=<senha do cliente>          # e/ou:
@@ -1549,8 +1549,8 @@ POST /nodes/primeiro/qemu/2000/config
   tags=vpsplatform  onboot=1
 → esperar UPID
 
-PUT  /nodes/primeiro/qemu/2000/resize   disk=scsi0  size=2G     → esperar UPID
-POST /nodes/primeiro/qemu/2000/status/start                     → esperar UPID
+PUT  /nodes/{node}/qemu/2000/resize   disk=scsi0  size=2G     → esperar UPID
+POST /nodes/{node}/qemu/2000/status/start                     → esperar UPID
 ```
 
 **Observações do teste real:**
@@ -1599,13 +1599,13 @@ Navegador (noVNC)                       Servidor Favo (Node)                    
 ─────────────────                       ─────────────────────                         ───────
 1. POST /api/vps/:id/console   ──────►  valida sessão, CSRF, permissão
                                         vps:console:own, dono, status RUNNING
-                                        POST /nodes/primeiro/qemu/{vmid}/vncproxy ──►  { port, ticket, password, … }
+                                        POST /nodes/{node}/qemu/{vmid}/vncproxy   ──►  { port, ticket, password, … }
                                ◄──────  { consoleId (uso único, 30 s), password }
 2. new RFB(el, "wss://…/ws/console/<consoleId>", { credentials: { password } })
    WebSocket (mesma origem) ──────────► upgrade: confere Origin + cookie de sessão
                                         + consome o consoleId (1 vez, mesmo usuário)
                                         abre wss://192.168.56.10:8006/api2/json/nodes/
-                                        primeiro/qemu/{vmid}/vncwebsocket?port&vncticket
+                                        {node}/qemu/{vmid}/vncwebsocket?port&vncticket
                                         (Authorization: PVEAPIToken…, CA do Proxmox) ──► VNC da VM
    ◄═══════════ frames binários repassados nos dois sentidos ═══════════►
 ```
@@ -1911,7 +1911,7 @@ capacidades dela declaradas.
 
 | Seção | Campos | Condições e regras |
 |---|---|---|
-| 1. Localização | "Laboratório — nó `primeiro`" (única opção, exibida como card) | Mostra o conceito de região sem inventar infraestrutura |
+| 1. Localização | "Laboratório" (única opção, exibida como card; representa o nó do Proxmox) | Mostra o conceito de região sem inventar infraestrutura |
 | 2. Imagem | Cards: Alpine 3.24, Debian 13, Ubuntu 24.04 LTS, Alpine Desktop (logo, versão, selos "leve"/"popular"/"interface gráfica") | Ao trocar de imagem: preenche o usuário padrão, reavalia os planos e mostra as notas da imagem |
 | 3. Plano | Cards Nano / Micro / Small (vCPU, RAM, disco, banda, preço) | Planos abaixo do mínimo da imagem ficam **desabilitados**, com o motivo ("Debian requer 512 MB e 3 GB") |
 | 4. Autenticação | **Método:** chave SSH (recomendado) · senha · ambos | Pelo menos um método é obrigatório |
@@ -2134,7 +2134,7 @@ que nenhum segredo entra, e entrega um resumo das mudanças (arquivos, decisões
 **Aceite:** para **cada** template, uma VM clonada **com o token da plataforma** (não root), via API, com
 `ipconfig0=ip=192.168.56.229/24,gw=192.168.56.10` e `ciupgrade=0`: responde a `ping` a partir do Windows, aceita SSH, resolve
 nomes, responde ao `agent/ping`, aceita `agent/set-user-password` para root, mostra o `login:` no VGA e é excluída com sucesso.
-Com o mesmo token, `DELETE /nodes/primeiro/qemu/9000` retorna **403** (os templates estão protegidos).
+Com o mesmo token, `DELETE /nodes/{node}/qemu/9000` retorna **403** (os templates estão protegidos).
 
 ### Fase 1: Fundação do projeto — ✅ concluída em 2026-09-23
 - [x] `npm init -y` + `npm config set save-exact=true --location=project` + campos via `npm pkg set` (`type`, `engines`, `private`).
@@ -2421,7 +2421,7 @@ e recuperação por `?after=`.
 | tsyringe pouco ativo; esbuild sem metadata | DI falha em dev | `@inject` explícito sempre. Se o projeto for abandonado, a troca é localizada (container/register) |
 | MySQL 8.4 + adapter MariaDB (`caching_sha2_password`, confirmado no usuário `vps_app`) | Falha de conexão | Validar na F2. Se necessário: `allowPublicKeyRetrieval` no adapter (só local) ou trocar o plugin de autenticação do `vps_app` |
 | Express 5: sintaxe de curinga | Fallback SPA não casa | Usar `/{*splat}` (path-to-regexp v8) |
-| Certificado autoassinado do Proxmox, sem o IP no SAN | Fetch falha | Confiar na `pve-root-ca.pem` e validar pelo nome do nó (`PVE_TLS_SERVERNAME=primeiro`, §3.5) |
+| Certificado autoassinado do Proxmox, sem o IP no SAN | Fetch falha | Confiar na `pve-root-ca.pem` e validar pelo nome do nó (`PVE_TLS_SERVERNAME=<nó>`, §3.5) |
 | Condições de corrida (IP, VMID, claim, pagamento) | Duplicidade | Atualizações condicionais atômicas + índices únicos + testes de concorrência |
 | Senhas (Proxmox e MySQL) no §0 deste arquivo, num repositório público | Exposição | Trocar as senhas ou removê-las do §0/§0.2 antes de publicar. `.env*` e `certs/` já estão no `.gitignore` |
 | Desalinhamento banco ↔ Proxmox | Status errado | Job `reconcile`, tags e `description` com o UUID da VPS, pool isolado |
@@ -2463,7 +2463,7 @@ Decisões novas que surgirem durante a implementação serão registradas aqui e
 - Registro do npm (`npm view <pkg> dist-tags versions time peerDependencies engines`): base da tabela de §4, do conflito `typescript-eslint` × TypeScript 7 e da tag `latest` pré-release do `prisma`
 
 **Diagnóstico do PC (rev. 2)**
-- `VBox.log` da VM "Segundo Proxmox" (`HM: HMR3Init: VT-x w/ nested paging…`, `NestedHWVirt = 0`, `UseNEMInstead = 0`)
+- `VBox.log` da VM do Proxmox (`HM: HMR3Init: VT-x w/ nested paging…`, `NestedHWVirt = 0`, `UseNEMInstead = 0`)
 - `Win32_Processor` (VT-x/EPT no firmware), `Win32_ComputerSystem.HypervisorPresent`, `Win32_OptionalFeature` (Hyper-V/WSL desativados), `Get-NetAdapterBinding` (driver de bridge do VirtualBox ausente)
 
 **Segurança**

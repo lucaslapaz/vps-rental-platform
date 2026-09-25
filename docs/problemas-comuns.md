@@ -9,7 +9,7 @@ Este documento complementa o [guia de instalação](instalacao.md). Ele responde
 | Diferença | Funciona? | Detalhe |
 |---|---|---|
 | **Senha do root do Proxmox** diferente | ✅ | O projeto não usa nem guarda essa senha. Ela só serve para o login web e para instalar a chave SSH uma vez (instalação, B4). Trocar a senha depois também não afeta nada |
-| **Hostname / nome do nó** diferente de `primeiro` | ✅ | O `bootstrap.sh` descobre o nome sozinho e grava em `PVE_NODE` e `PVE_TLS_SERVERNAME`. Não renomeie o nó **depois** de instalado: renomear um nó do Proxmox é um procedimento à parte, e o `.env` ficaria com o nome antigo |
+| **Hostname / nome do nó** (qualquer um) | ✅ | O `bootstrap.sh` descobre o nome sozinho e grava em `PVE_NODE` e `PVE_TLS_SERVERNAME`. Não renomeie o nó **depois** de instalado: renomear um nó do Proxmox é um procedimento à parte, e o `.env` ficaria com o nome antigo |
 | **Nome da VM no VirtualBox** | ✅ | Só aparece nos seus comandos `VBoxManage` |
 | **Senha do MySQL** (`vps_app`) | ✅ | Fica no `DATABASE_URL`. Troque a senha no MySQL e no `.env.*`, ou apague as linhas `DATABASE_URL` e `SHADOW_DATABASE_URL` e rode o `scripts/setup/env.mjs` de novo |
 | **MySQL em outra porta** | ✅ | `MYSQL_HOST=127.0.0.1:3307 node scripts/setup/env.mjs '…'`, ou edite o `DATABASE_URL` |

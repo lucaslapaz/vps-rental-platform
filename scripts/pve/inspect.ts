@@ -4,7 +4,7 @@ import type { Database } from '../../src/server/db/prisma.ts';
 import type { ProxmoxClient } from '../../src/server/integrations/proxmox/ProxmoxClient.ts';
 import type { VirtualizationProvider } from '../../src/server/integrations/virtualization/VirtualizationProvider.ts';
 
-/** UPID de task do Proxmox (ex.: UPID:primeiro:0000ABCD:...:qmstart:2000:user@realm!token:). */
+/** UPID de task do Proxmox (ex.: UPID:<nó>:0000ABCD:...:qmstart:2000:user@realm!token:). */
 export const UPID_PATTERN = /^UPID:[A-Za-z0-9.-]+:[0-9A-F]{8}:[0-9A-F]{8}:[0-9A-F]{8}:[a-z]+:[^:]*:[^:]+:$/;
 
 /**

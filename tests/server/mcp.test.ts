@@ -11,7 +11,7 @@ import { FakeVirtualizationProvider } from '../helpers/FakeVirtualizationProvide
 const env = loadEnv();
 const db = testPrisma();
 const fake = new FakeVirtualizationProvider();
-const UPID = 'UPID:primeiro:00000B84:000098B2:6AB512D1:qmstart:2001:vpsplatform@pve!backend:';
+const UPID = 'UPID:pve:00000B84:000098B2:6AB512D1:qmstart:2001:vpsplatform@pve!backend:';
 const requested: string[] = [];
 // Só GET: o inspetor recebe um cliente da API sem nenhum método que altere algo.
 const api = {

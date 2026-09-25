@@ -98,7 +98,7 @@ cd "$(dirname "$SELF")/../.."
 ENV_FILE="${ENV_FILE:-.env.development}"
 SSH_OPTS=(-o BatchMode=yes -o ConnectTimeout=10)
 
-# O nome do nó é o hostname curto escolhido na instalação do Proxmox (ex.: primeiro.promox.teste → primeiro).
+# O nome do nó é o hostname curto escolhido na instalação do Proxmox (ex.: pve.laboratorio.local → pve).
 if [ -z "$PVE_NODE" ]; then
   PVE_NODE=$(ssh "${SSH_OPTS[@]}" "root@${PVE_HOST}" 'n=$(hostname -s); [ -d "/etc/pve/nodes/$n" ] && echo "$n"') || true
   [ -n "$PVE_NODE" ] || { echo "[bootstrap] não consegui descobrir o nome do nó em ${PVE_HOST}; defina PVE_NODE" >&2; exit 1; }

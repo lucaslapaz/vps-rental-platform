@@ -189,7 +189,7 @@ Na janela da VM, escolha **Install Proxmox VE (Graphical)** e preencha:
 | País, fuso e teclado | Os seus | O teclado vale para o console da VM, usado no B2 |
 | Senha do root e e-mail | Os que quiser | A senha só é usada no login da interface web e **uma vez**, para instalar a chave SSH (B4). O projeto não a guarda |
 | Management Interface | **`nic0`** (ou a primeira placa da lista) | É o Adaptador 1 (NAT), a única rede com internet. Confira: o MAC mostrado é o do Adaptador 1 nas configurações da VM |
-| Hostname (FQDN) | Um nome com domínio, ex.: `primeiro.promox.teste` | A primeira parte (`primeiro`) vira o **nome do nó**. Qualquer nome serve: os scripts o descobrem sozinhos |
+| Hostname (FQDN) | Um nome com domínio, ex.: `pve.laboratorio.local` | A primeira parte (`pve`) vira o **nome do nó**. Qualquer nome serve: os scripts o descobrem sozinhos |
 | IP / Gateway / DNS | `10.0.2.15/24` / `10.0.2.2` / o que o instalador sugerir | São os valores do NAT do VirtualBox |
 
 No fim, deixe reiniciar. A VM inicia pelo disco. Se quiser, tire a ISO do drive em *Dispositivos → Discos Ópticos*.

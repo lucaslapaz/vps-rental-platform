@@ -55,7 +55,7 @@ export function createFavoMcpServer(inspector: PlatformInspector) {
       title: 'Log de uma task',
       description: 'Estado e últimas linhas do log de uma task do Proxmox (clone, start, shutdown…), pelo UPID.',
       inputSchema: {
-        upid: z.string().max(200).describe('UPID completo da task, ex.: UPID:primeiro:…:qmstart:2000:…:'),
+        upid: z.string().max(200).describe('UPID completo da task, ex.: UPID:<nó>:…:qmstart:2000:…:'),
         limit: z.number().int().min(1).max(500).default(50).describe('Quantas linhas do log trazer'),
       },
       annotations: readOnly,

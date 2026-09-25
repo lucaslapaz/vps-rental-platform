@@ -81,32 +81,43 @@ MySQL, com `SELECT … FOR UPDATE SKIP LOCKED`). Detalhes, diagramas de sequênc
 
 ## Como rodar
 
-### Requisitos
+- 📘 **Instalação do zero, passo a passo: [docs/instalacao.md](docs/instalacao.md).** O guia vai do Windows sem
+  nada até a primeira VPS criada: VirtualBox com virtualização aninhada, os dois adaptadores de rede, instalação do
+  Proxmox, rede das VPS, MySQL, `.env`, token, imagens e templates.
+- 🩺 **Algo diferente ou quebrado? [docs/problemas-comuns.md](docs/problemas-comuns.md).** O documento diz o que dá
+  para mudar sem quebrar (senhas, nome do nó, RAM) e o que quebra (Hyper-V, VT-x aninhado, modo promíscuo, IPs,
+  storage), cada item com o sintoma e a correção.
 
-- Node 24 e MySQL 8.4.
-- Para criar VPS de verdade, um Proxmox VE 9 acessível. O laboratório usado (Proxmox numa VM do VirtualBox, rede
-  host-only e templates) está descrito no [plano, seções 2 e 3](docs/PLANO_DE_IMPLEMENTACAO.md); os scripts
-  `scripts/pve/bootstrap.sh` e `scripts/pve/build-template.sh` preparam o token, os pools e os quatro templates.
+**Requisitos:** Windows com VT-x e **sem Hyper-V/WSL2 ativos**, 8 GB de RAM, VirtualBox 7.2, Proxmox VE 9, Node 24,
+MySQL 8.4 e Git Bash.
 
-### Passos
+Resumo, com o Proxmox já instalado e a rede `vmbr1` criada (partes A e B do guia):
 
 ```bash
-npm install                         # também gera o Prisma Client
-cp .env.example .env.development    # preencha DATABASE_URL, segredos e os dados do Proxmox
-npm run db:setup:dev                # migrations + seed (planos, imagens e usuários de demonstração)
-npm run dev                         # http://localhost:3000 (API, Socket.IO e Vite com HMR na mesma porta)
+npm install                                   # também gera o Prisma Client
+node scripts/setup/env.mjs '<senha do vps_app>'   # .env.development e .env.test com segredos aleatórios
+scripts/pve/bootstrap.sh                      # usuário, token e permissões no Proxmox; grava as PVE_* no .env
+node scripts/setup/env.mjs '<senha do vps_app>'   # copia as PVE_* para o .env.test
+scripts/pve/download-images.sh                # imagens cloud oficiais, com checksum conferido
+scripts/pve/build-template.sh all             # os quatro templates, cada um com teste de aceite
+scripts/pve/firewall.sh                       # anti-spoofing das VPS
+npm run db:setup:dev                          # migrations + seed (planos, imagens, IPs e usuários de demonstração)
+npm run dev                                   # http://localhost:3000 (API, Socket.IO e Vite com HMR na mesma porta)
 ```
 
 Usuários de demonstração (senha em `SEED_DEFAULT_PASSWORD`): `ana@favo.local` e `bruno@favo.local` (clientes),
-`carla@favo.local` e `diego@favo.local` (técnicos de suporte) e `admin@favo.local`.
+`carla@favo.local` e `diego@favo.local` (técnicos de suporte) e `admin@favo.local`. Cartão de teste aprovado:
+`4242 4242 4242 4242`.
 
 Produção local: `npm run build && npm start` (usa o `.env.production`).
 
 ### Sem Proxmox
 
 O servidor do E2E sobe a aplicação inteira com um **provider falso** no lugar do Proxmox (as VPS "ligam" na hora), útil
-para explorar as telas sem o laboratório: preencha o `.env.test`, rode `npm run build:client` e depois `npm run e2e:server`
-(porta 3100).
+para explorar as telas sem o laboratório. Crie os bancos (guia, C3), gere um `.env.test` com um Proxmox fictício
+(`DATABASE_URL=mysql://vps_app:<senha>@127.0.0.1:3306/vps_platform_test node scripts/ci/write-env-test.mjs`, o mesmo do
+CI), aplique as migrations (`npx cross-env NODE_ENV=test prisma migrate deploy`), rode `npm run build:client` e depois
+`npm run e2e:server` (porta 3100). A senha dos usuários de demonstração fica em `SEED_DEFAULT_PASSWORD` no `.env.test`.
 
 ### MCP para agentes de IA
 
@@ -135,10 +146,10 @@ src/
   server/     Express, services, repositories, jobs (fila + worker), realtime (Socket.IO e console), integrations/proxmox
   shared/     contratos entre os dois lados: DTOs, schemas zod, permissões, eventos e máquina de estados
 prisma/       schema, migrations e seed
-scripts/      laboratório Proxmox (bootstrap, templates, CLI) e política de dependências
+scripts/      laboratório Proxmox (bootstrap, imagens, templates, firewall, CLI), setup dos .env, MCP e dependências
 tests/        unidade e integração (Vitest) e @lab (Proxmox real)
 e2e/          Playwright
-docs/         plano de implementação, arquitetura e segurança
+docs/         instalação, problemas comuns, plano de implementação, arquitetura e segurança
 ```
 
 ---

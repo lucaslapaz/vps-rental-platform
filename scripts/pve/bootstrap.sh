@@ -10,11 +10,12 @@
 #                      secret do token no .env.development (só quando um token novo é criado).
 #   - remoto (--remote): executado no Proxmox como root; faz o trabalho com pveum.
 #
-# Variáveis: PVE_HOST (padrão 192.168.56.10), PVE_NODE (padrão primeiro), ENV_FILE (padrão .env.development).
+# Variáveis: PVE_HOST (padrão 192.168.56.10), PVE_NODE (padrão: descoberto no próprio nó, é o hostname curto dele),
+#            ENV_FILE (padrão .env.development).
 set -euo pipefail
 
 PVE_HOST="${PVE_HOST:-192.168.56.10}"
-PVE_NODE="${PVE_NODE:-primeiro}"
+PVE_NODE="${PVE_NODE:-}"
 
 POOL_VPS="vps-platform"
 POOL_TEMPLATES="vps-templates"
@@ -96,6 +97,12 @@ SELF="$(cd "$(dirname "$0")" && pwd)/$(basename "$0")"
 cd "$(dirname "$SELF")/../.."
 ENV_FILE="${ENV_FILE:-.env.development}"
 SSH_OPTS=(-o BatchMode=yes -o ConnectTimeout=10)
+
+# O nome do nó é o hostname curto escolhido na instalação do Proxmox (ex.: primeiro.promox.teste → primeiro).
+if [ -z "$PVE_NODE" ]; then
+  PVE_NODE=$(ssh "${SSH_OPTS[@]}" "root@${PVE_HOST}" 'n=$(hostname -s); [ -d "/etc/pve/nodes/$n" ] && echo "$n"') || true
+  [ -n "$PVE_NODE" ] || { echo "[bootstrap] não consegui descobrir o nome do nó em ${PVE_HOST}; defina PVE_NODE" >&2; exit 1; }
+fi
 
 echo "[bootstrap] Proxmox em ${PVE_HOST} (nó ${PVE_NODE})"
 output=$(ssh "${SSH_OPTS[@]}" "root@${PVE_HOST}" "PVE_NODE=${PVE_NODE} bash -s -- --remote ${ROTATE}" < "$SELF")

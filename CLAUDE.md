@@ -114,7 +114,14 @@ que não dá para deduzir do código: regras combinadas com o usuário, estado d
 | MySQL | Bancos `vps_platform_{dev,test,prod,shadow}` + usuário **`vps_app`** (só nesses bancos, `caching_sha2_password`). `DATABASE_URL` em `.env.development`/`.env.test`, e `SHADOW_DATABASE_URL` em `.env.development` |
 
 ### Scripts do laboratório (Fase 0, rodam no Git Bash a partir da raiz do repositório)
+O passo a passo de uma instalação do zero (VirtualBox, adaptadores, Proxmox, rede `vmbr1`, MySQL, `.env`) está em
+[docs/instalacao.md](docs/instalacao.md); o que quebra e o que dá para mudar, em [docs/problemas-comuns.md](docs/problemas-comuns.md).
+Mantenha os dois atualizados quando mudar scripts, variáveis ou requisitos do laboratório.
+- `node scripts/setup/env.mjs '<senha do vps_app>' [--production]`: cria/completa os `.env.*` com segredos aleatórios (nunca
+  sobrescreve) e copia as `PVE_*` do `.env.development` para os outros.
+- `scripts/pve/download-images.sh`: idempotente. Baixa as 3 imagens cloud para `/var/lib/vz/import/` e confere o checksum publicado.
 - `scripts/pve/bootstrap.sh [--rotate-token]`: idempotente. Envia a si mesmo por SSH, copia a CA e grava os `PVE_*` no `.env.development`.
+  O nome do nó é descoberto (`hostname -s`); `PVE_NODE=<nome>` força outro.
   O secret só aparece na criação do token: se o `.env` perdeu o secret, use `--rotate-token`.
 - `scripts/pve/firewall.sh`: idempotente. Liga o firewall do datacenter (políticas ACCEPT) com rollback automático de 3 min
   até conferir SSH e 8006, e grava a zona de conntrack do NAT (Fase 10, extra 2).

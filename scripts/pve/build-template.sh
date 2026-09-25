@@ -160,8 +160,16 @@ remote() {
   qm set "$vmid" --scsi0 "${STORAGE}:0,import-from=${img}" >/dev/null
   qm set "$vmid" --ide2 "${STORAGE}:cloudinit" --boot order=scsi0 >/dev/null
   [ "$disk" != - ] && qm resize "$vmid" scsi0 "$disk" >/dev/null
+  # Chave do root do Proxmox para o SSH do build: a instalação cria a id_rsa; se não houver nenhuma, gera uma.
+  local key=""
+  for key in /root/.ssh/id_ed25519 /root/.ssh/id_rsa ""; do [ -n "$key" ] && [ -f "${key}.pub" ] && break; done
+  if [ -z "$key" ]; then
+    key=/root/.ssh/id_ed25519
+    ssh-keygen -q -t ed25519 -N '' -f "$key"
+    log "chave SSH do root criada em ${key}"
+  fi
   # ciupgrade=0: o upgrade é feito explicitamente abaixo (no Alpine o do cloud-init falharia sem DNS, armadilha C1).
-  qm set "$vmid" --ciuser "$user" --sshkeys /root/.ssh/id_rsa.pub \
+  qm set "$vmid" --ciuser "$user" --sshkeys "${key}.pub" \
     --ipconfig0 "ip=${BUILD_IP}/24,gw=${GATEWAY}" --nameserver 1.1.1.1 --ciupgrade 0 >/dev/null
 
   qm start "$vmid"

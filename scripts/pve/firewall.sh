@@ -18,10 +18,13 @@ set -euo pipefail
 PVE_HOST="${PVE_HOST:-192.168.56.10}"
 MGMT_NET="${MGMT_NET:-192.168.56.0/24}"
 SSH_OPTS=(-o BatchMode=yes -o ConnectTimeout=8)
-# A9/T9: valida o certificado pela CA do nó e pelo nome dele (o IP não está no SAN).
-CA="$(dirname "$0")/../../certs/pve-root-ca.pem"
+ROOT="$(dirname "$0")/../.."
 log() { echo "[firewall] $*" >&2; }
 remote() { ssh "${SSH_OPTS[@]}" "root@${PVE_HOST}" "$@"; }
+# A9/T9: valida o certificado pela CA do nó e pelo nome dele (o IP não está no SAN). Os dois vêm do bootstrap.sh.
+CA="${ROOT}/certs/pve-root-ca.pem"
+TLS_NAME="${PVE_TLS_SERVERNAME:-$(sed -n 's/^PVE_TLS_SERVERNAME=//p' "${ROOT}/.env.development" 2>/dev/null | tr -d '\r' | tail -1)}"
+[ -f "$CA" ] && [ -n "$TLS_NAME" ] || { log "falta a CA ou o PVE_TLS_SERVERNAME: rode scripts/pve/bootstrap.sh antes"; exit 1; }
 
 # ── 1. Zona de conntrack (não afeta o acesso ao nó: só pacotes que entram pelas bridges de firewall das VMs) ──
 remote 'bash -s' <<'EOS'
@@ -31,8 +34,8 @@ iptables -t raw -C PREROUTING -i fwbr+ -j CT --zone 1 2>/dev/null || iptables $R
 F=/etc/network/interfaces
 if ! grep -q 'CT --zone 1' "$F"; then
   cp "$F" "/root/interfaces.bak-$(date +%Y%m%d%H%M%S)"
-  # Logo depois do MASQUERADE da vmbr1 (fica dentro da estrofe dela).
-  sed -i "/post-down iptables -t nat -D POSTROUTING -s 192.168.56.0\/24 -o vmbr0 -j MASQUERADE/a\\
+  # Logo depois do MASQUERADE da vmbr1 (fica dentro da estrofe dela; a rede pode estar com ou sem aspas).
+  sed -i "/post-down *iptables -t nat -D POSTROUTING .*-o vmbr0 -j MASQUERADE/a\\
 	post-up   iptables -t raw -I PREROUTING -i fwbr+ -j CT --zone 1\\
 	post-down iptables -t raw -D PREROUTING -i fwbr+ -j CT --zone 1" "$F"
   grep -q 'CT --zone 1' "$F" || { echo "[firewall] não achei a linha do MASQUERADE da vmbr1 em $F" >&2; exit 1; }
@@ -77,7 +80,7 @@ log "cluster.fw aplicado; rollback automático em 3 min se o acesso cair"
 
 sleep 15 # o pve-firewall aplica as mudanças em alguns segundos
 remote 'pve-firewall status' | sed 's/^/[firewall] nó: /' >&2
-if remote true && curl -sf -o /dev/null --max-time 8 --ssl-no-revoke --cacert "$CA" --resolve "primeiro:8006:${PVE_HOST}" https://primeiro:8006/; then
+if remote true && curl -sf -o /dev/null --max-time 8 --ssl-no-revoke --cacert "$CA" --resolve "${TLS_NAME}:8006:${PVE_HOST}" "https://${TLS_NAME}:8006/"; then
   remote 'systemctl stop favo-fw-rollback.timer'
   log "SSH e 8006 acessíveis daqui: rollback cancelado. Firewall do datacenter ligado."
 else

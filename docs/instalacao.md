@@ -188,7 +188,8 @@ ISO no assistente, marque **"Pular instalação desassistida"**: o VirtualBox n�
   Adapter`, *Avançado → Modo Promíscuo: **Permitir Tudo***. Esse campo fica escondido em *Avançado* e é fácil de
   esquecer; o A5 confere.
 - *Sistema → Processador → "Habilitar VT-x/AMD-V Aninhado"*: **essa caixa costuma ficar acinzentada e não dá para
-  marcar.** Isso é normal e não é um defeito do seu PC. Pule-a: o **A5 liga o VT-x aninhado por comando**.
+  marcar.** Isso é normal e não é um defeito do seu PC. Pule-a: o **A5 liga o VT-x aninhado por comando**. A caixa
+  continua acinzentada mesmo depois disso; a conferência é feita no A5.
 
 O que importa e o que é indiferente nesta VM:
 
@@ -242,8 +243,10 @@ ligado, desligue-o de forma limpa e espere o estado `poweroff`:
 ```
 
 O `--nested-hw-virt=on` é o jeito normal de ligar a opção que fica acinzentada na interface: a interface não deixa
-marcar a caixa, mas o comando grava a opção direto na configuração da VM. **Não se guie pela caixa na interface**: o
-que vale é o `nested-hw-virt="on"` do item 1 e o `NestedHWVirt ... (1)` do item 3. Rode o item 1 de novo para conferir.
+marcar a caixa, mas o comando grava a opção direto na configuração da VM. **Mesmo depois do comando, a caixa continua
+acinzentada** e não pode ser alterada pela interface (nem para ligar, nem para desligar). Por isso, **não se guie pela
+caixa**: o que vale é o `nested-hw-virt="on"` do item 1 e o `NestedHWVirt ... (1)` do item 3. Rode o item 1 de novo
+para conferir. Para desligar um dia, também é por comando: `--nested-hw-virt=off`, com a VM desligada.
 
 **3. Confira no log que o VT-x chegou à VM.** Ligue a VM com uma janela (`& $vb startvm $vm`) e, com ela ligada:
 

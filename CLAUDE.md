@@ -144,7 +144,8 @@ Mantenha os dois atualizados quando mudar scripts, variáveis ou requisitos do l
 ### Windows / VirtualBox
 - **V1. "KVM virtualisation configured, but not available"** ao criar VM no Proxmox: a VM do VirtualBox estava com
   `nested-hw-virt=off`. **Na interface do VirtualBox a caixa "Nested VT-x/AMD-V" fica acinzentada**, mas o
-  `VBoxManage modifyvm "<VM do Proxmox>" --nested-hw-virt=on` (com a VM desligada) funciona. Para validar: `NestedHWVirt = 1`
+  `VBoxManage modifyvm "<VM do Proxmox>" --nested-hw-virt=on` (com a VM desligada) funciona. A caixa **continua acinzentada
+  depois do comando** (confirmado pelo usuário): nunca use a interface como conferência. Para validar: `NestedHWVirt = 1`
   em `%USERPROFILE%\VirtualBox VMs\<VM do Proxmox>\Logs\VBox.log`, e `grep -c vmx /proc/cpuinfo` > 0 + `/dev/kvm` no Proxmox.
 - **V2. Não ativar WSL2, Docker Desktop, Hyper-V nem "Integridade de Memória"** no Windows: o VirtualBox cai para o modo
   NEM (tartaruga) e a virtualização aninhada **para de funcionar**. Hoje estão todos desativados (há um `com.docker.service`
